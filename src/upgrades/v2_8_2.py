@@ -4,8 +4,8 @@
 # This upgrade adds the "tracker_in_use" column to "user" table
 # And set the default value based on the "tracker" in app.config
 
-from db import genconn
-from logger import logger
+from src.db import genconn
+from src.logger import logger
 
 
 def run(app):

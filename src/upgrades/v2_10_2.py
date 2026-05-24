@@ -5,9 +5,9 @@
 
 import json
 
-from db import genconn
-from functions import convertQuotation, decompress
-from logger import logger
+from src.db import genconn
+from src.functions import convertQuotation, decompress
+from src.logger import logger
 
 
 def run(app):

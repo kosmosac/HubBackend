@@ -6,8 +6,8 @@ import uuid
 
 from fastapi import Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
 async def get_callback(request: Request, response: Response):

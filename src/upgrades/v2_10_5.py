@@ -5,9 +5,9 @@
 # decompress has been modified to use zstd and fallback to zlib on error
 # compress will always use zstd only
 
-from db import genconn
-from functions import decompress, compress
-from logger import logger
+from src.db import genconn
+from src.functions import decompress, compress
+from src.logger import logger
 
 
 COMPRESSED_TABLE_COLUMNS = [

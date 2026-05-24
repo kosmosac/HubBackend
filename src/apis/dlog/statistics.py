@@ -4,14 +4,13 @@
 import asyncio
 import threading
 import time
-from typing import Optional
 
 import cysimdjson
 from fastapi import Header, Request, Response
 
-from db import genconn
-from functions import *
-from logger import logger
+from src.db import genconn
+from src.functions import *
+from src.logger import logger
 
 # app.state.statistics_details_last_work = -1
 # <=0 is finished, >0 is unfinished, it uses timestamp
@@ -129,44 +128,44 @@ def rebuild(app):
                     dlog_stats[10].append(item)
 
             elif etype in ["collision", "speeding", "teleport"]:
-                K = {"collision": 15, "speeding": 11, "teleport": 16}
+                mapping = {"collision": 15, "speeding": 11, "teleport": 16}
                 item = [etype, etype, 1, 0]
                 duplicate = False
-                for i in range(len(dlog_stats[K[etype]])):
-                    if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                        dlog_stats[K[etype]][i][2] += 1
+                for i in range(len(dlog_stats[mapping[etype]])):
+                    if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                        dlog_stats[mapping[etype]][i][2] += 1
                         duplicate = True
                         break
                 if not duplicate:
-                    dlog_stats[K[etype]].append(item)
+                    dlog_stats[mapping[etype]].append(item)
 
             elif etype in ["tollgate"]:
-                K = {"tollgate": 12}
+                mapping = {"tollgate": 12}
                 item = [etype, etype, 1, int(event["meta"]["cost"])]
                 item[3] = item[3] if item[3] <= 51200 else 0
                 duplicate = False
-                for i in range(len(dlog_stats[K[etype]])):
-                    if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                        dlog_stats[K[etype]][i][2] += 1
-                        dlog_stats[K[etype]][i][3] += item[3]
+                for i in range(len(dlog_stats[mapping[etype]])):
+                    if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                        dlog_stats[mapping[etype]][i][2] += 1
+                        dlog_stats[mapping[etype]][i][3] += item[3]
                         duplicate = True
                         break
                 if not duplicate:
-                    dlog_stats[K[etype]].append(item)
+                    dlog_stats[mapping[etype]].append(item)
 
             elif etype in ["ferry", "train"]:
-                K = {"ferry": 13, "train": 14}
+                mapping = {"ferry": 13, "train": 14}
                 item = [f'{convertQuotation(event["meta"]["source_id"])}/{convertQuotation(event["meta"]["target_id"])}', f'{convertQuotation(event["meta"]["source_name"])}/{convertQuotation(event["meta"]["target_name"])}', 1, int(event["meta"]["cost"])]
                 item[3] = item[3] if item[3] <= 51200 else 0
                 duplicate = False
-                for i in range(len(dlog_stats[K[etype]])):
-                    if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                        dlog_stats[K[etype]][i][2] += 1
-                        dlog_stats[K[etype]][i][3] += item[3]
+                for i in range(len(dlog_stats[mapping[etype]])):
+                    if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                        dlog_stats[mapping[etype]][i][2] += 1
+                        dlog_stats[mapping[etype]][i][3] += item[3]
                         duplicate = True
                         break
                 if not duplicate:
-                    dlog_stats[K[etype]].append(item)
+                    dlog_stats[mapping[etype]].append(item)
 
         for stat_userid in [userid, -1]:
             for itype in dlog_stats.keys():
@@ -197,8 +196,8 @@ def rebuild(app):
 
 # app.state.cache_statistics = {}
 
-async def get_summary(request: Request, response: Response, authorization: str = Header(None), \
-        after: Optional[int] = None, before: Optional[int] = None, userid: Optional[int] = None):
+async def get_summary(request: Request, response: Response, authorization: str | None = Header(None), \
+        after: int | None = None, before: int | None = None, userid: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -251,24 +250,24 @@ async def get_summary(request: Request, response: Response, authorization: str =
     newdid = []
     totdrivers = 0
     newdrivers = 0
-    for rid in app.config.perms.driver:
-        await app.db.execute(dhrid, f"SELECT userid, join_timestamp, roles FROM user WHERE userid >= 0 {quser} AND join_timestamp <= {before}")
-        t = await app.db.fetchall(dhrid)
-        for tt in t:
-            if not checkPerm(app, str2list(tt[2]), "driver"):
-                continue
-            if tt[0] not in totdid:
-                totdid.append(tt[0])
-                totdrivers += 1
 
-        await app.db.execute(dhrid, f"SELECT userid, join_timestamp, roles FROM user WHERE userid >= 0 {quser} AND join_timestamp >= {after} AND join_timestamp <= {before}")
-        t = await app.db.fetchall(dhrid)
-        for tt in t:
-            if not checkPerm(app, str2list(tt[2]), "driver"):
-                continue
-            if tt[0] not in newdid:
-                newdid.append(tt[0])
-                newdrivers += 1
+    await app.db.execute(dhrid, f"SELECT userid, join_timestamp, roles FROM user WHERE userid >= 0 {quser} AND join_timestamp <= {before}")
+    t = await app.db.fetchall(dhrid)
+    for tt in t:
+        if not checkPerm(app, str2list(tt[2]), "driver"):
+            continue
+        if tt[0] not in totdid:
+            totdid.append(tt[0])
+            totdrivers += 1
+
+    await app.db.execute(dhrid, f"SELECT userid, join_timestamp, roles FROM user WHERE userid >= 0 {quser} AND join_timestamp >= {after} AND join_timestamp <= {before}")
+    t = await app.db.fetchall(dhrid)
+    for tt in t:
+        if not checkPerm(app, str2list(tt[2]), "driver"):
+            continue
+        if tt[0] not in newdid:
+            newdid.append(tt[0])
+            newdrivers += 1
 
     ret["driver"] = {"tot": totdrivers, "new": newdrivers}
 
@@ -410,9 +409,9 @@ async def get_summary(request: Request, response: Response, authorization: str =
     ret["cache"] = None
     return ret
 
-async def get_chart(request: Request, response: Response, authorization: Optional[str] = Header(None), \
-        ranges: Optional[int] = 30, interval: Optional[int] = 86400, before: Optional[int] = None, \
-        sum_up: Optional[bool] = False, userid: Optional[int] = None):
+async def get_chart(request: Request, response: Response, authorization: str | None = Header(None), \
+        ranges: int | None = 30, interval: int | None = 86400, before: int | None = None, \
+        sum_up: bool | None = False, userid: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -563,7 +562,7 @@ async def get_chart(request: Request, response: Response, authorization: Optiona
 
     return ret
 
-async def get_details(request: Request, response: Response, authorization: Optional[str] = Header(None), userid: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None):
+async def get_details(request: Request, response: Response, authorization: str | None = Header(None), userid: int | None = None, after: int | None = None, before: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -738,44 +737,44 @@ async def get_details(request: Request, response: Response, authorization: Optio
                                 dlog_stats[10].append(item)
 
                         elif etype in ["collision", "speeding", "teleport"]:
-                            K = {"collision": 15, "speeding": 11, "teleport": 16}
+                            mapping = {"collision": 15, "speeding": 11, "teleport": 16}
                             item = [etype, etype, 1, 0]
                             duplicate = False
-                            for i in range(len(dlog_stats[K[etype]])):
-                                if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                                    dlog_stats[K[etype]][i][2] += 1
+                            for i in range(len(dlog_stats[mapping[etype]])):
+                                if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                                    dlog_stats[mapping[etype]][i][2] += 1
                                     duplicate = True
                                     break
                             if not duplicate:
-                                dlog_stats[K[etype]].append(item)
+                                dlog_stats[mapping[etype]].append(item)
 
                         elif etype in ["tollgate"]:
-                            K = {"tollgate": 12}
+                            mapping = {"tollgate": 12}
                             item = [etype, etype, 1, int(event["meta"]["cost"])]
                             item[3] = item[3] if item[3] <= 51200 else 0
                             duplicate = False
-                            for i in range(len(dlog_stats[K[etype]])):
-                                if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                                    dlog_stats[K[etype]][i][2] += 1
-                                    dlog_stats[K[etype]][i][3] += item[3]
+                            for i in range(len(dlog_stats[mapping[etype]])):
+                                if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                                    dlog_stats[mapping[etype]][i][2] += 1
+                                    dlog_stats[mapping[etype]][i][3] += item[3]
                                     duplicate = True
                                     break
                             if not duplicate:
-                                dlog_stats[K[etype]].append(item)
+                                dlog_stats[mapping[etype]].append(item)
 
                         elif etype in ["ferry", "train"]:
-                            K = {"ferry": 13, "train": 14}
+                            mapping = {"ferry": 13, "train": 14}
                             item = [f'{convertQuotation(event["meta"]["source_id"])}/{convertQuotation(event["meta"]["target_id"])}', f'{convertQuotation(event["meta"]["source_name"])}/{convertQuotation(event["meta"]["target_name"])}', 1, int(event["meta"]["cost"])]
                             item[3] = item[3] if item[3] <= 51200 else 0
                             duplicate = False
-                            for i in range(len(dlog_stats[K[etype]])):
-                                if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                                    dlog_stats[K[etype]][i][2] += 1
-                                    dlog_stats[K[etype]][i][3] += item[3]
+                            for i in range(len(dlog_stats[mapping[etype]])):
+                                if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                                    dlog_stats[mapping[etype]][i][2] += 1
+                                    dlog_stats[mapping[etype]][i][3] += item[3]
                                     duplicate = True
                                     break
                             if not duplicate:
-                                dlog_stats[K[etype]].append(item)
+                                dlog_stats[mapping[etype]].append(item)
 
                     if query_userid is not None:
                         for itype in dlog_stats.keys():
@@ -805,14 +804,14 @@ async def get_details(request: Request, response: Response, authorization: Optio
                 t.sort(key=lambda x: (x[0], -x[3], -x[4]))
 
                 ret = {}
-                K = {1: "truck", 2: "trailer", 3: "plate_country", 4: "cargo", 5: "cargo_market", 6: "source_city", 7: "source_company", 8: "destination_city", 9: "destination_company", 10: "fine", 11: "speeding", 12: "tollgate", 13: "ferry", 14: "train", 15: "collision", 16: "teleport", 17: "game_mode"}
-                for (k, v) in K.items():
+                mapping = {1: "truck", 2: "trailer", 3: "plate_country", 4: "cargo", 5: "cargo_market", 6: "source_city", 7: "source_company", 8: "destination_city", 9: "destination_company", 10: "fine", 11: "speeding", 12: "tollgate", 13: "ferry", 14: "train", 15: "collision", 16: "teleport", 17: "game_mode"}
+                for v in mapping.values():
                     ret[v] = []
                 for tt in t:
                     if tt[0] in [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 15, 16, 17]:
-                        ret[K[tt[0]]].append({"unique_id": tt[1], "name": tt[2], "count": tt[3]})
+                        ret[mapping[tt[0]]].append({"unique_id": tt[1], "name": tt[2], "count": tt[3]})
                     else:
-                        ret[K[tt[0]]].append({"unique_id": tt[1], "name": tt[2], "count": tt[3], "sum": tt[4]})
+                        ret[mapping[tt[0]]].append({"unique_id": tt[1], "name": tt[2], "count": tt[3], "sum": tt[4]})
 
                 app.state.statistics_details_last_result = ret
 

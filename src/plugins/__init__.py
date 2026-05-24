@@ -4,15 +4,15 @@
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-import plugins.announcement as announcement
-import plugins.application as application
-import plugins.challenge as challenge
-import plugins.division as division
-import plugins.downloads as downloads
-import plugins.economy as economy
-import plugins.event as event
-import plugins.poll as poll
-import plugins.task as task
+import src.plugins.announcement as announcement
+import src.plugins.application as application
+import src.plugins.challenge as challenge
+import src.plugins.division as division
+import src.plugins.downloads as downloads
+import src.plugins.economy as economy
+import src.plugins.event as event
+import src.plugins.poll as poll
+import src.plugins.task as task
 
 routes_announcement = [
     APIRoute("/announcements/types", announcement.get_types, methods=["GET"], response_class=JSONResponse),

@@ -3,19 +3,18 @@
 
 import math
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Query, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 async def get_types(request: Request):
     app = request.app
 
     return app.config.announcement_types
 
-def get_type(request, type_id: int, force_lang: Optional[str] = ""):
+def get_type(request, type_id: int, force_lang: str | None = ""):
     app = request.app
     ret = {"id": type_id, "name": ml.tr(request, "unknown", force_lang = force_lang)}
     for announcement_type in app.config.announcement_types:
@@ -24,11 +23,11 @@ def get_type(request, type_id: int, force_lang: Optional[str] = ""):
             break
     return ret
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int]= -1, page_size: Optional[int] = 10, \
-        order_by: Optional[str] = "orderid", order: Optional[str] = "asc", is_private: Optional[bool] = None, \
-        created_by: Optional[int] = None, created_after: Optional[int] = None, created_before: Optional[int] = None, \
-        after_announcementid: Optional[int] = None, title: Optional[str] = "", announcement_type: Optional[int] = Query(None, alias='type')):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = -1, page_size: int | None = 10, \
+        order_by: str | None = "orderid", order: str | None = "asc", is_private: bool | None = None, \
+        created_by: int | None = None, created_after: int | None = None, created_before: int | None = None, \
+        after_announcementid: int | None = None, title: str | None = "", announcement_type: int | None = Query(None, alias='type')):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /announcements/list', 60, 120)
@@ -115,7 +114,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_announcement(request: Request, response: Response, announcementid: int, authorization: str = Header(None)):
+async def get_announcement(request: Request, response: Response, announcementid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /announcements', 60, 120)
@@ -146,7 +145,7 @@ async def get_announcement(request: Request, response: Response, announcementid:
 
     return {"announcementid": tt[5], "title": tt[0], "content": decompress(tt[1]), "author": await GetUserInfo(request, userid = tt[4]), "type": get_type(request, tt[2], aulanguage), "is_private": TF[tt[6]], "orderid": tt[7], "is_pinned": TF[tt[8]], "timestamp": tt[3]}
 
-async def post_announcement(request: Request, response: Response, authorization: str = Header(None)):
+async def post_announcement(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /announcements', 60, 30)
@@ -232,7 +231,7 @@ async def post_announcement(request: Request, response: Response, authorization:
 
     return {"announcementid": announcementid}
 
-async def patch_announcement(request: Request, response: Response, announcementid: int, authorization: str = Header(None)):
+async def patch_announcement(request: Request, response: Response, announcementid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /announcements', 60, 30)
@@ -326,7 +325,7 @@ async def patch_announcement(request: Request, response: Response, announcementi
 
     return Response(status_code=204)
 
-async def delete_announcement(request: Request, response: Response, announcementid: int, authorization: str = Header(None)):
+async def delete_announcement(request: Request, response: Response, announcementid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /announcements', 60, 30)

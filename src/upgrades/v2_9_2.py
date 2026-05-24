@@ -3,8 +3,8 @@
 
 # This upgrade adds note and staff_userid column in bouns_point
 
-from db import genconn
-from logger import logger
+from src.db import genconn
+from src.logger import logger
 
 
 def run(app):

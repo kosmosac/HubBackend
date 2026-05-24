@@ -4,8 +4,8 @@
 # This upgrade adds distance column to division table
 # and calculates the data for distance attribute
 
-from db import genconn
-from logger import logger
+from src.db import genconn
+from src.logger import logger
 
 
 def run(app):

@@ -4,12 +4,12 @@
 import time
 from datetime import datetime, timezone
 
-import multilang as ml
-from functions.arequests import *
-from functions.dataop import *
-from functions.general import *
-from functions.security import auth, checkPerm
-from static import *
+import src.multilang as ml
+from src.functions.arequests import *
+from src.functions.dataop import *
+from src.functions.general import *
+from src.functions.security import auth, checkPerm
+from src.static import *
 
 
 async def getHighestActiveRole(request):
@@ -161,7 +161,7 @@ async def GetUserNote(request, from_uid, to_uid, nocache = False):
         return t[0][0]
 
 # to update user info cache, run GetUserInfo with nocache = True
-async def GetUserInfo(request, userid = -1, discordid = -1, uid = -1, privacy = False, tell_deleted = False, include_sensitive = None, include_global_note = None, ignore_activity = None, ignore_privacy = None, is_internal_function = False, nocache = False):
+async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = -1, uid: int | None = -1, privacy = False, tell_deleted = False, include_sensitive = None, include_global_note = None, ignore_activity = None, ignore_privacy = None, is_internal_function = False, nocache = False):
     # when is_internal_function = True, include_sensitive/ignore_activity/ignore_privacy will all be set to True unless explicitly set to False, include_global_note will be set to False unless explicitly set to True
     if is_internal_function:
         include_sensitive = True if include_sensitive is None else include_sensitive

@@ -12,10 +12,10 @@ from fastapi import Header, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-from functions import *
+from src.functions import *
 
 
-async def get_client_global_config(request: Request, response: Response, authorization: str = Header(None)):
+async def get_client_global_config(request: Request, response: Response):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -66,7 +66,7 @@ async def get_client_assets(request: Request, response: Response, key: str):
 
     return Response(content=raw, media_type="image/png")
 
-async def patch_client_global_config(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_client_global_config(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -142,7 +142,7 @@ async def patch_client_global_config(request: Request, response: Response, autho
 
     return Response(status_code=204)
 
-async def patch_client_global_config_gallery(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_client_global_config_gallery(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -211,7 +211,7 @@ async def get_client_user_config(request: Request):
 
     return ret
 
-async def patch_client_user_config(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_client_user_config(request: Request, response: Response, authorization: str | None = Header(None)):
     '''Updates the config for an individual user'''
     app = request.app
     dhrid = request.state.dhrid
@@ -257,7 +257,7 @@ async def patch_client_user_config(request: Request, response: Response, authori
 
     return Response(status_code=204)
 
-def init(config: dict, print_log: bool = False):
+def init(config: dict, print_log: bool = False): # pyright: ignore[reportUnusedParameter]
     # Define routes
     routes = [
         APIRoute("/client/config/global", get_client_global_config, methods=["GET"], response_class=JSONResponse),
@@ -312,4 +312,3 @@ def init(config: dict, print_log: bool = False):
     # NOTE: Database entries should be created manually. The examples are not provided.
 
     return (True, routes, states, {})
-

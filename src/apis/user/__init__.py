@@ -4,15 +4,15 @@
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-import apis.user.connections as connections
-import apis.user.info as info
-import apis.user.language as language
-import apis.user.manage as manage
-import apis.user.mfa as mfa
-import apis.user.notification as notification
-import apis.user.password as password
-import apis.user.privacy as privacy
-import apis.user.timezone as timezone
+import src.apis.user.connections as connections
+import src.apis.user.info as info
+import src.apis.user.language as language
+import src.apis.user.manage as manage
+import src.apis.user.mfa as mfa
+import src.apis.user.notification as notification
+import src.apis.user.password as password
+import src.apis.user.privacy as privacy
+import src.apis.user.timezone as timezone
 
 routes = [
     APIRoute("/user/list", info.get_list, methods=["GET"], response_class=JSONResponse),

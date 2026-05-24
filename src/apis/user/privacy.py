@@ -4,11 +4,11 @@
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_privacy(request: Request, response: Response, authorization: str = Header(None)):
+async def get_privacy(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns the privacy settings of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -29,7 +29,7 @@ async def get_privacy(request: Request, response: Response, authorization: str =
 
     return (await GetUserPrivacy(request, uid))
 
-async def patch_privacy(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_privacy(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the privacy settings of the authorized user, returns 204
 
     JSON: `{"role_history": bool, "ban_history": bool, "email": bool, "account_connections": bool, "activity": bool, "public_profile": bool}`"""

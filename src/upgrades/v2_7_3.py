@@ -1,8 +1,8 @@
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
-from db import genconn
-from logger import logger
+from src.db import genconn
+from src.logger import logger
 
 
 def run(app):

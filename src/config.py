@@ -4,7 +4,7 @@
 import copy
 import re
 
-from functions.general import isurl, isint
+from src.functions.general import isurl, isint
 
 
 def isfloat(t):

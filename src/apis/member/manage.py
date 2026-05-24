@@ -5,14 +5,13 @@ import json
 import time
 
 from fastapi import Header, Request, Response
-from typing import Optional
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 # note that the larger the id is, the lower the role is
 
-async def patch_roles(request: Request, response: Response, userid: int, authorization: str = Header(None), sync_to_discord: Optional[bool] = True, sync_add_only: Optional[bool] = False):
+async def patch_roles(request: Request, response: Response, userid: int, authorization: str | None = Header(None), sync_to_discord: bool | None = True, sync_add_only: bool | None = False):
     """Updates the roles of a specific member, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -208,7 +207,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     else:
         return Response(status_code=204)
 
-async def patch_points(request: Request, response: Response, userid: int, authorization: str = Header(None)):
+async def patch_points(request: Request, response: Response, userid: int, authorization: str | None = Header(None)):
     """Updates the points of a specific member, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -280,7 +279,7 @@ async def patch_points(request: Request, response: Response, userid: int, author
 
     return Response(status_code=204)
 
-async def post_dismiss(request: Request, response: Response, userid: int, authorization: str = Header(None)):
+async def post_dismiss(request: Request, response: Response, userid: int, authorization: str | None = Header(None)):
     """Dismisses member, set userid to -1, returns 204"""
     app = request.app
     dhrid = request.state.dhrid

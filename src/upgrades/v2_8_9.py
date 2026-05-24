@@ -3,8 +3,8 @@
 
 # This upgrade changes all "None" (string) email in database to NULL (NULL)
 
-from db import genconn
-from logger import logger
+from src.db import genconn
+from src.logger import logger
 
 
 def run(app):

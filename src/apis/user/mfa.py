@@ -1,15 +1,13 @@
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
-from typing import Optional
-
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def post_enable(request: Request, response: Response, authorization: str = Header(None)):
+async def post_enable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Enables MFA for the authorized user, returns 204
 
     JSON: `{"secret": str, "otp": str}`"""
@@ -66,7 +64,7 @@ async def post_enable(request: Request, response: Response, authorization: str =
 
     return Response(status_code=204)
 
-async def post_disable(request: Request, response: Response, authorization: str = Header(None), uid: Optional[int] = None):
+async def post_disable(request: Request, response: Response, authorization: str | None = Header(None), uid: int | None = None):
     """Disables MFA for a specific user, returns 204
 
     If `uid` in request param is not provided, then disables MFA for the authorized user."""
@@ -143,4 +141,3 @@ async def post_disable(request: Request, response: Response, authorization: str 
         await AuditLog(request, au["uid"], "user", ml.ctr(request, "disabled_mfa", var = {"username": username, "uid": uid}))
 
         return Response(status_code=204)
-

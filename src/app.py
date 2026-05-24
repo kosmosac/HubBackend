@@ -4,7 +4,6 @@
 import copy
 import functools
 import importlib.util
-import inspect
 import json
 import os
 import time
@@ -15,22 +14,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-import api
-import apis
-import apis.auth
-import apis.dlog
-import apis.member
-import apis.tracker
-import apis.user
-import db
-import plugins
-import static
-from config import validateConfig
-from functions import Dict2Obj
-from logger import logger
-from static import version
-
-abspath = os.path.dirname(os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename))
+import src.api as api
+import src.apis as apis
+import src.db as db
+import src.plugins as plugins
+import src.static as static
+from src.config import validateConfig
+from src.functions import Dict2Obj
+from src.logger import logger
+from src.static import version, abspath
 
 class PrefixedRedis:
     NO_KEY_METHODS = {"ping","info","time","client_list","client_setname","config_get","config_set","script_load","script_exists","pubsub","close","connection_pool"}
@@ -118,7 +110,7 @@ def initApp(app, first_init = False, args = {}):
         logger.warning(f"[{app.config.abbr}] Database pool size is smaller than 5, database error rate may increase")
 
     if "disable_upgrader" not in args.keys() or not args["disable_upgrader"]:
-        import upgrades.manager
+        import src.upgrades.manager as manager
         cur_version = app.version.replace(".dev", "").replace(".", "_")
         pre_version = cur_version.lstrip("v")
         conn = db.genconn(app.config)
@@ -131,24 +123,24 @@ def initApp(app, first_init = False, args = {}):
             pre_version = t[0][0].replace(".dev", "").replace(".", "_").lstrip("v")
         if "force_upgrade_from" in args.keys() and args["force_upgrade_from"] is not None:
             pre_version = args["force_upgrade_from"]
-            if pre_version not in upgrades.manager.VERSION_CHAIN:
+            if pre_version not in manager.VERSION_CHAIN:
                 logger.warning(f"[{app.config.abbr}] Force upgrade version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
                 return None
         if pre_version != cur_version:
-            if pre_version not in upgrades.manager.VERSION_CHAIN:
+            if pre_version not in manager.VERSION_CHAIN:
                 logger.warning(f"[{app.config.abbr}] Previous version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
                 return None
-            pre_idx = upgrades.manager.VERSION_CHAIN.index(pre_version)
-            if cur_version not in upgrades.manager.VERSION_CHAIN:
+            pre_idx = manager.VERSION_CHAIN.index(pre_version)
+            if cur_version not in manager.VERSION_CHAIN:
                 logger.warning(f"[{app.config.abbr}] Current version ({version}) is not recognized. Aborted launch to prevent incompatability.")
                 return None
-            cur_idx = upgrades.manager.VERSION_CHAIN.index(cur_version)
+            cur_idx = manager.VERSION_CHAIN.index(cur_version)
             for idx in range(pre_idx + 1, cur_idx + 1):
-                v = upgrades.manager.VERSION_CHAIN[idx]
-                if v in upgrades.manager.UPGRADER.keys():
+                v = manager.VERSION_CHAIN[idx]
+                if v in manager.UPGRADER.keys():
                     logger.info(f"[{app.config.abbr}] Updating data to be compatible with {v.replace('_', '.')}...")
-                    upgrades.manager.UPGRADER[v].run(app)
-        upgrades.manager.unload()
+                    manager.UPGRADER[v].run(app)
+        manager.unload()
     else:
         logger.warning(f"[{app.config.abbr}] Upgrader disabled")
 
@@ -167,19 +159,29 @@ def initApp(app, first_init = False, args = {}):
 
     return app
 
-def createApp(config_path, multi_mode = False, first_init = False, args = {}, master_db = None):
+# dry_run is used by main to validate the config
+# logging is enabled only when dry_run=True
+def createApp(config_path, multi_mode = False, dry_run = False, args = {}, master_db = None):
     if not os.path.exists(config_path):
+        if dry_run:
+            logger.error(f"Config file '{config_path}' not found.")
         return None
 
     try:
         config_txt = open(config_path, "r", encoding="utf-8").read()
     except:
+        if dry_run:
+            logger.error(f"Unable to read config file '{config_path}'.")
         return None
     try:
         config_json = json.loads(config_txt)
     except:
+        if dry_run:
+            logger.error(f"Unable to parse config file '{config_path}' as JSON.")
         return None
     if "abbr" not in config_json.keys() or "name" not in config_json.keys():
+        if dry_run:
+            logger.error(f"Invalid config file '{config_path}'.")
         return None
     config_dict = validateConfig(config_json)
     config = Dict2Obj(config_dict)
@@ -202,7 +204,7 @@ def createApp(config_path, multi_mode = False, first_init = False, args = {}, ma
     app.config_last_modified = os.path.getmtime(app.config_path)
     app.start_time = int(time.time())
     app.multi_mode = multi_mode
-    app.use_master_db = master_db
+    app.use_master_db = True if master_db else False
     if master_db:
         # use the database pool from the master app
         # this happens when --use-master-db-pool is enabled
@@ -243,23 +245,23 @@ def createApp(config_path, multi_mode = False, first_init = False, args = {}, ma
             external_plugin = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(external_plugin)
         else:
-            if first_init:
-                logger.error(f"[{app.config.abbr}] [External Plugin] Error loading '{plugin_name}': File not found.")
+            if dry_run:
+                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': File not found.")
             continue
 
         # init external plugin
         try:
-            res = external_plugin.init(app.config_dict, first_init)
+            res = external_plugin.init(app.config_dict, dry_run)
             if res is False:
-                if first_init:
+                if dry_run:
                     logger.warning(f"[{app.config.abbr}] [External Plugin] '{plugin_name}' is not loaded: 'init' function did not return True.")
                 continue
             routes = res[1]
             states = res[2]
             middlewares = res[3]
         except Exception as exc:
-            if first_init:
-                logger.error(f"[{app.config.abbr}] [External Plugin] Error loading '{plugin_name}': {exc}")
+            if dry_run:
+                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
             continue
 
         # test routes and state
@@ -281,8 +283,8 @@ def createApp(config_path, multi_mode = False, first_init = False, args = {}, ma
                             if callable(mdw):
                                 test_app.external_middleware[middleware_type].append(mdw)
         except Exception as exc:
-            if first_init:
-                logger.error(f"[{app.config.abbr}] [External Plugin] Error loading '{plugin_name}': {exc}")
+            if dry_run:
+                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
             continue
 
         # load routes and state
@@ -303,8 +305,8 @@ def createApp(config_path, multi_mode = False, first_init = False, args = {}, ma
                             if callable(mdw):
                                 app.external_middleware[middleware_type].append(mdw)
         except Exception as exc:
-            if first_init:
-                logger.error(f"[{app.config.abbr}] [External Plugin] Error loading '{plugin_name}': {exc}")
+            if dry_run:
+                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
             continue
 
         app.loaded_external_plugins.append(plugin_name)
@@ -371,15 +373,15 @@ def createApp(config_path, multi_mode = False, first_init = False, args = {}, ma
         pass
 
     try:
-        app = initApp(app, first_init = first_init, args = args)
+        app = initApp(app, first_init = dry_run, args = args)
     except Exception as exc:
-        if first_init:
+        if dry_run:
             import traceback
             traceback.print_exc()
             logger.error(f"[{app.config.abbr}] Error initializing app: {exc}")
         return None
 
-    if first_init and "rebuild_dlog_stats" in args.keys() and args["rebuild_dlog_stats"]:
+    if dry_run and "rebuild_dlog_stats" in args.keys() and args["rebuild_dlog_stats"]:
         logger.warning(f"[{app.config.abbr}] Rebuilding dlog stats, this might take some time...")
         apis.dlog.statistics.rebuild(app)
 

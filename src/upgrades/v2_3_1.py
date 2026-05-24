@@ -1,8 +1,8 @@
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
-from db import genconn
-from logger import logger
+from src.db import genconn
+from src.logger import logger
 
 
 def run(app):
@@ -36,11 +36,11 @@ def run(app):
                     userid = tt[0]
                     max_userid += 1
                     logger.info(f"Changing User ID: {userid} to {max_userid}")
-                    for TABLE in USERID_TABLES:
-                        cur.execute(f"UPDATE {TABLE} SET userid = {max_userid} WHERE userid = {userid}")
-                    for TABLE in SPECIAL_USERID_TABLES.keys():
-                        for COLUMN in SPECIAL_USERID_TABLES[TABLE]:
-                            cur.execute(f"UPDATE {TABLE} SET {COLUMN} = {max_userid} WHERE {COLUMN} = {userid}")
+                    for table in USERID_TABLES:
+                        cur.execute(f"UPDATE {table} SET userid = {max_userid} WHERE userid = {userid}")
+                    for table in SPECIAL_USERID_TABLES.keys():
+                        for COLUMN in SPECIAL_USERID_TABLES[table]:
+                            cur.execute(f"UPDATE {table} SET {COLUMN} = {max_userid} WHERE {COLUMN} = {userid}")
                 logger.info("Update settings...")
                 cur.execute(f"UPDATE settings SET sval = '{max_userid + 1}' WHERE skey = 'nxtuserid'")
                 conn.commit()
@@ -67,8 +67,8 @@ def run(app):
                     uid = tt[0]
                     max_uid += 1
                     logger.info(f"Changing UID: {uid} to {max_uid}")
-                    for TABLE in UID_TABLES:
-                        cur.execute(f"UPDATE {TABLE} SET uid = {max_uid} WHERE uid = {uid}")
+                    for table in UID_TABLES:
+                        cur.execute(f"UPDATE {table} SET uid = {max_uid} WHERE uid = {uid}")
                 logger.info("Update AUTO INCREMENT app.config...")
                 cur.execute(f"ALTER TABLE user AUTO_INCREMENT = {max_uid + 1}")
                 conn.commit()

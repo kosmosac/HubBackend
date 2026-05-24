@@ -5,11 +5,11 @@
 from fastapi import Header, Request, Response
 from zoneinfo import available_timezones
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_timezone(request: Request, response: Response, authorization: str = Header(None)):
+async def get_timezone(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns the timezone of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -30,7 +30,7 @@ async def get_timezone(request: Request, response: Response, authorization: str 
 
     return {"timezone": await GetUserTimezone(request, uid)}
 
-async def patch_timezone(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_timezone(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the timezone of the authorized user, returns 204
 
     JSON: `{"timezone": str}`"""

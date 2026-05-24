@@ -10,7 +10,7 @@ from fastapi import Header, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-from functions import *
+from src.functions import *
 
 
 async def FetchDiscordMembers(app):
@@ -56,7 +56,7 @@ async def FetchDiscordMembers(app):
 
         await asyncio.sleep(600)
 
-async def get_discord_member(request: Request, response: Response, authorization: str = Header(None)):
+async def get_discord_member(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -72,7 +72,7 @@ async def startup(app):
     loop = asyncio.get_event_loop()
     loop.create_task(FetchDiscordMembers(app))
 
-def init(config: dict, print_log: bool = False):
+def init(config: dict, print_log: bool = False): # pyright: ignore[reportUnusedParameter]
     routes = [
         APIRoute("/member/discord", get_discord_member, methods=["GET"], response_class=JSONResponse)
     ]

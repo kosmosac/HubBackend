@@ -4,17 +4,16 @@
 import time
 import traceback
 import uuid
-from typing import Optional
 
 from fastapi import Request, Response
 
-import multilang as ml
-from api import tracebackHandler
-from functions import *
-from functions.discord import DiscordAuth
+import src.multilang as ml
+from src.api import tracebackHandler
+from src.functions import *
+from src.functions.discord import DiscordAuth
 
 
-async def get_callback(request: Request, response: Response, code: Optional[str] = None, error_description: Optional[str] = None, callback_url: Optional[str] = None):
+async def get_callback(request: Request, response: Response, code: str | None = None, error_description: str | None = None, callback_url: str | None = None):
     app = request.app
     if code is None and error_description is None or callback_url is None:
         response.status_code = 400
@@ -55,9 +54,7 @@ async def get_callback(request: Request, response: Response, code: Optional[str]
             email = "NULL"
             if "email" in user_data.keys() and user_data["email"] is not None and "@" in str(user_data["email"]):
                 email = "'" + convertQuotation(user_data['email']) + "'"
-            avatar = ""
-            if avatar is not None:
-                avatar = getAvatarSrc(discordid, convertQuotation(user_data['avatar']))
+            avatar = getAvatarSrc(discordid, convertQuotation(user_data['avatar']))
             tokens = {**tokens, **user_data}
 
             await app.db.execute(dhrid, f"DELETE FROM session WHERE timestamp < {int(time.time()) - 86400 * 30}")

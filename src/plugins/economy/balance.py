@@ -4,19 +4,18 @@
 import math
 import time
 from io import BytesIO
-from typing import Optional
 
 from fastapi import Header, Request, Response
 from fastapi.responses import StreamingResponse
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_balance_leaderboard(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 20, after_userid: Optional[int] = None, \
-        exclude_company: Optional[bool] = True, \
-        min_balance: Optional[int] = None, max_balance: Optional[int] = None, order: Optional[str] = "desc"):
+async def get_balance_leaderboard(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 20, after_userid: int | None = None, \
+        exclude_company: bool | None = True, \
+        min_balance: int | None = None, max_balance: int | None = None, order: str | None = "desc"):
     '''Get balance leaderboard.
 
     [NOTE] If authorized user is not a balance_manager, and the user chose to hide their balance, they will not be included in the leaderboard.
@@ -117,7 +116,7 @@ async def get_balance_leaderboard(request: Request, response: Response, authoriz
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def post_balance_transfer(request: Request, response: Response, authorization: str = Header(None)):
+async def post_balance_transfer(request: Request, response: Response, authorization: str | None = Header(None)):
     '''Transfer balance.
 
     JSON: `{"from_userid": Optional[int], "to_userid": int, "amount": int, "message": Optional[str]}`'''
@@ -227,7 +226,7 @@ async def post_balance_transfer(request: Request, response: Response, authorizat
     else:
         return {"from_balance": from_balance - amount}
 
-async def patch_balance(request: Request, response: Response, userid: int, authorization: str = Header(None)):
+async def patch_balance(request: Request, response: Response, userid: int, authorization: str | None = Header(None)):
     '''Patch user balance. This should not be actively used.
     This should only be used to fix ultra-high balance.
     Patches here WILL NOT go into the transaction table.'''
@@ -264,7 +263,7 @@ async def patch_balance(request: Request, response: Response, userid: int, autho
 
     return Response(status_code=204)
 
-async def get_balance(request: Request, response: Response, authorization: str = Header(None), userid: Optional[int] = None):
+async def get_balance(request: Request, response: Response, authorization: str | None = Header(None), userid: int | None = None):
     '''Get user balance.
 
     [NOTE] If authorized user is not a balance_manager, and the user chose to hide their balance, 403 will be returned.
@@ -374,12 +373,12 @@ def get_transaction_message(note, message):
 
     return message
 
-async def get_balance_transaction_list(request: Request, response: Response, userid: int, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_txid: Optional[int] = None, \
-        after: Optional[int] = None, before: Optional[int] = None, \
-        from_userid: Optional[int] = None, to_userid: Optional[int] = None, \
-        min_amount: Optional[int] = None, max_amount: Optional[int] = None, \
-        order: Optional[str] = "desc", order_by: Optional[str] = "timestamp"):
+async def get_balance_transaction_list(request: Request, response: Response, userid: int, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, after_txid: int | None = None, \
+        after: int | None = None, before: int | None = None, \
+        from_userid: int | None = None, to_userid: int | None = None, \
+        min_amount: int | None = None, max_amount: int | None = None, \
+        order: str | None = "desc", order_by: str | None = "timestamp"):
     '''Get a user's transaction history.
 
     [NOTE] This can only be viewed by balance manager and user. The user cannot make this info public.'''
@@ -481,7 +480,7 @@ async def get_balance_transaction_list(request: Request, response: Response, use
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_balance_transaction_export(request: Request, response: Response, userid: int, authorization: str = Header(None), after: Optional[int] = None, before: Optional[int] = None):
+async def get_balance_transaction_export(request: Request, response: Response, userid: int, authorization: str | None = Header(None), after: int | None = None, before: int | None = None):
     '''Export a user's transaction history.
 
     [NOTE] This can only be done by balance manager and user. The user cannot make this info public.'''
@@ -525,10 +524,8 @@ async def get_balance_transaction_export(request: Request, response: Response, u
         return {"error": ml.tr(request, "value_too_large", var = {"item": "date-range", "limit": "90"}, force_lang = au["language"])}
 
     limit = ""
-    if after is not None:
-        limit += f"AND timestamp >= {after} "
-    if before is not None:
-        limit += f"AND timestamp <= {before} "
+    limit += f"AND timestamp >= {after} "
+    limit += f"AND timestamp <= {before} "
 
     f = BytesIO()
     f.write(b"txid, from_userid, to_userid, executor_userid, amount, message, from_new_balance, to_new_balance, time\n")
@@ -584,7 +581,7 @@ async def get_balance_transaction_export(request: Request, response: Response, u
 
     return response
 
-async def post_balance_visibility(request: Request, response: Response, userid: int, visibility: str, authorization: str = Header(None)):
+async def post_balance_visibility(request: Request, response: Response, userid: int, visibility: str, authorization: str | None = Header(None)):
     '''Make user balance public.'''
     app = request.app
     if visibility not in ["public", "private"]:

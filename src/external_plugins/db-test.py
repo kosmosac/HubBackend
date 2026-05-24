@@ -7,7 +7,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-from functions import *
+from src.functions import *
 import aiomysql
 
 
@@ -31,7 +31,7 @@ async def create_pool(request: Request):
         traceback.print_exc()
         return {"message": "Failed to create database pool"}
 
-def init(config: dict, print_log: bool = False):
+def init(config: dict, print_log: bool = False): # pyright: ignore[reportUnusedParameter]
     routes = [
         APIRoute("/db-test/close-pool", close_pool, methods=["GET"], response_class=JSONResponse),
         APIRoute("/db-test/create-pool", create_pool, methods=["GET"], response_class=JSONResponse),

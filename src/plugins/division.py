@@ -3,12 +3,11 @@
 
 import time
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 async def get_all_divisions(request: Request):
     app = request.app
@@ -20,8 +19,8 @@ async def get_all_divisions(request: Request):
                 del ret[i][k]
     return ret
 
-async def get_divisions_statistics(request: Request, response: Response, authorization: str = Header(None), \
-        after: Optional[int] = None, before: Optional[int] = None, include_pending: Optional[bool] = False):
+async def get_divisions_statistics(request: Request, response: Response, authorization: str | None = Header(None), \
+        after: int | None = None, before: int | None = None, include_pending: bool | None = False):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /divisions/statistics', 60, 120)
@@ -93,12 +92,12 @@ async def get_divisions_statistics(request: Request, response: Response, authori
     return stats
 
 async def get_divisions_activity(request: Request, response: Response, divisionid: int, \
-                                authorization: str = Header(None), \
-                                after: Optional[int] = None, before: Optional[int] = None, \
-                                include_previous_drivers: Optional[bool] = False, \
-                                include_pending: Optional[bool] = False, \
-                                order: Optional[str] = "desc", order_by: Optional[str] = "points", \
-                                page: Optional[int] = 1, page_size: Optional[int] = 10):
+                                authorization: str | None = Header(None), \
+                                after: int | None = None, before: int | None = None, \
+                                include_previous_drivers: bool | None = False, \
+                                include_pending: bool | None = False, \
+                                order: str | None = "desc", order_by: str | None = "points", \
+                                page: int | None = 1, page_size: int | None = 10):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /divisions/activity', 60, 120)
@@ -213,7 +212,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
 
     return {"list": ret, "total_items": total_items, "total_pages": total_pages}
 
-async def get_dlog_division(request: Request, response: Response, logid: int, authorization: str = Header(None)):
+async def get_dlog_division(request: Request, response: Response, logid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /dlog/division', 60, 120)
@@ -262,7 +261,7 @@ async def get_dlog_division(request: Request, response: Response, logid: int, au
     else:
         return {"divisionid": divisionid, "status": status}
 
-async def post_dlog_division(request: Request, response: Response, logid: int, divisionid: int, authorization: str = Header(None)):
+async def post_dlog_division(request: Request, response: Response, logid: int, divisionid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /dlog/division', 180, 10)
@@ -364,7 +363,7 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
 
     return Response(status_code=204)
 
-async def patch_dlog_division(request: Request, response: Response, logid: int, divisionid: int, authorization: str = Header(None)):
+async def patch_dlog_division(request: Request, response: Response, logid: int, divisionid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /dlog/division', 60, 30)
@@ -439,10 +438,10 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
 
     return Response(status_code=204)
 
-async def get_list_pending(request: Request, response: Response, authorization: str = Header(None), \
-        divisionid: Optional[int] = None, \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, requested_by: Optional[int] = None, after_logid: Optional[int] = None,
-        order_by: Optional[str] = "request_timestamp", order: Optional[str] = "asc"):
+async def get_list_pending(request: Request, response: Response, authorization: str | None = Header(None), \
+        divisionid: int | None = None, \
+        page: int | None = 1, page_size: int | None = 10, requested_by: int | None = None, after_logid: int | None = None,
+        order_by: str | None = "request_timestamp", order: str | None = "asc"):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /divisions/list/pending', 60, 120)

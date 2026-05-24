@@ -4,15 +4,14 @@
 import time
 import uuid
 from hashlib import sha256
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_token(request: Request, response: Response, authorization: str = Header(None)):
+async def get_token(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /token', 60, 120)
@@ -33,7 +32,7 @@ async def get_token(request: Request, response: Response, authorization: str = H
 
     return {"token_type": token_type}
 
-async def patch_token(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_token(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /token', 60, 60)
@@ -62,7 +61,7 @@ async def patch_token(request: Request, response: Response, authorization: str =
 
     return {"token": stoken}
 
-async def delete_token(request: Request, response: Response, authorization: str = Header(None)):
+async def delete_token(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /token', 60, 60)
@@ -87,9 +86,9 @@ async def delete_token(request: Request, response: Response, authorization: str 
 
     return Response(status_code=204)
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, \
-        order_by: Optional[str] = "last_used_timestamp", order: Optional[str] = "desc"):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, \
+        order_by: str | None = "last_used_timestamp", order: str | None = "desc"):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /token/list', 60, 120)
@@ -141,7 +140,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def delete_hash(request: Request, response: Response, authorization: str = Header(None)):
+async def delete_hash(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /token/hash', 60, 60)
@@ -187,8 +186,8 @@ async def delete_hash(request: Request, response: Response, authorization: str =
         response.status_code = 404
         return {"error": ml.tr(request, "invalid_hash", force_lang = au["language"])}
 
-async def delete_all(request: Request, response: Response, authorization: str = Header(None), \
-        last_used_before: Optional[int] = None):
+async def delete_all(request: Request, response: Response, authorization: str | None = Header(None), \
+        last_used_before: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /token/all', 60, 60)
@@ -218,9 +217,9 @@ async def delete_all(request: Request, response: Response, authorization: str = 
 
     return Response(status_code=204)
 
-async def get_application_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, \
-        order_by: Optional[str] = "last_used_timestamp", order: Optional[str] = "desc"):
+async def get_application_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, \
+        order_by: str | None = "last_used_timestamp", order: str | None = "desc"):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /token/application/list', 60, 120)
@@ -269,7 +268,7 @@ async def get_application_list(request: Request, response: Response, authorizati
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def post_application(request: Request, response: Response, authorization: str = Header(None)):
+async def post_application(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /token/application', 120, 10)
@@ -322,7 +321,7 @@ async def post_application(request: Request, response: Response, authorization: 
 
     return {"token": stoken}
 
-async def delete_application(request: Request, response: Response, authorization: str = Header(None)):
+async def delete_application(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /token/application', 60, 60)
@@ -365,7 +364,7 @@ async def delete_application(request: Request, response: Response, authorization
         response.status_code = 404
         return {"error": ml.tr(request, "invalid_hash", force_lang = au["language"])}
 
-async def delete_application_all(request: Request, response: Response, authorization: str = Header(None)):
+async def delete_application_all(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /token/application/all', 60, 60)

@@ -5,19 +5,18 @@ import copy
 import json
 import math
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-    page: Optional[int] = 1, page_size: Optional[int] = 10, after_notificationid: Optional[int] = None, \
-        after: Optional[int] = None, before: Optional[int] = None, \
-        content: Optional[str] = '', status: Optional[int] = None, \
-        order_by: Optional[str] = "notificationid", order: Optional[str] = "desc"):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+    page: int | None = 1, page_size: int | None = 10, after_notificationid: int | None = None, \
+        after: int | None = None, before: int | None = None, \
+        content: str | None = '', status: int | None = None, \
+        order_by: str | None = "notificationid", order: str | None = "desc"):
     """Returns a list of notification of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -83,7 +82,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_notification(request: Request, response: Response, notificationid: int, authorization: str = Header(None)):
+async def get_notification(request: Request, response: Response, notificationid: int, authorization: str | None = Header(None)):
     """Returns a specific notification of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -110,7 +109,7 @@ async def get_notification(request: Request, response: Response, notificationid:
     tt = t[0]
     return {"notificationid": tt[0], "content": tt[1], "timestamp": tt[2], "read": TF[tt[3]]}
 
-async def delete_notification(request: Request, response: Response, after_notificationid: int, before_notificationid: int, authorization: str = Header(None)):
+async def delete_notification(request: Request, response: Response, after_notificationid: int, before_notificationid: int, authorization: str | None = Header(None)):
     """Delete a range of notifications (for authorized users / for all users)"""
     app = request.app
     dhrid = request.state.dhrid
@@ -140,7 +139,7 @@ async def delete_notification(request: Request, response: Response, after_notifi
 
     return Response(status_code=204)
 
-async def patch_status(request: Request, response: Response, notificationid: str, status: int, authorization: str = Header(None)):
+async def patch_status(request: Request, response: Response, notificationid: str, status: int, authorization: str | None = Header(None)):
     """Updates status of a specific notification of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -181,7 +180,7 @@ async def patch_status(request: Request, response: Response, notificationid: str
 
     return Response(status_code=204)
 
-async def get_settings(request: Request, response: Response, authorization: str = Header(None)):
+async def get_settings(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns notification settings of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -213,7 +212,7 @@ async def get_settings(request: Request, response: Response, authorization: str 
     return settings
 
 # NOTE: Daily bonus notification is handled separately in member/userop
-async def post_settings_enable(request: Request, response: Response, notification_type: str, authorization: str = Header(None)):
+async def post_settings_enable(request: Request, response: Response, notification_type: str, authorization: str | None = Header(None)):
     """Enables a specific type of notification of the authorized user"""
     app = request.app
     if notification_type not in copy.deepcopy(NOTIFICATION_SETTINGS).keys():
@@ -327,7 +326,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
 
     return Response(status_code=204)
 
-async def post_settings_disable(request: Request, response: Response, notification_type: str, authorization: str = Header(None)):
+async def post_settings_disable(request: Request, response: Response, notification_type: str, authorization: str | None = Header(None)):
     """Disables a specific type of notification of the authorized user"""
     app = request.app
     if notification_type not in copy.deepcopy(NOTIFICATION_SETTINGS).keys():

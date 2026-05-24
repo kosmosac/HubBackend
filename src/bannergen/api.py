@@ -18,6 +18,12 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from PIL import Image, ImageDraw, ImageFont
 
+if "__compiled__" in globals():
+    abspath = os.path.dirname(os.path.abspath(sys.argv[0]))
+else:
+    abspath = os.path.dirname(os.path.abspath(__file__))
+fontpath = os.path.join(abspath, "fonts")
+
 os_info = f"{platform.system()} {platform.release()}"
 py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
 USER_AGENT = f"DriversHub/BannerGen ({os_info}; Python {py_version}) +https://drivershub.charlws.com"
@@ -92,7 +98,7 @@ def has_glyph(glyph):
 # NOTE that non-printable characters from Sans Serif will still need .getsize()
 ubuntu_mono_bold_font_wsize = []
 for i in range(1, 81):
-    font = ImageFont.truetype("./fonts/UbuntuMonoBold.ttf", i)
+    font = ImageFont.truetype(os.path.join(fontpath, "UbuntuMonoBold.ttf"), i)
     wsize = font.getlength("a")
     ubuntu_mono_bold_font_wsize.append(wsize)
 del font
@@ -266,7 +272,7 @@ async def get_banner(request: Request, response: Response):
 
         # draw company name
         draw = ImageDraw.Draw(banner)
-        usH40 = ImageFont.truetype("./fonts/OpenSansExtraBold.ttf", 40)
+        usH40 = ImageFont.truetype(os.path.join(fontpath, "OpenSansExtraBold.ttf"), 40)
         theme_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
         company_name_len = usH40.getlength(f"{company_name}")
         draw.text((1700 - 20 - company_name_len, 235), f"{company_name}", fill=theme_color, font=usH40)
@@ -387,13 +393,13 @@ async def get_banner(request: Request, response: Response):
         if all_printable:
             namew = ubuntu_mono_bold_font_wsize[fontsize] * len(name)
         else:
-            namefont = ImageFont.truetype("./fonts/JosefinSansBold.ttf", fontsize)
+            namefont = ImageFont.truetype(os.path.join(fontpath, "JosefinSansBold.ttf"), fontsize)
             namew = namefont.getlength(f"{name}")
         if namew > 420:
             right = fontsize - 1
         else:
             left = fontsize + 1
-    namefont = ImageFont.truetype("./fonts/JosefinSansBold.ttf", fontsize)
+    namefont = ImageFont.truetype(os.path.join(fontpath, "JosefinSansBold.ttf"), fontsize)
     namebb = namefont.getbbox(f"{remove_descenders(name)}")
     nameh = namebb[3] - namebb[1]
     offset = min(fontsize * 0.05, 20)
@@ -404,12 +410,12 @@ async def get_banner(request: Request, response: Response):
     fontsize -= 20
     highest_role = data["highest_role"]
     highest_role = unicodedata.normalize('NFKC', highest_role).lstrip(" ")
-    hrolefont = ImageFont.truetype("./fonts/RussoOne.ttf", fontsize)
+    hrolefont = ImageFont.truetype(os.path.join(fontpath, "RussoOne.ttf"), fontsize)
     hrolew = hrolefont.getlength(f"{highest_role}")
     for _ in range(100):
         if hrolew > 410:
             fontsize -= 1
-            hrolefont = ImageFont.truetype("./fonts/RussoOne.ttf", fontsize)
+            hrolefont = ImageFont.truetype(os.path.join(fontpath, "RussoOne.ttf"), fontsize)
             hrolew = hrolefont.getlength(f"{highest_role}")
     hrolebb = hrolefont.getbbox(f"{remove_descenders(highest_role)}")
     hroleh = hrolebb[3] - hrolebb[1]
@@ -428,15 +434,15 @@ async def get_banner(request: Request, response: Response):
     division = unicodedata.normalize('NFKC', division).lstrip(" ")
     distance = data["distance"]
     profit = data["profit"]
-    joinedfont = ImageFont.truetype("./fonts/JosefinSans.ttf", 40)
+    joinedfont = ImageFont.truetype(os.path.join(fontpath, "JosefinSans.ttf"), 40)
     draw.text((325, 210), f"{LOCALIZATION[language]['since']} {joined}", fill=(0,0,0), font=joinedfont)
     del joinedfont
 
     # separate line
     draw.line((850, 25, 850, 275), fill=theme_color, width = 10)
 
-    anH40 = ImageFont.truetype("./fonts/RussoOne.ttf", 40)
-    coH40 = ImageFont.truetype("./fonts/UbuntuMonoBold.ttf", 40)
+    anH40 = ImageFont.truetype(os.path.join(fontpath, "RussoOne.ttf"), 40)
+    coH40 = ImageFont.truetype(os.path.join(fontpath, "UbuntuMonoBold.ttf"), 40)
     if data["first_row"] == "rank":
         rankw = anH40.getlength(f"{rank}")
         if rankw > 550:

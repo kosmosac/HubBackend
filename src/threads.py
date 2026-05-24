@@ -12,14 +12,14 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Request
 
-import static
-from config import validateConfig
-from functions.dataop import *
-from functions.discord import DiscordAuth
-from functions.general import *
-from functions.userinfo import DeleteRoleConnection
-from functions.notification import notification
-from logger import logger
+import src.static as static
+from src.config import validateConfig
+from src.functions.dataop import *
+from src.functions.discord import DiscordAuth
+from src.functions.general import *
+from src.functions.userinfo import DeleteRoleConnection
+from src.functions.notification import notification
+from src.logger import logger
 
 
 async def DetectConfigChanges(app):
@@ -161,7 +161,7 @@ async def RefreshDiscordAccessToken(app):
             pass
 
         except Exception as exc:
-            from api import tracebackHandler
+            from src.api import tracebackHandler
             await tracebackHandler(request, exc, traceback.format_exc())
 
         finally:
@@ -295,44 +295,44 @@ async def UpdateDlogStats(app):
                                 dlog_stats[10].append(item)
 
                         elif etype in ["collision", "speeding", "teleport"]:
-                            K = {"collision": 15, "speeding": 11, "teleport": 16}
+                            mapping = {"collision": 15, "speeding": 11, "teleport": 16}
                             item = [etype, etype, 1, 0]
                             duplicate = False
-                            for i in range(len(dlog_stats[K[etype]])):
-                                if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                                    dlog_stats[K[etype]][i][2] += 1
+                            for i in range(len(dlog_stats[mapping[etype]])):
+                                if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                                    dlog_stats[mapping[etype]][i][2] += 1
                                     duplicate = True
                                     break
                             if not duplicate:
-                                dlog_stats[K[etype]].append(item)
+                                dlog_stats[mapping[etype]].append(item)
 
                         elif etype in ["tollgate"]:
-                            K = {"tollgate": 12}
+                            mapping = {"tollgate": 12}
                             item = [etype, etype, 1, int(event["meta"]["cost"])]
                             item[3] = item[3] if item[3] <= 51200 else 0
                             duplicate = False
-                            for i in range(len(dlog_stats[K[etype]])):
-                                if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                                    dlog_stats[K[etype]][i][2] += 1
-                                    dlog_stats[K[etype]][i][3] += item[3]
+                            for i in range(len(dlog_stats[mapping[etype]])):
+                                if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                                    dlog_stats[mapping[etype]][i][2] += 1
+                                    dlog_stats[mapping[etype]][i][3] += item[3]
                                     duplicate = True
                                     break
                             if not duplicate:
-                                dlog_stats[K[etype]].append(item)
+                                dlog_stats[mapping[etype]].append(item)
 
                         elif etype in ["ferry", "train"]:
-                            K = {"ferry": 13, "train": 14}
+                            mapping = {"ferry": 13, "train": 14}
                             item = [f'{convertQuotation(event["meta"]["source_id"])}/{convertQuotation(event["meta"]["target_id"])}', f'{convertQuotation(event["meta"]["source_name"])}/{convertQuotation(event["meta"]["target_name"])}', 1, int(event["meta"]["cost"])]
                             item[3] = item[3] if item[3] <= 51200 else 0
                             duplicate = False
-                            for i in range(len(dlog_stats[K[etype]])):
-                                if dlog_stats[K[etype]][i][0] == item[0] and dlog_stats[K[etype]][i][1] == item[1]:
-                                    dlog_stats[K[etype]][i][2] += 1
-                                    dlog_stats[K[etype]][i][3] += item[3]
+                            for i in range(len(dlog_stats[mapping[etype]])):
+                                if dlog_stats[mapping[etype]][i][0] == item[0] and dlog_stats[mapping[etype]][i][1] == item[1]:
+                                    dlog_stats[mapping[etype]][i][2] += 1
+                                    dlog_stats[mapping[etype]][i][3] += item[3]
                                     duplicate = True
                                     break
                             if not duplicate:
-                                dlog_stats[K[etype]].append(item)
+                                dlog_stats[mapping[etype]].append(item)
 
                     await app.db.extend_conn(dhrid, 5)
                     for stat_userid in [userid, -1]:
@@ -374,12 +374,12 @@ async def UpdateDlogStats(app):
                     await app.db.execute(dhrid, f"UPDATE settings SET sval = {logid} WHERE skey = 'dlog_stats_up_to'")
                     await app.db.commit(dhrid)
                 except Exception as exc:
-                    from api import tracebackHandler
+                    from src.api import tracebackHandler
                     await tracebackHandler(request, exc, traceback.format_exc())
                     await asyncio.sleep(1) # prevent constant error leading to database lock
 
         except Exception as exc:
-            from api import tracebackHandler
+            from src.api import tracebackHandler
             await tracebackHandler(request, exc, traceback.format_exc())
             await asyncio.sleep(1) # prevent constant error leading to database lock
 
@@ -469,11 +469,10 @@ async def SendDailyBonusNotification(app):
                 app.redis.hset("daily-bonus-notification-last-10-min", mapping = last10min)
 
         except Exception as exc:
-            from api import tracebackHandler
+            from src.api import tracebackHandler
             await tracebackHandler(request, exc, traceback.format_exc())
 
         finally:
             await app.db.close_conn(dhrid)
 
         await asyncio.sleep(30)
-

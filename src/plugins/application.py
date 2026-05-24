@@ -6,12 +6,11 @@ import json
 import math
 import time
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import Header, Request, Response, Query
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
 # Basic Info
@@ -25,14 +24,14 @@ async def get_types(request: Request):
                 del ret[i][k]
     return ret
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_applicationid: Optional[int] = None, \
-        submitted_after: Optional[int] = None, submitted_before: Optional[int] = None,
-        responded_after: Optional[int] = None, responded_before: Optional[int] = None, \
-        order: Optional[str] = "desc", order_by: Optional[str] = "applicationid", \
-        submitted_by: Optional[int] = None, responded_by: Optional[int] = None, \
-        application_type: Optional[int] = Query(None, alias='type'), \
-        all_user: Optional[bool] = False, status: Optional[int] = None):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, after_applicationid: int | None = None, \
+        submitted_after: int | None = None, submitted_before: int | None = None,
+        responded_after: int | None = None, responded_before: int | None = None, \
+        order: str | None = "desc", order_by: str | None = "applicationid", \
+        submitted_by: int | None = None, responded_by: int | None = None, \
+        application_type: int | None = Query(None, alias='type'), \
+        all_user: bool | None = False, status: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /applications/list', 60, 120)
@@ -176,7 +175,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_application(request: Request, response: Response, applicationid: int, authorization: str = Header(None)):
+async def get_application(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /applications', 60, 120)
@@ -218,7 +217,7 @@ async def get_application(request: Request, response: Response, applicationid: i
 
     return {"applicationid": t[0][0], "type": t[0][1], "status": t[0][4], "submit_timestamp": t[0][5], "respond_timestamp": t[0][7], "creator": await GetUserInfo(request, uid = t[0][2]), "last_respond_staff": await GetUserInfo(request, userid = t[0][6]), "application": json.loads(decompress(t[0][3]))}
 
-async def post_application(request: Request, response: Response, authorization: str = Header(None)):
+async def post_application(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /applications', 180, 10)
@@ -395,7 +394,7 @@ async def post_application(request: Request, response: Response, authorization: 
 
     return {"applicationid": applicationid}
 
-async def post_message(request: Request, response: Response, applicationid: int, authorization: str = Header(None)):
+async def post_message(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /applications/message', 180, 10)
@@ -491,7 +490,7 @@ async def post_message(request: Request, response: Response, applicationid: int,
 
     return Response(status_code=204)
 
-async def patch_status(request: Request, response: Response, applicationid: int, authorization: str = Header(None)):
+async def patch_status(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /applications/status', 60, 30)
@@ -573,7 +572,7 @@ async def patch_status(request: Request, response: Response, applicationid: int,
 
     return Response(status_code=204)
 
-async def delete_application(request: Request, response: Response, applicationid: int, authorization: str = Header(None)):
+async def delete_application(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /applications', 180, 10)
@@ -619,9 +618,9 @@ async def delete_application(request: Request, response: Response, applicationid
 
     return Response(status_code=204)
 
-async def get_statistics(request: Request, response: Response, authorization: Optional[str] = Header(None), \
-        ranges: Optional[int] = 30, interval: Optional[int] = 86400, before: Optional[int] = None, \
-        sum_up: Optional[bool] = False, userid: Optional[int] = None):
+async def get_statistics(request: Request, response: Response, authorization: str | None = Header(None), \
+        ranges: int | None = 30, interval: int | None = 86400, before: int | None = None, \
+        sum_up: bool | None = False, userid: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
 

@@ -7,11 +7,11 @@ from datetime import timedelta
 import aiomysql
 from fastapi import Header, Request, Response
 
-from functions import *
-from multilang import LANGUAGES
+from src.functions import *
+from src.multilang import LANGUAGES
 
 
-async def get_index(request: Request, response: Response, authorization: str = Header(None)):
+async def get_index(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /', 60, 120)
@@ -78,7 +78,7 @@ async def restart_database(request: Request):
                                             maxsize = app.db.db_pool_size)
         return {"success": True}
     except Exception as exc:
-        from api import tracebackHandler
+        from src.api import tracebackHandler
         await tracebackHandler(request, exc, traceback.format_exc())
         return {"success": False}
     finally:

@@ -158,7 +158,7 @@ def tseparator(num):
     else:
         return flag + tseparator(str(num)[:-3]) + "," + str(num)[-3:]
 
-def sigfig(num, sigfigs_opt = 3):
+def sigfig(num):
     num = int(num)
     flag = ""
     if num < 0:

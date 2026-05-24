@@ -118,9 +118,9 @@ tar -xzf drivershub.tar.gz -C ./drivershub/
 
 cd ./drivershub/
 # initialize database
-./main --config config.json setup init-db
+./drivershub --config config.json setup init-db
 # start the server
-./main --config config.json
+./drivershub --config config.json
 
 # in a separate shell, start bannergen
 ./bannergen
@@ -143,15 +143,13 @@ source .venv/bin/activate
 # install python dependencies
 pip3 install -r requirements.txt
 
-cd ./src/
 # initialize database
-python3 main.py --config config.json setup init-db
+python3 drivershub.py --config config.json setup init-db
 # start the server
-python3 main.py --config config.json
+python3 drivershub.py --config config.json
 
 # in a separate shell, start bannergen
-cd ./bannergen/
-python3 main.py
+python3 bannergen.py
 ```
 
 ### Creating a User
@@ -164,16 +162,16 @@ Note that if such role does not exist in the configuration, a role with `adminis
 
 ```bash
 # create a new user
-./main --config config.json setup create-user <email>
+./drivershub --config config.json setup create-user <email>
 Enter password: 
 Created user with UID 77.
 
 # accept the user
-./main --config config.json setup accept-user 77
+./drivershub --config config.json setup accept-user 77
 Accepted user 77 as member with user id 42.
 
 # update roles
-./main --config config.json setup update-roles 42 1
+./drivershub --config config.json setup update-roles 42 1
 Updated user 42 roles to [1].
 ```
 
@@ -228,4 +226,4 @@ This repository is licensed under the GNU Affero General Public License v3.0.
 
 Copyright &copy; 2022-2026 [CharlesWithC](https://charlws.com)
 
-<img src="https://drivershub.charlws.com/images/banner.webp" height="80" alt="Logo"> 
+<img src="https://drivershub.charlws.com/images/banner.webp" height="80" alt="Logo">

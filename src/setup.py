@@ -6,10 +6,10 @@ from getpass import getpass
 
 import bcrypt
 
-import db
-from db import genconn
-from functions import *
-from logger import logger
+import src.db as db
+from src.db import genconn
+from src.functions import *
+from src.logger import logger
 
 
 def create_user(config, email: str, password: str):

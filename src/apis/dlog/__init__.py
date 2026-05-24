@@ -4,10 +4,12 @@
 from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
 
-import apis.dlog.export as export
-import apis.dlog.info as info
-import apis.dlog.leaderboard as leaderboard
-import apis.dlog.statistics as statistics
+import src.apis.dlog.export as export
+import src.apis.dlog.info as info
+import src.apis.dlog.leaderboard as leaderboard
+import src.apis.dlog.statistics as statistics
+
+__all__ = ["statistics"]
 
 routes = [
     APIRoute("/dlog/list", info.get_list, methods=["GET"], response_class=JSONResponse),

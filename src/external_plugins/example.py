@@ -10,10 +10,10 @@ from fastapi import Header, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-from functions import *
+from src.functions import *
 
 
-async def get_index(request: Request, authorization: str = Header(None)):
+async def get_index(request: Request, authorization: str | None = Header(None)):
     '''Rework original get_index and add `message` to response'''
     app = request.app
     if authorization is not None:
@@ -29,7 +29,7 @@ async def get_external(request: Request):
     '''New route responding with `app.state.message`'''
     return {"message": request.app.state.message}
 
-async def PrintHello(app):
+async def PrintHello(app): # pyright: ignore[reportUnusedParameter]
     print("HELLO")
 
 async def startup(app: FastAPI):
@@ -40,13 +40,13 @@ async def startup(app: FastAPI):
 async def request(request: Request):
     print(f"NEW REQUEST from {request.client.host}")
 
-async def response_ok(request: Request, response):
+async def response_ok(request: Request, response): # pyright: ignore[reportUnusedParameter]
     print(f"RESPONSE OK: {response}")
 
-async def response_fail(request: Request, exception, traceback):
+async def response_fail(request: Request, exception, traceback): # pyright: ignore[reportUnusedParameter]
     print(f"RESPONSE FAIL: {exception}")
 
-async def error_handler(request: Request, exception, traceback):
+async def error_handler(request: Request, exception, traceback): # pyright: ignore[reportUnusedParameter]
     return JSONResponse({"error": str(exception)}, status_code=400)
 
 # discord_request must not be async
@@ -54,7 +54,7 @@ def discord_request(method: str, url: str, data: dict | None):
     print(f"Received Discord API request {method.upper()} {url}")
     return data # keep data as is
 
-def init(config: dict, print_log: bool = False):
+def init(config: dict, print_log: bool = False): # pyright: ignore[reportUnusedParameter]
     # Define routes
     routes = [
         # overwrite / route

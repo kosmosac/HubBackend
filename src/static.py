@@ -1,7 +1,7 @@
+# pyright: reportConstantRedefinition=false
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
-import inspect
 import json
 import os
 import platform
@@ -15,7 +15,11 @@ for argv in sys.argv:
     if argv.endswith(".py"):
         version += ".dev"
 
-abspath = os.path.dirname(os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename))
+if "__compiled__" in globals():
+    abspath = os.path.dirname(os.path.abspath(sys.argv[0]))
+else:
+    abspath = os.path.dirname(os.path.abspath(__file__))
+
 TRACKER = {"tracksim": "TrackSim", "trucky": "Trucky", "custom": "Custom", "unitracker": "UniTracker"}
 
 os_info = f"{platform.system()} {platform.release()}"

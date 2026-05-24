@@ -5,20 +5,19 @@ import math
 import re
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import Header, Query, Request, Response
 
-import multilang as ml
-from api import tracebackHandler
-from functions import *
+import src.multilang as ml
+from src.api import tracebackHandler
+from src.functions import *
 
 ALGO_OFFSET = 15
 # NOTE This offset controls the initial increase rate of the algo
 
 
-async def patch_roles_rank_default(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_roles_rank_default(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates rank role of the authorized user in Discord, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -116,7 +115,7 @@ async def patch_roles_rank_default(request: Request, response: Response, authori
     except Exception as exc:
         return await tracebackHandler(request, exc, traceback.format_exc())
 
-async def patch_roles_rank(request: Request, response: Response, rank_type_id: int, authorization: str = Header(None)):
+async def patch_roles_rank(request: Request, response: Response, rank_type_id: int, authorization: str | None = Header(None)):
     """Updates rank role of the authorized user in Discord, returns 204"""
     app = request.app
     if rank_type_id not in app.ranktypes.keys():
@@ -217,7 +216,7 @@ async def patch_roles_rank(request: Request, response: Response, rank_type_id: i
     except Exception as exc:
         return await tracebackHandler(request, exc, traceback.format_exc())
 
-async def get_bonus_history(request: Request, response: Response, authorization: str = Header(None), bonus_type: Optional[str] = Query("daily", alias="type"), month: Optional[str] = None, userid: Optional[int] = None, page: Optional[int] = 1, page_size: Optional[int] = 10):
+async def get_bonus_history(request: Request, response: Response, authorization: str | None = Header(None), bonus_type: str | None = Query("daily", alias="type"), month: str | None = None, userid: int | None = None, page: int | None = 1, page_size: int | None = 10):
     """Returns bonus history
 
     i) type = "daily". returns daily bonus streak info.
@@ -303,7 +302,7 @@ async def get_bonus_history(request: Request, response: Response, authorization:
 
         return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def post_bonus_claim(request: Request, response: Response, authorization: str = Header(None)):
+async def post_bonus_claim(request: Request, response: Response, authorization: str | None = Header(None)):
     """Claims "daily_bonus", returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -385,7 +384,7 @@ async def post_bonus_claim(request: Request, response: Response, authorization: 
 
     return {"bonus": bonuspnt}
 
-async def get_bonus_notification_settings(request: Request, response: Response, authorization: str = Header(None)):
+async def get_bonus_notification_settings(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns daily bonus notification settings"""
     app = request.app
     dhrid = request.state.dhrid
@@ -411,7 +410,7 @@ async def get_bonus_notification_settings(request: Request, response: Response, 
     else:
         return {"utctime": t[0][0]}
 
-async def patch_bonus_notification_settings(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_bonus_notification_settings(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates daily bonus notification settings, accepts utctime=<empty string>|HH:MM, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -448,7 +447,7 @@ async def patch_bonus_notification_settings(request: Request, response: Response
 
     return Response(status_code = 204)
 
-async def delete_role_history(request: Request, response: Response, historyid: int, authorization: str = Header(None)):
+async def delete_role_history(request: Request, response: Response, historyid: int, authorization: str | None = Header(None)):
     """Deletes a specific row of user role history with historyid, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -481,7 +480,7 @@ async def delete_role_history(request: Request, response: Response, historyid: i
 
     return Response(status_code=204)
 
-async def post_resign(request: Request, response: Response, authorization: str = Header(None)):
+async def post_resign(request: Request, response: Response, authorization: str | None = Header(None)):
     """Resigns the authorized user, set userid to -1, returns 204"""
     app = request.app
     dhrid = request.state.dhrid

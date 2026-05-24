@@ -3,18 +3,17 @@
 
 import math
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-from functions import *
+from src.functions import *
 
-async def get_leaderboard(request: Request, response: Response, authorization: str = Header(None), \
-    page: Optional[int] = 1, page_size: Optional[int] = 10, \
-        after_userid: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None, \
-        min_point: Optional[int] = None, max_point: Optional[int] = None, \
-        speed_limit: Optional[int] = None, game: Optional[int] = None, \
-        point_types: Optional[str] = "distance,challenge,event,division,bonus", userids: Optional[str] = ""):
+async def get_leaderboard(request: Request, response: Response, authorization: str | None = Header(None), \
+    page: int | None = 1, page_size: int | None = 10, \
+        after_userid: int | None = None, after: int | None = None, before: int | None = None, \
+        min_point: int | None = None, max_point: int | None = None, \
+        speed_limit: int | None = None, game: int | None = None, \
+        point_types: str | None = "distance,challenge,event,division,bonus", userids: str | None = ""):
     app = request.app
     dhrid = request.state.dhrid
 

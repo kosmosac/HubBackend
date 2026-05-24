@@ -3,17 +3,17 @@
 
 import copy
 
-from functions import *
-from plugins.economy.balance import *
-from plugins.economy.garages import *
-from plugins.economy.merch import *
-from plugins.economy.trucks import *
+from src.functions import *
+from src.plugins.economy.balance import *
+from src.plugins.economy.garages import *
+from src.plugins.economy.merch import *
+from src.plugins.economy.trucks import *
 
 # NOTE
 # If driver leaves the company, they'll take away their truck and balance.
 # However, their garage will be transferred to the company.
 
-async def get_economy(request: Request, response: Response, authorization: str = Header(None)):
+async def get_economy(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy', 60, 60)

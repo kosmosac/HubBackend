@@ -1,3 +1,4 @@
+# pyright: reportImportCycles=false
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
@@ -7,12 +8,12 @@ import traceback
 from datetime import datetime, timezone
 from random import randint
 
-import multilang as ml
-from functions import arequests, gensecret, point2rank
-from functions.dataop import *
-from functions.notification import *
-from functions.userinfo import *
-from static import TRACKER
+import src.multilang as ml
+from src.functions import arequests, gensecret, point2rank
+from src.functions.dataop import *
+from src.functions.notification import *
+from src.functions.userinfo import *
+from src.static import TRACKER
 
 
 async def add_driver(request, steamid, staff_uid, userid, username, trackers = ["tracksim", "trucky"]):
@@ -130,7 +131,7 @@ async def remove_driver(request, steamid, staff_uid, userid, username, trackers 
         all_errors += plain_error
     return all_errors
 
-async def publish_webhook(request, userid, username, discordid, logid, tracker, data, original_data, event_type, driven_distance, revenue, offence):
+async def publish_webhook(request, userid, username, discordid, logid, tracker, data, original_data, event_type, driven_distance, revenue, offence): # pyright: ignore[reportUnusedParameter]
     app = request.app
 
     try:
@@ -202,11 +203,11 @@ async def publish_webhook(request, userid, username, discordid, logid, tracker, 
             munit = "$"
         offence = -offence
 
-        IMGS = app.config.delivery_webhook_image_urls
-        if len(IMGS) == 0:
-            IMGS = [""]
-        k = randint(0, len(IMGS)-1)
-        imgurl = IMGS[k]
+        image_urls = app.config.delivery_webhook_image_urls
+        if len(image_urls) == 0:
+            image_urls = [""]
+        k = randint(0, len(image_urls)-1)
+        imgurl = image_urls[k]
         if not isurl(imgurl):
             imgurl = ""
         dhulink = app.config.frontend_urls.member.replace("{userid}", str(userid))
@@ -282,13 +283,13 @@ async def publish_webhook(request, userid, username, discordid, logid, tracker, 
         await UpdateRoleConnection(request, discordid)
 
     except Exception as exc:
-        from api import tracebackHandler
+        from src.api import tracebackHandler
         await tracebackHandler(request, exc, traceback.format_exc())
 
 async def process_challenge(request, userid, logid, data, driven_distance, offence, has_overspeed, enabled_realistic_settings):
     (app, dhrid) = (request.app, request.state.dhrid)
 
-    from plugins.challenge import JOB_REQUIREMENT_DEFAULT, JOB_REQUIREMENTS
+    from src.plugins.challenge import JOB_REQUIREMENT_DEFAULT, JOB_REQUIREMENTS
 
     try:
         await app.db.execute(dhrid, f"SELECT SUM(distance) FROM dlog WHERE userid = {userid}")
@@ -631,11 +632,11 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                             await app.db.commit(dhrid)
 
             except Exception as exc:
-                from api import tracebackHandler
+                from src.api import tracebackHandler
                 await tracebackHandler(request, exc, traceback.format_exc())
 
     except Exception as exc:
-        from api import tracebackHandler
+        from src.api import tracebackHandler
         await tracebackHandler(request, exc, traceback.format_exc())
 
 async def process_economy(request, userid, logid, data, driven_distance, revenue):
@@ -706,7 +707,7 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
             await app.db.commit(dhrid)
 
     except Exception as exc:
-        from api import tracebackHandler
+        from src.api import tracebackHandler
         await tracebackHandler(request, exc, traceback.format_exc())
 
 TRACKER_MAP = {"tracksim": 2, "trucky": 3, "custom": 4, "unitracker": 5}
@@ -895,7 +896,7 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
                             await notification(request, "bonus", uid, ml.tr(request, "earned_bonus_point", var = {"bonus_points": str(bonuspoint), "logid": logid, "rankname": rankname}, force_lang = await GetUserLanguage(request, uid)))
 
         except Exception as exc:
-            from api import tracebackHandler
+            from src.api import tracebackHandler
             await tracebackHandler(request, exc, traceback.format_exc())
 
     if isdelivered and not duplicate:

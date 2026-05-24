@@ -4,9 +4,9 @@
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-import apis.member.info as info
-import apis.member.manage as manage
-import apis.member.userop as userop
+import src.apis.member.info as info
+import src.apis.member.manage as manage
+import src.apis.member.userop as userop
 
 routes = [
     APIRoute("/member/roles", info.get_roles, methods=["GET"], response_class=JSONResponse),

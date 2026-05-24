@@ -4,11 +4,11 @@
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-import apis.auth.discord as discord
-import apis.auth.generic as generic
-import apis.auth.steam as steam
-import apis.auth.ticket as ticket
-import apis.auth.token as token
+import src.apis.auth.discord as discord
+import src.apis.auth.generic as generic
+import src.apis.auth.steam as steam
+import src.apis.auth.ticket as ticket
+import src.apis.auth.token as token
 
 routes = [
     APIRoute("/auth/password", generic.post_password, methods=["POST"], response_class=JSONResponse),

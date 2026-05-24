@@ -7,13 +7,12 @@ import hmac
 import json
 import time
 from datetime import datetime
-from typing import Optional
 from urllib.parse import parse_qs
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
 def convert_format(data):
@@ -340,7 +339,7 @@ async def post_update(response: Response, request: Request):
 
     return Response(status_code = 204)
 
-async def post_import(response: Response, request: Request, jobid: int, authorization: str = Header(None), bypass_tracker_check: Optional[bool] = False):
+async def post_import(response: Response, request: Request, jobid: int, authorization: str | None = Header(None), bypass_tracker_check: bool | None = False):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /trucky/import', 60, 60)
@@ -400,7 +399,7 @@ async def post_import(response: Response, request: Request, jobid: int, authoriz
 
     return {"logid": result[0]}
 
-async def put_driver(response: Response, request: Request, userid: int, authorization: str = Header(None)):
+async def put_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
     app = request.app
     if "trucky" not in configured_trackers(app):
         response.status_code = 404
@@ -433,7 +432,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
         response.status_code = 503
         return {"error": tracker_app_error}
 
-async def delete_driver(response: Response, request: Request, userid: int, authorization: str = Header(None)):
+async def delete_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
     app = request.app
     if "trucky" not in configured_trackers(app):
         response.status_code = 404

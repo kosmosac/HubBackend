@@ -1,4 +1,5 @@
-# Copyright (C) 2022-2026 CharlesWithC All rights reserved.
+# pyright: reportImportCycles=false
+# # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
 import asyncio
@@ -7,9 +8,9 @@ import time
 
 from fastapi import Request
 
-import multilang as ml
-from functions.arequests import arequests
-from functions.general import RateLimitException, DisableDiscordIntegration
+import src.multilang as ml
+from src.functions.arequests import arequests
+from src.functions.general import RateLimitException, DisableDiscordIntegration
 
 def parse_discord_response(resp):
     content_type = resp.headers.get('Content-Type', '')
@@ -183,13 +184,13 @@ class opqueue:
                             error_msg = ml.ctr(request, "error_removing_discord_role", var = {"code": d["code"], "discord_role": t[1], "user_discordid": t[2], "message": d["message"]})
 
                         if error_msg not in [None, "disable"]:
-                            from functions.notification import AuditLog
+                            from src.functions.notification import AuditLog
                             await AuditLog(request, -998, "discord", error_msg)
 
                         elif r.status_code // 100 == 4:
                             # surpass expected error behavior (soemthing wrong with config)
                             # however, don't send if the error is already sent (use elif)
-                            from functions.notification import AuditLog
+                            from src.functions.notification import AuditLog
                             await AuditLog(request, -998, "discord", "**" + ml.ctr(request, "service_api_error", var = {"service": "Discord"}) + f"**\n```{r.text}```")
 
                 except:

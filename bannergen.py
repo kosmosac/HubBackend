@@ -6,8 +6,8 @@ import os
 import argparse
 import uvicorn
 
-import api
-from app import app
+import src.bannergen.api as api
+from src.bannergen.app import app
 
 app.add_api_route(path="/banner", endpoint=api.get_banner, methods=["POST"])
 
@@ -52,4 +52,4 @@ if __name__ == "__main__":
         os.mkdir("/tmp/hub/template")
     if not os.path.exists("/tmp/hub/avatar"):
         os.mkdir("/tmp/hub/avatar")
-    uvicorn.run("app:app", host=args.host, port=args.port, workers=args.workers, log_level="info", timeout_keep_alive=15)
+    uvicorn.run("src.bannergen.app:app", host=args.host, port=args.port, workers=args.workers, log_level="info", timeout_keep_alive=15)

@@ -1,5 +1,5 @@
-DEPS_DRIVERSHUB := $(shell find src/ -type f -not -path "src/bannergen/*" -not -path "src/languages/*")
-DEPS_BANNERGEN := $(shell find src/bannergen/ -type f)
+DEPS_DRIVERSHUB := $(shell find src/ -type f -not -path "src/bannergen/*" -not -path "src/languages/*") drivershub.py
+DEPS_BANNERGEN := $(shell find src/bannergen/ -type f) bannergen.py
 
 BUILD_DIR := build
 DIST_DIR := dist
@@ -20,19 +20,21 @@ build: $(DIST_DIR)/drivershub $(DIST_DIR)/bannergen
 
 $(DIST_DIR)/drivershub: $(DEPS_DRIVERSHUB)
 	. $(VENV_DIR)/bin/activate && \
-	python3 -m nuitka src/main.py --output-dir=$(BUILD_DIR)/drivershub --output-filename=drivershub \
-		--standalone --include-package=websockets,tzdata --include-package-data=tzdata \
-		--show-progress --prefer-source-code
+	python3 -m nuitka drivershub.py \
+	    --output-dir=$(BUILD_DIR)/drivershub --output-filename=drivershub \
+		--standalone --show-progress --prefer-source-code \
+		--include-package=websockets,tzdata --include-module=src.routing
 	mkdir -p $(DIST_DIR)
-	cp -r $(BUILD_DIR)/drivershub/main.dist/* $(DIST_DIR)/
+	cp -r $(BUILD_DIR)/drivershub/drivershub.dist/* $(DIST_DIR)/
 
 $(DIST_DIR)/bannergen: $(DEPS_BANNERGEN)
 	. $(VENV_DIR)/bin/activate && \
-	python3 -m nuitka src/bannergen/main.py --output-dir=$(BUILD_DIR)/bannergen \
-		--output-filename=bannergen --standalone --include-package=websockets \
-		--show-progress --prefer-source-code
+	python3 -m nuitka bannergen.py \
+	    --output-dir=$(BUILD_DIR)/bannergen --output-filename=bannergen \
+		--standalone --show-progress --prefer-source-code \
+		--include-module=src.app --include-package=websockets
 	mkdir -p $(DIST_DIR)
-	cp -r $(BUILD_DIR)/bannergen/main.dist/* $(DIST_DIR)/
+	cp -r $(BUILD_DIR)/bannergen/bannergen.dist/* $(DIST_DIR)/
 
 install: install-system install-python
 

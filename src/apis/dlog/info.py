@@ -3,21 +3,20 @@
 
 import json
 import math
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, \
-        order_by: Optional[str] = "logid", order: Optional[str] = None, \
-        speed_limit: Optional[int] = None, userid: Optional[int] = None, \
-        after_logid: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None, \
-        game: Optional[int] = None, status: Optional[int] = None,\
-        challenge: Optional[str] = "any", division: Optional[str] = "any", manual: Optional[bool] = False):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, \
+        order_by: str | None = "logid", order: str | None = None, \
+        speed_limit: int | None = None, userid: int | None = None, \
+        after_logid: int | None = None, after: int | None = None, before: int | None = None, \
+        game: int | None = None, status: int | None = None,\
+        challenge: str | None = "any", division: str | None = "any", manual: bool | None = False):
     '''`challenge` and `division` can only be include/only/none/any/{id}'''
     app = request.app
     dhrid = request.state.dhrid
@@ -214,7 +213,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_dlog(request: Request, response: Response, logid: int, authorization: str = Header(None)):
+async def get_dlog(request: Request, response: Response, logid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /dlog', 60, 120)
@@ -235,10 +234,6 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
             return au
         userid = au["userid"]
         uid = au["uid"]
-
-    if logid is None:
-        response.status_code = 404
-        return {"error": ml.tr(request, "delivery_log_not_found")}
 
     await app.db.execute(dhrid, f"SELECT userid, data, timestamp, distance, view_count, trackerid, tracker_type FROM dlog WHERE logid >= 0 AND logid = {logid}")
     t = await app.db.fetchall(dhrid)
@@ -333,7 +328,7 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
             "timestamp": t[0][2], "views": view_count, \
             "detail": data, "telemetry": telemetry}
 
-async def delete_dlog(request: Request, response: Response, logid: int, authorization: str = Header(None)):
+async def delete_dlog(request: Request, response: Response, logid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /dlog', 60, 60)

@@ -4,21 +4,20 @@
 import random
 import string
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Response
 from fastapi.responses import RedirectResponse
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None),
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_downloadsid: Optional[int] = None, \
-        created_after: Optional[int] = None, created_before: Optional[int] = None, \
-        order_by: Optional[str] = "orderid", order: Optional[str] = "asc", \
-        title: Optional[str] = "", created_by: Optional[int] = None,
-        min_click: Optional[int] = None, max_click: Optional[int] = None):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None),
+        page: int | None = 1, page_size: int | None = 10, after_downloadsid: int | None = None, \
+        created_after: int | None = None, created_before: int | None = None, \
+        order_by: str | None = "orderid", order: str | None = "asc", \
+        title: str | None = "", created_by: int | None = None,
+        min_click: int | None = None, max_click: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /downloads/list', 60, 120)
@@ -92,7 +91,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret[:page_size], "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_downloads(request: Request, response: Response, downloadsid: int, authorization: str = Header(None)):
+async def get_downloads(request: Request, response: Response, downloadsid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /downloads', 60, 120)
@@ -163,7 +162,7 @@ async def get_redirect(request: Request, response: Response, secret: str):
 
     return RedirectResponse(url=link, status_code=302)
 
-async def post_downloads(request: Request, response: Response, authorization: str = Header(None)):
+async def post_downloads(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /downloads', 60, 30)
@@ -230,7 +229,7 @@ async def post_downloads(request: Request, response: Response, authorization: st
 
     return {"downloadsid": downloadsid}
 
-async def patch_downloads(request: Request, response: Response, downloadsid: int, authorization: str = Header(None)):
+async def patch_downloads(request: Request, response: Response, downloadsid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /downloads', 60, 30)
@@ -293,7 +292,7 @@ async def patch_downloads(request: Request, response: Response, downloadsid: int
 
     return Response(status_code=204)
 
-async def delete_downloads(request: Request, response: Response, downloadsid: int, authorization: str = Header(None)):
+async def delete_downloads(request: Request, response: Response, downloadsid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /downloads', 60, 30)

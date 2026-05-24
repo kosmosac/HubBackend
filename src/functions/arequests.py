@@ -4,7 +4,7 @@
 import aiohttp
 import requests
 
-from static import USER_AGENT
+from src.static import USER_AGENT
 
 
 def process_headers(headers):

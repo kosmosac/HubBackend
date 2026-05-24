@@ -2,18 +2,17 @@
 # Author: @CharlesWithC
 
 import math
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-    page: Optional[int] = 1, page_size: Optional[int] = 10, after_uid: Optional[int] = None, name: Optional[str] = '', \
-        joined_after: Optional[int] = None, joined_before: Optional[int] = None, \
-        order_by: Optional[str] = "uid", order: Optional[str] = "asc"):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+    page: int | None = 1, page_size: int | None = 10, after_uid: int | None = None, name: str | None = '', \
+        joined_after: int | None = None, joined_before: int | None = None, \
+        order_by: str | None = "uid", order: str | None = "asc"):
     """Returns the information of a list of users
 
     Not all information is included, use `/user/profile` for detailed profile."""
@@ -101,8 +100,8 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret, "total_items": total_items, "total_pages": int(math.ceil(total_items / page_size))}
 
-async def get_profile(request: Request, response: Response, authorization: str = Header(None), \
-    userid: Optional[int] = None, uid: Optional[int] = None, discordid: Optional[int] = None, steamid: Optional[int] = None, truckersmpid: Optional[int] = None, email: Optional[str] = None, role_history_limit: Optional[int] = 50, ban_history_limit: Optional[int] = 50):
+async def get_profile(request: Request, response: Response, authorization: str | None = Header(None), \
+    userid: int | None = None, uid: int | None = None, discordid: int | None = None, steamid: int | None = None, truckersmpid: int | None = None, email: str | None = None, role_history_limit: int | None = 50, ban_history_limit: int | None = 50):
     """Returns the profile of a specific user
 
     If no request param is provided, then returns the profile of the authorized user."""
@@ -215,7 +214,7 @@ async def get_profile(request: Request, response: Response, authorization: str =
 
     return userinfo
 
-async def patch_profile(request: Request, response: Response, authorization: str = Header(None), uid: Optional[int] = None, sync_from_discord: Optional[bool] = False, sync_from_steam: Optional[bool] = False, sync_from_truckersmp: Optional[bool] = False):
+async def patch_profile(request: Request, response: Response, authorization: str | None = Header(None), uid: int | None = None, sync_from_discord: bool | None = False, sync_from_steam: bool | None = False, sync_from_truckersmp: bool | None = False):
     """Updates the profile of a specific user
 
     If `sync_from_discord` is `true`, then syncs to their Discord profile.
@@ -412,7 +411,7 @@ async def patch_profile(request: Request, response: Response, authorization: str
     await UpdateRoleConnection(request, discordid)
     return userinfo
 
-async def patch_bio(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_bio(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the bio of the authorized user, returns 204
 
     JSON: `{"bio": str}`"""
@@ -450,7 +449,7 @@ async def patch_bio(request: Request, response: Response, authorization: str = H
 
     return Response(status_code=204)
 
-async def patch_activity(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_activity(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the activity of the authorized user, returns 204
 
     JSON: `{"activity": str}`
@@ -491,7 +490,7 @@ async def patch_activity(request: Request, response: Response, authorization: st
 
     return Response(status_code=204)
 
-async def patch_note(request: Request, response: Response, uid: int, authorization: str = Header(None)):
+async def patch_note(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """Updates the note of a user, returns 204
 
     JSON: `{"note": str}`"""
@@ -534,7 +533,7 @@ async def patch_note(request: Request, response: Response, uid: int, authorizati
 
     return Response(status_code=204)
 
-async def post_tracker_switch(request: Request, response: Response, uid: Optional[int] = None, authorization: str = Header(None)):
+async def post_tracker_switch(request: Request, response: Response, uid: int | None = None, authorization: str | None = Header(None)):
     """Updates tracker_in_use column of user table in database, returns 204"""
     app = request.app
     dhrid = request.state.dhrid

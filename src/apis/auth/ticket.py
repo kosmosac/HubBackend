@@ -3,15 +3,14 @@
 
 import time
 import uuid
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_ticket(request: Request, response: Response, token: Optional[str] = None):
+async def get_ticket(request: Request, response: Response, token: str | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /auth/ticket', 60, 120)
@@ -38,7 +37,7 @@ async def get_ticket(request: Request, response: Response, token: Optional[str] 
     await app.db.commit(dhrid)
     return (await GetUserInfo(request, uid = t[0][0]))
 
-async def post_ticket(request: Request, response: Response, authorization: str = Header(None)):
+async def post_ticket(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /auth/ticket', 180, 30)

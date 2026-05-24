@@ -11,13 +11,13 @@ from datetime import datetime, timezone
 import requests
 from fastapi import Request
 
-import multilang as ml
-from functions.arequests import *
-from functions.dataop import *
-from functions.discord import parse_discord_response, opqueue
-from functions.general import *
-from functions.userinfo import *
-from static import *
+import src.multilang as ml
+from src.functions.arequests import *
+from src.functions.dataop import *
+from src.functions.discord import parse_discord_response, opqueue
+from src.functions.general import *
+from src.functions.userinfo import *
+from src.static import *
 
 # app.state.discord_message_queue = []
 # app.state.discord_retry_after = {}
@@ -135,7 +135,7 @@ async def ProcessDiscordMessage(app): # thread
                     app.state.discord_message_queue.pop(i)
 
         except Exception as exc:
-            from api import tracebackHandler
+            from src.api import tracebackHandler
             await tracebackHandler(request, exc, traceback.format_exc())
 
         finally:
@@ -408,5 +408,5 @@ async def AutoMessage(app, meta, setvar):
             opqueue.queue(app, "post", meta.webhook_url, meta.webhook_url, data, {"Content-Type": "application/json"}, None)
 
     except Exception as exc:
-        from api import tracebackHandler
+        from src.api import tracebackHandler
         await tracebackHandler(request, exc, traceback.format_exc())

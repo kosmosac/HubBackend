@@ -7,13 +7,12 @@ import os
 import time
 import traceback
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from api import tracebackHandler
-from functions import *
+import src.multilang as ml
+from src.api import tracebackHandler
+from src.functions import *
 
 
 async def EventNotification(app):
@@ -172,15 +171,15 @@ async def EventNotification(app):
         except:
             return
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, \
-        order_by: Optional[str] = "orderid", order: Optional[str] = "asc", is_private: Optional[bool] = None, \
-        title: Optional[str] = "", created_by: Optional[int] = None, attended_by: Optional[int] = None, voted_by: Optional[int] = None, \
-        after_eventid: Optional[int] = None, created_after: Optional[int] = None, created_before: Optional[int] = None, \
-        meetup_after: Optional[int] = None, meetup_before: Optional[int] = None, \
-        departure_after: Optional[int] = None, departure_before: Optional[int] = None, \
-        min_vote: Optional[int] = None, max_vote: Optional[int] = None, \
-        min_attendee: Optional[int] = None, max_attendee: Optional[int] = None):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, \
+        order_by: str | None = "orderid", order: str | None = "asc", is_private: bool | None = None, \
+        title: str | None = "", created_by: int | None = None, attended_by: int | None = None, voted_by: int | None = None, \
+        after_eventid: int | None = None, created_after: int | None = None, created_before: int | None = None, \
+        meetup_after: int | None = None, meetup_before: int | None = None, \
+        departure_after: int | None = None, departure_before: int | None = None, \
+        min_vote: int | None = None, max_vote: int | None = None, \
+        min_attendee: int | None = None, max_attendee: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /events/list', 60, 120)
@@ -318,7 +317,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret[:page_size], "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_event(request: Request, response: Response, eventid: int, authorization: str = Header(None)):
+async def get_event(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /events', 60, 120)
@@ -368,7 +367,7 @@ async def get_event(request: Request, response: Response, eventid: int, authoriz
 
     return {"eventid": tt[0], "title": tt[8], "link": decompress(tt[1]), "description": decompress(tt[7]), "creator": await GetUserInfo(request, userid = tt[16]), "departure": tt[2], "destination": tt[3], "distance": tt[4], "meetup_timestamp": tt[5], "departure_timestamp": tt[6], "points": tt[12], "is_private": TF[tt[11]], "orderid": tt[13], "is_pinned": TF[tt[14]], "timestamp": tt[15], "attendees": attendee_ret, "votes": vote_ret, "voted": voted}
 
-async def put_vote(request: Request, response: Response, eventid: int, authorization: str = Header(None)):
+async def put_vote(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PUT /events/vote', 60, 30)
@@ -402,7 +401,7 @@ async def put_vote(request: Request, response: Response, eventid: int, authoriza
         await app.db.commit(dhrid)
         return Response(status_code=204)
 
-async def delete_vote(request: Request, response: Response, eventid: int, authorization: str = Header(None)):
+async def delete_vote(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /events/vote', 60, 30)
@@ -436,7 +435,7 @@ async def delete_vote(request: Request, response: Response, eventid: int, author
         response.status_code = 409
         return {"error": ml.tr(request, "event_not_voted", force_lang = au["language"])}
 
-async def post_event(request: Request, response: Response, authorization: str = Header(None)):
+async def post_event(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /events', 60, 30)
@@ -532,7 +531,7 @@ async def post_event(request: Request, response: Response, authorization: str = 
 
     return {"eventid": eventid}
 
-async def patch_event(request: Request, response: Response, eventid: int, authorization: str = Header(None)):
+async def patch_event(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /events', 60, 30)
@@ -619,7 +618,7 @@ async def patch_event(request: Request, response: Response, eventid: int, author
 
     return Response(status_code=204)
 
-async def delete_event(request: Request, response: Response, eventid: int, authorization: str = Header(None)):
+async def delete_event(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /events', 60, 30)
@@ -648,7 +647,7 @@ async def delete_event(request: Request, response: Response, eventid: int, autho
 
     return Response(status_code=204)
 
-async def patch_attendees(request: Request, response: Response, eventid: int, authorization: str = Header(None)):
+async def patch_attendees(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /events/attendees', 60, 30)

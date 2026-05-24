@@ -3,18 +3,17 @@
 
 import math
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
 # The beneficial party of merch income is "company".
 # All merch income will be transferred to the "company" account.
 
-async def get_all_merch(request: Request, response: Response, authorization: str = Header(None)):
+async def get_all_merch(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/merch', 60, 30)
@@ -33,12 +32,12 @@ async def get_all_merch(request: Request, response: Response, authorization: str
 
     return app.config.economy.merch
 
-async def get_merch_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_itemid: Optional[int] = None, \
-        merchid: Optional[str] = "", owner: Optional[int] = None, \
-        min_price: Optional[int] = None, max_price: Optional[int] = None, \
-        purchased_after: Optional[int] = None, purchased_before: Optional[int] = None, \
-        order_by: Optional[str] = "price", order: Optional[str] = "desc"):
+async def get_merch_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, after_itemid: int | None = None, \
+        merchid: str | None = "", owner: int | None = None, \
+        min_price: int | None = None, max_price: int | None = None, \
+        purchased_after: int | None = None, purchased_before: int | None = None, \
+        order_by: str | None = "price", order: str | None = "desc"):
     '''Get a list of merch.'''
     app = request.app
     dhrid = request.state.dhrid
@@ -115,7 +114,7 @@ async def get_merch_list(request: Request, response: Response, authorization: st
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def post_merch_purchase(request: Request, response: Response, merchid: str, authorization: str = Header(None)):
+async def post_merch_purchase(request: Request, response: Response, merchid: str, authorization: str | None = Header(None)):
     '''Purchase a merch, returns `itemid`, `cost`, `balance`.
 
     JSON: `{"owner": Optional[str]}`
@@ -206,7 +205,7 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
 
     return {"itemid": itemid, "cost": merch['buy_price'], "balance": round(balance - merch['buy_price'])}
 
-async def post_merch_transfer(request: Request, response: Response, itemid: int, authorization: str = Header(None)):
+async def post_merch_transfer(request: Request, response: Response, itemid: int, authorization: str | None = Header(None)):
     '''Transfer a merch (ownership).
 
     JSON: `{"owner": Optional[str], "message": Optional[str]}`
@@ -306,7 +305,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
 
     return Response(status_code=204)
 
-async def post_merch_sell(request: Request, response: Response, itemid: int, authorization: str = Header(None)):
+async def post_merch_sell(request: Request, response: Response, itemid: int, authorization: str | None = Header(None)):
     '''Sell a merch, returns `refund`, `balance`.'''
     app = request.app
     dhrid = request.state.dhrid

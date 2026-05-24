@@ -1,3 +1,4 @@
+# pyright: reportImportCycles=false
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
@@ -8,6 +9,7 @@ import json
 import time
 import traceback
 from datetime import datetime, timezone
+from typing import override
 
 import psutil
 from fastapi import Request
@@ -17,9 +19,9 @@ from starlette.datastructures import URL, Address
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from functions import *
-from logger import logger
-from threads import *
+from src.functions import *
+from src.logger import logger
+from src.threads import *
 
 
 async def startup_event(app):
@@ -37,13 +39,13 @@ async def startup_event(app):
     loop.create_task(UpdateDlogStats(app))
 
     if "event" in app.config.plugins:
-        from plugins.event import EventNotification
+        from src.plugins.event import EventNotification
         loop.create_task(EventNotification(app))
     if "poll" in app.config.plugins:
-        from plugins.poll import PollResultNotification
+        from src.plugins.poll import PollResultNotification
         loop.create_task(PollResultNotification(app))
     if "task" in app.config.plugins:
-        from plugins.task import TaskReminderNotification, RecurringTaskHandler
+        from src.plugins.task import RecurringTaskHandler, TaskReminderNotification
         loop.create_task(TaskReminderNotification(app))
         loop.create_task(RecurringTaskHandler(app))
 
@@ -57,10 +59,10 @@ async def shutdown_event(app):
     app.db.close_pool()
 
 # request param is needed as `call_next` will include it
-async def errorHandler(request: Request, exc: StarletteHTTPException):
+async def errorHandler(request: Request, exc: StarletteHTTPException): # pyright: ignore[reportUnusedParameter]
     return JSONResponse({"error": exc.detail}, status_code = exc.status_code)
 
-async def error422Handler(request: Request, exc: RequestValidationError):
+async def error422Handler(request: Request, exc: RequestValidationError): # pyright: ignore[reportUnusedParameter]
     return JSONResponse({"error": "Unprocessable Entity"}, status_code = 422)
 
 # app.state.dberr = []
@@ -161,6 +163,7 @@ async def tracebackHandler(request: Request, exc: Exception, err: str):
 
 # middleware to manage database connection
 class HubMiddleware(BaseHTTPMiddleware):
+    @override
     async def dispatch(self, request, call_next):
         app = request.app
         try:

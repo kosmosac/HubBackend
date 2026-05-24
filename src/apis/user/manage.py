@@ -2,15 +2,14 @@
 # Author: @CharlesWithC
 
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def post_accept(request: Request, response: Response, uid: int, authorization: str = Header(None)):
+async def post_accept(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """[Permission Control] Accepts a user as member, assign userid, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -86,7 +85,7 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
     truckersmpid = t[0][5]
     email = convertQuotation(t[0][6])
     avatar = t[0][7]
-    if (email is None or '@' not in email) and "email" in app.config.required_connections:
+    if '@' not in email and "email" in app.config.required_connections:
         response.status_code = 428
         return {"error": ml.tr(request, "connection_invalid", var = {"app": "Email"}, force_lang = au["language"])}
     if discordid is None and "discord" in app.config.required_connections:
@@ -134,7 +133,7 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
 
     return {"userid": userid}
 
-async def patch_connections(request: Request, response: Response, uid: int, authorization: str = Header(None)):
+async def patch_connections(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """[Permission Control] Updates account connections for a specific user, returns 204
 
     JSON: `{"email": Optional[str], "discordid": Optional[int], "steamid": Optional[int], "truckersmpid": Optional[int]}`"""
@@ -242,7 +241,7 @@ async def patch_connections(request: Request, response: Response, uid: int, auth
 
     return Response(status_code=204)
 
-async def delete_connections(request: Request, response: Response, uid: int, connection: str, authorization: str = Header(None)):
+async def delete_connections(request: Request, response: Response, uid: int, connection: str, authorization: str | None = Header(None)):
     """[Permission Control] Deletes connections for a specific user."""
     connections_key = ["email", "discordid", "steamid", "truckersmpid"]
     if connection not in connections_key:
@@ -268,10 +267,6 @@ async def delete_connections(request: Request, response: Response, uid: int, con
         response.status_code = 403
         return {"error": ml.tr(request, "access_sensitive_data", force_lang = au["language"])}
 
-    if uid is None:
-        response.status_code = 404
-        return {"error": ml.tr(request, "user_not_found", force_lang = au["language"])}
-
     await app.db.execute(dhrid, f"SELECT userid FROM user WHERE uid = {uid}")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:
@@ -286,10 +281,10 @@ async def delete_connections(request: Request, response: Response, uid: int, con
 
     return Response(status_code=204)
 
-async def get_ban_list(request: Request, response: Response, authorization: str = Header(None), \
-    page: Optional[int] = 1, page_size: Optional[int] = 10, after_uid: Optional[int] = None, \
-        name: Optional[str] = "", reason: Optional[str] = "", \
-        order_by: Optional[str] = "uid", order: Optional[str] = "asc"):
+async def get_ban_list(request: Request, response: Response, authorization: str | None = Header(None), \
+    page: int | None = 1, page_size: int | None = 10, after_uid: int | None = None, \
+        name: str | None = "", reason: str | None = "", \
+        order_by: str | None = "uid", order: str | None = "asc"):
     """Returns the information of a list of banned users"""
     app = request.app
     dhrid = request.state.dhrid
@@ -360,8 +355,8 @@ async def get_ban_list(request: Request, response: Response, authorization: str 
 
     return {"list": selected_ret, "total_items": len(ret), "total_pages": int(math.ceil(len(ret) / page_size))}
 
-async def get_ban(request: Request, response: Response, authorization: str = Header(None), \
-    uid: Optional[int] = None, email: Optional[str] = None, discordid: Optional[int] = None, steamid: Optional[int] = None, truckersmpid: Optional[int] = None):
+async def get_ban(request: Request, response: Response, authorization: str | None = Header(None), \
+    uid: int | None = None, email: str | None = None, discordid: int | None = None, steamid: int | None = None, truckersmpid: int | None = None):
     """Returns info of specific banned user if exists"""
     app = request.app
     dhrid = request.state.dhrid
@@ -412,7 +407,7 @@ async def get_ban(request: Request, response: Response, authorization: str = Hea
 
     return {"user": userinfo, "meta": {"uid": tt[0], "email": tt[1], "discordid": discordid, "steamid": steamid, "truckersmpid": tt[4]}, "ban": {"reason": tt[5], "expire": tt[6]}}
 
-async def put_ban(request: Request, response: Response, authorization: str = Header(None)):
+async def put_ban(request: Request, response: Response, authorization: str | None = Header(None)):
     """Bans user with specific connections, returns 204
 
     JSON: {"expire": Optional[int], "reason": str}"""
@@ -514,7 +509,7 @@ async def put_ban(request: Request, response: Response, authorization: str = Hea
         response.status_code = 409
         return {"error": ml.tr(request, "user_already_banned", force_lang = au["language"])}
 
-async def delete_ban(request: Request, response: Response, authorization: str = Header(None)):
+async def delete_ban(request: Request, response: Response, authorization: str | None = Header(None)):
     """Unbans a specific user, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -573,7 +568,7 @@ async def delete_ban(request: Request, response: Response, authorization: str = 
 
         return Response(status_code=204)
 
-async def delete_ban_history(request: Request, response: Response, historyid: int, authorization: str = Header(None)):
+async def delete_ban_history(request: Request, response: Response, historyid: int, authorization: str | None = Header(None)):
     """Deletes a specific row of user ban history with historyid, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -602,7 +597,7 @@ async def delete_ban_history(request: Request, response: Response, historyid: in
 
     return Response(status_code=204)
 
-async def delete_user(request: Request, response: Response, uid: int, authorization: str = Header(None)):
+async def delete_user(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """Deletes a specific user, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -691,7 +686,7 @@ async def delete_user(request: Request, response: Response, uid: int, authorizat
 
         return Response(status_code=204)
 
-async def patch_note_global(request: Request, response: Response, uid: int, authorization: str = Header(None)):
+async def patch_note_global(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """Updates the global note of a user, returns 204
 
     JSON: `{"note": str}`"""

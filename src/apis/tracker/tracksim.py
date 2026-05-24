@@ -9,9 +9,9 @@ import traceback
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from api import tracebackHandler
-from functions import *
+import src.multilang as ml
+from src.api import tracebackHandler
+from src.functions import *
 
 async def FetchRoute(app, gameid, userid, logid, trackerid, request, dhrid = None):
     r = None
@@ -186,7 +186,7 @@ async def post_update(response: Response, request: Request):
 
     return Response(status_code = 204)
 
-async def post_update_route(response: Response, request: Request, authorization: str = Header(None)):
+async def post_update_route(response: Response, request: Request, authorization: str | None = Header(None)):
     app = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404
@@ -238,7 +238,7 @@ async def post_update_route(response: Response, request: Request, authorization:
         response.status_code = 503
         return r
 
-async def put_driver(response: Response, request: Request, userid: int, authorization: str = Header(None)):
+async def put_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
     app = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404
@@ -271,7 +271,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
         response.status_code = 503
         return {"error": tracker_app_error}
 
-async def delete_driver(response: Response, request: Request, userid: int, authorization: str = Header(None)):
+async def delete_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
     app = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404

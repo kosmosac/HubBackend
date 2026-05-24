@@ -1,6 +1,7 @@
 build/
 dist/
 releases/
+ci/
 
 __pycache__
-.vscode
+.venv

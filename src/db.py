@@ -10,7 +10,7 @@ import aiomysql
 import pymysql
 import sqlparse
 
-from logger import logger
+from src.logger import logger
 
 
 def init(config, version):
@@ -249,29 +249,29 @@ class aiosql:
         self.iowait = {} # performance counter
         self.pool = None
         self.shutdown_lock = False
-        self.POOL_START_TIME = 0
+        self.pool_start_time = 0
         self.is_restarting = False # prevent duplicate restart requests, especially when master-db is on
         self.restart_start = 0 # timestamp of restart request
 
     async def create_pool(self):
         if self.pool is None: # init pool
-            if time.time() - self.POOL_START_TIME < 30:
+            if time.time() - self.pool_start_time < 30:
                 raise pymysql.err.OperationalError("[aiosql] Pool is being initialized")
-            self.POOL_START_TIME = time.time()
+            self.pool_start_time = time.time()
             self.pool = await aiomysql.create_pool(host = self.host, user = self.user, password = self.passwd, \
                                         db = self.db_name, autocommit = False, pool_recycle = 5, \
                                         maxsize = self.db_pool_size)
 
     def close_pool(self):
         self.shutdown_lock = True
-        self.POOL_START_TIME = 0
+        self.pool_start_time = 0
         self.pool.terminate()
 
     async def restart_pool(self):
-        if time.time() - self.POOL_START_TIME < 30:
+        if time.time() - self.pool_start_time < 30:
             raise pymysql.err.OperationalError("[aiosql] Pool is too young to be restarted")
         self.pool.terminate() # terminating the pool when the pool is already closed will not lead to errors
-        self.POOL_START_TIME = time.time()
+        self.pool_start_time = time.time()
         self.pool = await aiomysql.create_pool(host = self.host, user = self.user, password = self.passwd, \
                                         db = self.db_name, autocommit = False, pool_recycle = 5, \
                                         maxsize = self.db_pool_size)
@@ -280,7 +280,7 @@ class aiosql:
         conns = self.conns
         to_delete = []
         for tdhrid in conns.keys():
-            (tconn, tcur, expire_time, extra_time, db_name, trace) = conns[tdhrid]
+            (tconn, tcur, expire_time, extra_time, db_name, trace) = conns[tdhrid] # pyright: ignore[reportUnusedVariable]
             if time.time() - expire_time >= 60: # pure garbage collection
                 to_delete.append(tdhrid)
                 try:
@@ -318,9 +318,9 @@ class aiosql:
         st = time.time()
 
         if self.pool is None: # init pool
-            if time.time() - self.POOL_START_TIME < 30:
+            if time.time() - self.pool_start_time < 30:
                 raise pymysql.err.OperationalError("[aiosql] Pool is being initialized")
-            self.POOL_START_TIME = time.time()
+            self.pool_start_time = time.time()
             self.pool = await aiomysql.create_pool(host = self.host, user = self.user, password = self.passwd, \
                                         db = self.db_name, autocommit = False, pool_recycle = 5, \
                                         maxsize = self.db_pool_size)

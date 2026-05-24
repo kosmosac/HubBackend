@@ -6,13 +6,12 @@ import copy
 import time
 import traceback
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from api import tracebackHandler
-from functions import *
+import src.multilang as ml
+from src.api import tracebackHandler
+from src.functions import *
 
 POLL_CONFIG_KEYS = ["max_choice", "allow_modify_vote", "show_stats", "show_stats_before_vote", "show_voter", "show_stats_when_ended"]
 POLL_DEFAULT_CONFIG = {"max_choice": 1, "allow_modify_vote": False, "show_stats": True, "show_stats_before_vote": False, "show_voter": False, "show_stats_when_ended": True}
@@ -152,12 +151,12 @@ async def PollResultNotification(app):
         except:
             return
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None),
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_pollid: Optional[int] = None, \
-        created_after: Optional[int] = None, created_before: Optional[int] = None, \
-        end_after: Optional[int] = None, end_before: Optional[int] = None, \
-        order_by: Optional[str] = "orderid", order: Optional[str] = "asc", \
-        title: Optional[str] = "", created_by: Optional[int] = None):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None),
+        page: int | None = 1, page_size: int | None = 10, after_pollid: int | None = None, \
+        created_after: int | None = None, created_before: int | None = None, \
+        end_after: int | None = None, end_before: int | None = None, \
+        order_by: str | None = "orderid", order: str | None = "asc", \
+        title: str | None = "", created_by: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /polls/list', 60, 120)
@@ -271,7 +270,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 
     return {"list": ret[:page_size], "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_poll(request: Request, response: Response, pollid: int, authorization: str = Header(None)):
+async def get_poll(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /polls', 60, 120)
@@ -348,7 +347,7 @@ async def get_poll(request: Request, response: Response, pollid: int, authorizat
 
     return ret
 
-async def put_poll_vote(request: Request, response: Response, pollid: int, authorization: str = Header(None)):
+async def put_poll_vote(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
     '''Put poll vote
 
     JSON: {"choices": list}
@@ -425,7 +424,7 @@ async def put_poll_vote(request: Request, response: Response, pollid: int, autho
 
     return Response(status_code=204)
 
-async def patch_poll_vote(request: Request, response: Response, pollid: int, authorization: str = Header(None)):
+async def patch_poll_vote(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
     '''Patch poll vote
 
     JSON: {"choices": list}
@@ -507,7 +506,7 @@ async def patch_poll_vote(request: Request, response: Response, pollid: int, aut
 
     return Response(status_code=204)
 
-async def delete_poll_vote(request: Request, response: Response, pollid: int, authorization: str = Header(None)):
+async def delete_poll_vote(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
     '''Delete poll vote
 
     [NOTE] This will deleted all voted choices of the poll for the user'''
@@ -561,7 +560,7 @@ async def delete_poll_vote(request: Request, response: Response, pollid: int, au
 
     return Response(status_code=204)
 
-async def post_poll(request: Request, response: Response, authorization: str = Header(None)):
+async def post_poll(request: Request, response: Response, authorization: str | None = Header(None)):
     '''Post a poll
 
     `config`: dict containing optional keys "max_choice", "allow_modify_vote", "show_stats", "show_stats_before_vote", "show_voter", "show_stats_when_ended"
@@ -680,7 +679,7 @@ async def post_poll(request: Request, response: Response, authorization: str = H
 
     return {"pollid": pollid}
 
-async def patch_poll(request: Request, response: Response, pollid: int, authorization: str = Header(None)):
+async def patch_poll(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
     '''Patch a poll
 
     `config`: dict containing keys "max_choice", "allow_modify_vote", "show_stats", "show_stats_before_vote", "show_voter", "show_stats_when_ended"
@@ -804,7 +803,7 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
 
     return Response(status_code=204)
 
-async def delete_poll(request: Request, response: Response, pollid: int, authorization: str = Header(None)):
+async def delete_poll(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /polls', 60, 30)

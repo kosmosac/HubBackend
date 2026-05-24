@@ -3,12 +3,11 @@
 
 import math
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 async def GetTruckInfo(request, vehicleid):
     if vehicleid is None:
@@ -28,7 +27,7 @@ async def GetTruckInfo(request, vehicleid):
 
     return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
 
-async def get_all_trucks(request: Request, response: Response, authorization: str = Header(None)):
+async def get_all_trucks(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/trucks', 60, 30)
@@ -47,15 +46,15 @@ async def get_all_trucks(request: Request, response: Response, authorization: st
 
     return app.config.economy.trucks
 
-async def get_truck_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_vehicleid: Optional[int] = None, \
-        truckid: Optional[str] = "", garageid: Optional[str] = "",\
-        owner: Optional[int] = None, min_price: Optional[int] = None, max_price: Optional[int] = None, \
-        purchased_after: Optional[int] = None, purchased_before: Optional[int] = None, \
-        min_income: Optional[int] = None, max_income: Optional[int] = None,
-        min_odometer: Optional[int] = None, max_odometer: Optional[int] = None,
-        min_damage: Optional[float] = None, max_damage: Optional[float] = None,
-        order_by: Optional[str] = "odometer", order: Optional[str] = "desc"):
+async def get_truck_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, after_vehicleid: int | None = None, \
+        truckid: str | None = "", garageid: str | None = "",\
+        owner: int | None = None, min_price: int | None = None, max_price: int | None = None, \
+        purchased_after: int | None = None, purchased_before: int | None = None, \
+        min_income: int | None = None, max_income: int | None = None,
+        min_odometer: int | None = None, max_odometer: int | None = None,
+        min_damage: float | None = None, max_damage: float | None = None,
+        order_by: str | None = "odometer", order: str | None = "desc"):
     '''Get a list of trucks.'''
     app = request.app
     dhrid = request.state.dhrid
@@ -154,7 +153,7 @@ async def get_truck_list(request: Request, response: Response, authorization: st
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_truck(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def get_truck(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Get info of a specific truck'''
     app = request.app
     dhrid = request.state.dhrid
@@ -189,7 +188,7 @@ async def get_truck(request: Request, response: Response, vehicleid: int, author
 
     return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
 
-async def get_truck_operation_history(request: Request, response: Response, vehicleid: int, operation: str, authorization: str = Header(None), page: Optional[int] = 1, page_size: Optional[int] = 10, after_txid: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None, order: Optional[str] = "desc"):
+async def get_truck_operation_history(request: Request, response: Response, vehicleid: int, operation: str, authorization: str | None = Header(None), page: int | None = 1, page_size: int | None = 10, after_txid: int | None = None, after: int | None = None, before: int | None = None, order: str | None = "desc"):
     '''Get the transaction history of a specific truck.
 
     `order_by` is `timestamp`.'''
@@ -312,7 +311,7 @@ async def get_truck_operation_history(request: Request, response: Response, vehi
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def post_truck_purchase(request: Request, response: Response, truckid: str, authorization: str = Header(None), owner: Optional[str] = "self"):
+async def post_truck_purchase(request: Request, response: Response, truckid: str, authorization: str | None = Header(None), owner: str | None = "self"):
     '''Purchase a truck, returns `vehicleid`, `cost`, `balance`.
 
     JSON: `{"owner": Optional[str], "slotid": int, "assignee": Optional[int]}`
@@ -453,7 +452,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
 
     return {"vehicleid": vehicleid, "cost": truck["price"], "balance": round(balance - truck["price"])}
 
-async def post_truck_transfer(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_transfer(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Transfer / Reassign a truck, returns 204.
 
     JSON: `{"owner": Optional[str], "assignee": Optional[int], "message": Optional[str]}`
@@ -618,7 +617,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
 
     return Response(status_code=204)
 
-async def post_truck_relocate(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_relocate(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Transfer / Reassign a truck, returns 204.
 
     JSON: `{"slotid": int"}`'''
@@ -694,7 +693,7 @@ async def post_truck_relocate(request: Request, response: Response, vehicleid: i
 
     return Response(status_code=204)
 
-async def post_truck_activate(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_activate(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Activate a truck, returns 204.
 
     [NOTE] If the owner / assignee has multiple trucks of the same model, other trucks of the same model will be deactivated.'''
@@ -757,7 +756,7 @@ async def post_truck_activate(request: Request, response: Response, vehicleid: i
 
     return Response(status_code=204)
 
-async def post_truck_deactivate(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_deactivate(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Deactivate a truck, returns 204.
 
     [NOTE] If there's no status truck of a model, new jobs of that model will be charged a rental cost.'''
@@ -805,7 +804,7 @@ async def post_truck_deactivate(request: Request, response: Response, vehicleid:
 
     return Response(status_code=204)
 
-async def post_truck_repair(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_repair(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Repair a truck, returns `cost`, `balance`.
 
     [NOTE] If the truck's damage > app.config.economy.max_wear_before_service, new jobs will be charged a rental cost. Once the issue is noticed, status state of the truck will be modified to -1. If the truck's state is -1 and a repair is performed, it will be reactivated automatically if there's no other status trucks.'''
@@ -890,7 +889,7 @@ async def post_truck_repair(request: Request, response: Response, vehicleid: int
 
     return {"cost": cost, "balance": round(balance - cost)}
 
-async def post_truck_sell(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_sell(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Sell a truck, returns `refund`, `balance`.
 
     [Note] refund = price * (1 - damage) * app.config.economy.truck_refund (ratio)'''
@@ -948,7 +947,7 @@ async def post_truck_sell(request: Request, response: Response, vehicleid: int, 
 
     return {"refund": refund, "balance": round(balance + refund)}
 
-async def post_truck_scrap(request: Request, response: Response, vehicleid: int, authorization: str = Header(None)):
+async def post_truck_scrap(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Scrap a truck, returns `refund`, `balance`.
 
     [Note] refund = price * app.config.economy.scrap_refund (ratio)'''

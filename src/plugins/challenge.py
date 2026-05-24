@@ -4,12 +4,11 @@
 import copy
 import json
 import time
-from typing import Optional
 
 from fastapi import Header, Query, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 JOB_REQUIREMENTS = ["source_city_id", "source_company_id", "destination_city_id", "destination_company_id", "minimum_distance", "cargo_id", "minimum_cargo_mass", "maximum_cargo_damage", "maximum_speed", "maximum_fuel", "minimum_profit", "maximum_profit", "maximum_offence", "allow_overspeed", "allow_auto_park", "allow_auto_load", "must_not_be_late", "must_be_special", "minimum_average_speed", "maximum_average_speed", "minimum_average_fuel", "maximum_average_fuel", "minimum_seconds_spent", "maximum_seconds_spent", "maximum_distance", "minimum_detour_percentage", "maximum_detour_percentage", "minimum_adblue", "maximum_adblue", "minimum_fuel", "market", "game", "truck_id", "truck_plate_country_id", "minimum_truck_wheel", "maximum_truck_wheel", "maximum_cargo_mass", "minimum_cargo_damage", "minimum_offence", "minimum_xp", "maximum_xp", "minimum_train", "maximum_train", "minimum_ferry", "maximum_ferry", "minimum_teleport", "maximum_teleport", "minimum_tollgate", "maximum_tollgate", "minimum_toll_paid", "maximum_toll_paid", "minimum_collision", "maximum_collision", "minimum_warp", "maximum_warp", "enabled_realistic_settings"]
 # enabled_realistic_settings: exclusive to trucky | split with ,
@@ -47,17 +46,17 @@ JOB_REQUIREMENT_DEFAULT = {"source_city_id": "", "source_company_id": "", "desti
 # challengeid, title, start_time, end_time, challenge_type, delivery_count, required_roles, required_distance, reward_points
 # if userid is specified, then add "finished_delivery_count"
 
-async def get_list(request: Request, response: Response, authorization: str = Header(None), \
-    page: Optional[int] = 1, page_size: Optional[int] = 10, after_challengeid: Optional[int] = None, \
-        title: Optional[str] = "", created_by: Optional[int] = None, \
-        start_after: Optional[int] = None, start_before: Optional[int] = None, \
-        end_after: Optional[int] = None, end_before: Optional[int] = None, \
-        created_after: Optional[int] = None, created_before: Optional[int] = None, \
-        challenge_type: Optional[int] = Query(None, alias='type'), \
-        required_role: Optional[int] = None, \
-        minimum_required_distance: Optional[int] = None, maximum_required_distance: Optional[int] = None,\
-        completed_by: Optional[int] = None, must_have_completed: Optional[bool] = False, \
-        order: Optional[str] = "desc", order_by: Optional[str] = "reward_points"):
+async def get_list(request: Request, response: Response, authorization: str | None = Header(None), \
+    page: int | None = 1, page_size: int | None = 10, after_challengeid: int | None = None, \
+        title: str | None = "", created_by: int | None = None, \
+        start_after: int | None = None, start_before: int | None = None, \
+        end_after: int | None = None, end_before: int | None = None, \
+        created_after: int | None = None, created_before: int | None = None, \
+        challenge_type: int | None = Query(None, alias='type'), \
+        required_role: int | None = None, \
+        minimum_required_distance: int | None = None, maximum_required_distance: int | None = None,\
+        completed_by: int | None = None, must_have_completed: bool | None = False, \
+        order: str | None = "desc", order_by: str | None = "reward_points"):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -200,7 +199,7 @@ async def get_list(request: Request, response: Response, authorization: str = He
 # returns requirement if public_details = true and user is not staff
 #                     or if public_details = false
 
-async def get_challenge(request: Request, response: Response, challengeid: int, authorization: str = Header(None), completed_by: Optional[int] = None):
+async def get_challenge(request: Request, response: Response, challengeid: int, authorization: str | None = Header(None), completed_by: int | None = None):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /challenges', 60, 120)
@@ -323,7 +322,7 @@ async def get_challenge(request: Request, response: Response, challengeid: int, 
 #   - float: minimum_average_fuel (L/100km)
 #   - float: maximum_average_fuel (L/100km)
 
-async def post_challenge(request: Request, response: Response, authorization: str = Header(None)):
+async def post_challenge(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /challenges', 60, 30)
@@ -472,7 +471,7 @@ async def post_challenge(request: Request, response: Response, authorization: st
 # JSON DATA
 # *Same as POST /challenge
 
-async def patch_challenge(request: Request, response: Response, challengeid: int, authorization: str = Header(None)):
+async def patch_challenge(request: Request, response: Response, challengeid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -912,7 +911,7 @@ async def patch_challenge(request: Request, response: Response, challengeid: int
 # REQUEST PARAM
 # - integer: challengeid
 
-async def delete_challenge(request: Request, response: Response, challengeid: int, authorization: str = Header(None)):
+async def delete_challenge(request: Request, response: Response, challengeid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /challenges', 60, 30)
@@ -954,7 +953,7 @@ async def delete_challenge(request: Request, response: Response, challengeid: in
 # - integer: logid
 # => manually accept a delivery as challenge
 
-async def put_delivery(request: Request, response: Response, challengeid: int, logid: int, authorization: str = Header(None)):
+async def put_delivery(request: Request, response: Response, challengeid: int, logid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
 
@@ -1145,7 +1144,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
 # - integer: logid
 # => denies a delivery as challenge
 
-async def delete_delivery(request: Request, response: Response, challengeid: int, logid: int, authorization: str = Header(None)):
+async def delete_delivery(request: Request, response: Response, challengeid: int, logid: int, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
 

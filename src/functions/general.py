@@ -12,9 +12,9 @@ from datetime import datetime, timezone
 import requests
 from fastapi import Request
 
-import multilang as ml
-from functions.dataop import *
-from static import *
+import src.multilang as ml
+from src.functions.dataop import *
+from src.static import *
 
 
 class Dict2Obj(object):
@@ -31,13 +31,13 @@ class RateLimitException(Exception):
 
 def restart(app):
     time.sleep(3)
-    os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null")
+    os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null") # pyright: ignore[reportDeprecated]
 
 def genrid():
     return str(int(time.time()*10000000)) + str(random.randint(0, 10000)).zfill(5)
 
 def gensecret(length = 32):
-    return ''.join(random.choice(string.ascii_letters) for i in range(length))
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
 
 def getDayStartTs(timestamp):
     dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -46,11 +46,11 @@ def getDayStartTs(timestamp):
 def isurl(s): # s could be NoneType
     try:
         r = re.compile(
-                r'^(?:http)s?://' # http:// or https://
-                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
-                r'localhost|' #localhost...
-                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
-                r'(?::\d+)?' # optional port
+                r'^(?:http)s?://' + # http:// or https://
+                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' + #domain...
+                r'localhost|' + #localhost...
+                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' + # ...or ip
+                r'(?::\d+)?' + # optional port
                 r'(?:/?|[/?]\S+)$', re.IGNORECASE)
         return re.match(r, s) is not None
     except:

@@ -4,11 +4,11 @@
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def get_language(request: Request, response: Response, authorization: str = Header(None)):
+async def get_language(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns the language of the authorized user"""
     app = request.app
     dhrid = request.state.dhrid
@@ -29,7 +29,7 @@ async def get_language(request: Request, response: Response, authorization: str 
 
     return {"language": await GetUserLanguage(request, uid)}
 
-async def patch_language(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_language(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the language of the authorized user, returns 204
 
     JSON: `{"language": str}`"""

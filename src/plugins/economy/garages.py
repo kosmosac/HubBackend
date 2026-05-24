@@ -3,16 +3,15 @@
 
 import math
 import time
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
-from plugins.economy.trucks import GetTruckInfo
+import src.multilang as ml
+from src.functions import *
+from src.plugins.economy.trucks import GetTruckInfo
 
 
-async def get_all_garages(request: Request, response: Response, authorization: str = Header(None)):
+async def get_all_garages(request: Request, response: Response, authorization: str | None = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/garages', 60, 30)
@@ -31,11 +30,11 @@ async def get_all_garages(request: Request, response: Response, authorization: s
 
     return app.config.economy.garages
 
-async def get_garage_list(request: Request, response: Response, authorization: str = Header(None), \
-        page: Optional[int] = 1, page_size: Optional[int] = 10, after_garageid: Optional[str] = None,
-        min_trucks: Optional[int] = None, max_trucks: Optional[int] = None,
-        min_income: Optional[int] = None, max_income: Optional[int] = None,
-        order_by: Optional[str] = "income", order: Optional[str] = "desc"):
+async def get_garage_list(request: Request, response: Response, authorization: str | None = Header(None), \
+        page: int | None = 1, page_size: int | None = 10, after_garageid: str | None = None,
+        min_trucks: int | None = None, max_trucks: int | None = None,
+        min_income: int | None = None, max_income: int | None = None,
+        order_by: str | None = "income", order: str | None = "desc"):
     '''Get a list of garages.
 
     `order_by` can be `income`, `truck`, `slot`'''
@@ -117,7 +116,7 @@ async def get_garage_list(request: Request, response: Response, authorization: s
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_garage(request: Request, response: Response, garageid: str, authorization: str = Header(None)):
+async def get_garage(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Get info of a specific garage.'''
     app = request.app
     dhrid = request.state.dhrid
@@ -151,11 +150,11 @@ async def get_garage(request: Request, response: Response, garageid: str, author
     p = await app.db.fetchall(dhrid)
     return {"garageid": tt[0], "garage_owner": (await GetUserInfo(request, userid = p[0][0])), "slots": tt[2], "slot_owners": nint(tt[3]), "trucks": nint(tt[4]), "income": nint(tt[5]), "purchase_timestamp": tt[1]}
 
-async def get_garage_slots_list(request: Request, response: Response, garageid: str, authorization: str = Header(None),
-        page: Optional[int] = 1, page_size: Optional[int] = 20, after_slotid: Optional[int] = None, \
-        owner: Optional[int] = None, must_have_truck: Optional[bool] = False, \
-        purchased_after: Optional[int] = None, purchased_before: Optional[int] = None,
-        order: Optional[str] = "asc"):
+async def get_garage_slots_list(request: Request, response: Response, garageid: str, authorization: str | None = Header(None),
+        page: int | None = 1, page_size: int | None = 20, after_slotid: int | None = None, \
+        owner: int | None = None, must_have_truck: bool | None = False, \
+        purchased_after: int | None = None, purchased_before: int | None = None,
+        order: str | None = "asc"):
     '''Get the slots of a specific garage.
 
     `order_by` is `purchase_timestamp`.'''
@@ -228,7 +227,7 @@ async def get_garage_slots_list(request: Request, response: Response, garageid: 
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
-async def get_garage_slot(request: Request, response: Response, garageid: str, slotid: int, authorization: str = Header(None)):
+async def get_garage_slot(request: Request, response: Response, garageid: str, slotid: int, authorization: str | None = Header(None)):
     '''Get info of a specific garage slot.'''
     app = request.app
     dhrid = request.state.dhrid
@@ -259,7 +258,7 @@ async def get_garage_slot(request: Request, response: Response, garageid: str, s
 
     return {"slotid": tt[0], "slot_owner": await GetUserInfo(request, userid = tt[1]), "purchase_timestamp": tt[4], "note": tt[5], "truck": await GetTruckInfo(request, tt[2]), "truck_owner": await GetUserInfo(request, userid = tt[3])}
 
-async def post_garage_purchase(request: Request, response: Response, garageid: str, authorization: str = Header(None)):
+async def post_garage_purchase(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Purchase a garage, returns `slotids`, `cost`, `balance`.
 
     JSON: `{"owner": Optional[str]}`
@@ -364,7 +363,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
 
     return {"slotids": slotids, "cost": garage['price'], "balance": round(balance - garage['price'])}
 
-async def post_garage_slot_purchase(request: Request, response: Response, garageid: str, authorization: str = Header(None)):
+async def post_garage_slot_purchase(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Purchase a slot of a garage, returns `slotid`, `cost`, `balance`.
 
     JSON: `{"owner": Optional[str]}`
@@ -464,7 +463,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
 
     return {"slotid": slotid, "cost": garage['slot_price'], "balance": round(balance - garage['slot_price'])}
 
-async def post_garage_transfer(request: Request, response: Response, garageid: str, authorization: str = Header(None)):
+async def post_garage_transfer(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Transfer a garage (ownership).
 
     JSON: `{"owner": Optional[str], "message": Optional[str]}`
@@ -576,7 +575,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
 
     return Response(status_code=204)
 
-async def post_garage_slot_transfer(request: Request, response: Response, garageid: str, slotid: int, authorization: str = Header(None)):
+async def post_garage_slot_transfer(request: Request, response: Response, garageid: str, slotid: int, authorization: str | None = Header(None)):
     '''Transfer a garage (ownership).
 
     JSON: `{"owner": Optional[str], "message": Optional[str]}`
@@ -685,7 +684,7 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
 
     return Response(status_code=204)
 
-async def post_garage_sell(request: Request, response: Response, garageid: str, authorization: str = Header(None)):
+async def post_garage_sell(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Sell a garage (ownership), returns `refund`, `balance`.
 
     [NOTE] There must be no slots under the garage and no trucks parked in the base slots.'''
@@ -754,7 +753,7 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
 
     return {"refund": refund, "balance": round(balance + refund)}
 
-async def post_garage_slot_sell(request: Request, response: Response, garageid: str, slotid: int, authorization: str = Header(None)):
+async def post_garage_slot_sell(request: Request, response: Response, garageid: str, slotid: int, authorization: str | None = Header(None)):
     '''Sell a garage (ownership), returns `refund`, `balance`.
 
     [NOTE] There must be no slots under the garage and no trucks parked in the base slots.'''

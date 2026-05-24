@@ -4,11 +4,11 @@
 import bcrypt
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from functions import *
+import src.multilang as ml
+from src.functions import *
 
 
-async def patch_password(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_password(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the password of the authorized user, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -56,7 +56,7 @@ async def patch_password(request: Request, response: Response, authorization: st
         response.status_code = 400
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
-    if email is None or "@" not in email: # make sure it's valid
+    if "@" not in email: # make sure it's valid
         response.status_code = 403
         return {"error": ml.tr(request, "connection_invalid", var = {"app": "Email"}, force_lang = au["language"])}
 
@@ -86,7 +86,7 @@ async def patch_password(request: Request, response: Response, authorization: st
 
     return Response(status_code=204)
 
-async def post_password_disable(request: Request, response: Response, authorization: str = Header(None)):
+async def post_password_disable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Disables password login for the authorized user, returns 204"""
     app = request.app
     dhrid = request.state.dhrid

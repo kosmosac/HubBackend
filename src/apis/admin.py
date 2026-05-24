@@ -8,16 +8,15 @@ import os
 import threading
 import time
 import traceback
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-import static
-from api import tracebackHandler
-from config import *
-from functions import *
-from logger import logger
+import src.multilang as ml
+import src.static as static
+from src.api import tracebackHandler
+from src.config import *
+from src.functions import *
+from src.logger import logger
 
 
 class Dict2Obj(object):
@@ -29,7 +28,7 @@ class Dict2Obj(object):
             else:
                 setattr(self, key, d[key])
 
-async def post_discord_role_connection_enable(request: Request, response: Response, authorization: str = Header(None)):
+async def post_discord_role_connection_enable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Enable Discord Role Connection"""
     app = request.app
     dhrid = request.state.dhrid
@@ -58,7 +57,7 @@ async def post_discord_role_connection_enable(request: Request, response: Respon
         response.status_code = 503
         return {"error": ml.tr(request, "discord_api_inaccessible", force_lang = au["language"])}
 
-async def post_discord_role_connection_disable(request: Request, response: Response, authorization: str = Header(None)):
+async def post_discord_role_connection_disable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Disable Discord Role Connection"""
     app = request.app
     dhrid = request.state.dhrid
@@ -87,7 +86,7 @@ async def post_discord_role_connection_disable(request: Request, response: Respo
         response.status_code = 503
         return {"error": ml.tr(request, "discord_api_inaccessible", force_lang = au["language"])}
 
-async def get_config(request: Request, response: Response, authorization: str = Header(None)):
+async def get_config(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns saved config (config) and loaded config (backup)"""
     app = request.app
     dhrid = request.state.dhrid
@@ -176,9 +175,9 @@ async def get_config(request: Request, response: Response, authorization: str = 
 
 def restart(app):
     time.sleep(3)
-    os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null")
+    os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null") # pyright: ignore[reportDeprecated]
 
-async def patch_config(request: Request, response: Response, authorization: str = Header(None), unsafe: Optional[bool] = False):
+async def patch_config(request: Request, response: Response, authorization: str | None = Header(None), unsafe: bool | None = False):
     """Updates the config, only those specified in `config` will be updated
 
     JSON: `{"config": {}}`"""
@@ -312,7 +311,7 @@ async def patch_config(request: Request, response: Response, authorization: str 
 
     return Response(status_code=204)
 
-async def post_config_reload(request: Request, response: Response, authorization: str = Header(None)):
+async def post_config_reload(request: Request, response: Response, authorization: str | None = Header(None)):
     """Reloads config, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -378,7 +377,7 @@ async def post_config_reload(request: Request, response: Response, authorization
 
     return Response(status_code=204)
 
-async def post_restart(request: Request, response: Response, authorization: str = Header(None)):
+async def post_restart(request: Request, response: Response, authorization: str | None = Header(None)):
     """Restarts API service in a thread, returns 204"""
     app = request.app
     dhrid = request.state.dhrid
@@ -441,8 +440,8 @@ async def post_restart(request: Request, response: Response, authorization: str 
 
     return Response(status_code=204)
 
-async def get_audit_list(request: Request, response: Response, authorization: str = Header(None), \
-    page: Optional[int] = 1, page_size: Optional[int] = 30, order: Optional[str] = "desc", after: Optional[int] = None, before: Optional[int] = None, uid: Optional[int] = None, operation: Optional[str] = "", category: Optional[str] = None):
+async def get_audit_list(request: Request, response: Response, authorization: str | None = Header(None), \
+    page: int | None = 1, page_size: int | None = 30, order: str | None = "desc", after: int | None = None, before: int | None = None, uid: int | None = None, operation: str | None = "", category: str | None = None):
     """Returns a list of audit log
 
     `category` could be a list of categories separated by comma"""

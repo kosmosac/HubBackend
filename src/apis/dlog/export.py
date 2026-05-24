@@ -5,19 +5,18 @@ import asyncio
 import time
 import traceback
 from io import BytesIO
-from typing import Optional
 
 import cysimdjson
 from fastapi import Header, Request, Response
 from fastapi.responses import StreamingResponse
 
-from api import tracebackHandler
-from functions import *
+from src.api import tracebackHandler
+from src.functions import *
 
 
-async def get_export(request: Request, response: Response, authorization: str = Header(None), \
-        after: Optional[int] = None, before: Optional[int] = None, \
-        include_ids: Optional[bool] = False, userid: Optional[int] = None):
+async def get_export(request: Request, response: Response, authorization: str | None = Header(None), \
+        after: int | None = None, before: int | None = None, \
+        include_ids: bool | None = False, userid: int | None = None):
     app = request.app
     running_export = nint(app.redis.get("running_export"))
     if time.time() - running_export <= 300:

@@ -2,17 +2,16 @@
 # Author: @CharlesWithC
 
 import traceback
-from typing import Optional
 
 from fastapi import Header, Request, Response
 
-import multilang as ml
-from api import tracebackHandler
-from functions import *
-from functions.discord import DiscordAuth
+import src.multilang as ml
+from src.api import tracebackHandler
+from src.functions import *
+from src.functions.discord import DiscordAuth
 
 
-async def post_resend_confirmation(request: Request, response: Response, authorization: str = Header(None)):
+async def post_resend_confirmation(request: Request, response: Response, authorization: str | None = Header(None)):
     """Resends confirmation email"""
     app = request.app
     dhrid = request.state.dhrid
@@ -62,7 +61,7 @@ async def post_resend_confirmation(request: Request, response: Response, authori
 
     return Response(status_code=204)
 
-async def patch_email(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_email(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates email for the authorized user, returns 204
 
     JSON: `{"email": str}`"""
@@ -118,7 +117,7 @@ async def patch_email(request: Request, response: Response, authorization: str =
 
     return Response(status_code=204)
 
-async def patch_discord(request: Request, response: Response, authorization: str = Header(None), code: Optional[str] = None, error_description: Optional[str] = None, callback_url: Optional[str] = None):
+async def patch_discord(request: Request, response: Response, authorization: str | None = Header(None), code: str | None = None, error_description: str | None = None, callback_url: str | None = None):
     """Updates Discord account connection for the authorized user, returns 204
 
     JSON: `{"code": str}`"""
@@ -235,7 +234,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
         response.status_code = 400
         return {"error": ml.tr(request, "unknown_error", force_lang = au["language"])}
 
-async def patch_steam(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_steam(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates Steam account connection for the authorized user, returns 204
 
     JSON: `{"callback": str}`"""
@@ -353,7 +352,7 @@ async def patch_steam(request: Request, response: Response, authorization: str =
 
     return Response(status_code=204)
 
-async def patch_truckersmp(request: Request, response: Response, authorization: str = Header(None)):
+async def patch_truckersmp(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates TruckersMP account connection for the authorized user, returns 204
 
     JSON: `{"truckersmpid": int}`"""

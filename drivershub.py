@@ -4,15 +4,16 @@
 # Author: @CharlesWithC
 
 import argparse
-import base64
 import json
 import os
 
 import uvicorn
 
-import multilang as ml
-import routing
-from logger import logger
+import src.multilang as ml
+from src.app import createApp
+from src.config import validateConfig
+from src.functions.dataop import b64e
+from src.logger import logger
 
 drivershub = """    ____       _                         __  __      __
    / __ \\_____(_)   _____  __________   / / / /_  __/ /_
@@ -87,9 +88,9 @@ elif args.config_directory is not None:
     config_paths = [os.path.join(args.config_directory, x) for x in config_files if x.endswith(".json")]
 
 if args.command == "setup":
-    import setup
-    from config import validateConfig
-    from functions import Dict2Obj
+    import src.setup as setup
+    from src.config import validateConfig
+    from src.functions import Dict2Obj
 
     if not config_paths:
         logger.error("No config is provided, quitted.")
@@ -116,14 +117,9 @@ if args.enable_master_openapi is True:
         openapi_path = "/"
 
 if config_paths is not None:
-    os.environ["HUB_CONFIG"] = base64.b64encode(json.dumps(config_paths).encode()).decode()
+    os.environ["LAUNCH_ARGS"] = b64e(json.dumps(args.__dict__))
+    os.environ["CONFIG_PATHS"] = b64e(json.dumps(config_paths))
     os.environ["OPENAPI_PATH"] = openapi_path
-else:
-    if 'HUB_CONFIG' not in os.environ.keys():
-        logger.error("No config is provided, quitted.")
-        os._exit(42)
-    config_paths = json.loads(base64.b64decode(os.environ["HUB_CONFIG"].encode()).decode())
-    openapi_path = os.environ["OPENAPI_PATH"]
 
 if args.use_master_db_pool is True:
     if not all([os.environ.get("MASTER_DB_HOST"), os.environ.get("MASTER_DB_USER"), os.environ.get("MASTER_DB_PASSWORD"), os.environ.get("MASTER_DB_POOLSIZE")]):
@@ -134,7 +130,7 @@ if args.use_master_db_pool is True:
         os._exit(42)
 
 if __name__ == "__main__":
-    from app import version
+    from src.static import version
     for line in drivershub.split("\n"):
         logger.info(line)
     logger.info(f"Drivers Hub: Backend (v{version})")
@@ -142,25 +138,37 @@ if __name__ == "__main__":
     logger.info(f"Languages: {', '.join(ml.LANGUAGES)}")
     logger.info("")
 
-    scopes = routing.initRoutes(config_paths, openapi_path, first_init = True, args = args.__dict__)
+    # validate config here
+    # this ensures routing will always be able to load all configs
+    # uvicorn would load routing dynamically, which would create the full app
+    for config_path in config_paths:
+        dh = createApp(config_path, multi_mode = False, dry_run = True, args = args.__dict__, master_db = None)
+        if not dh:
+            os._exit(42)
 
-scopes = routing.initRoutes(config_paths, openapi_path, args = args.__dict__)
+    if len(config_paths) == 1:
+        try:
+            config_txt = open(config_paths[0], "r", encoding="utf-8").read()
+            config_json = json.loads(config_txt)
+            config_dict = validateConfig(config_json)
 
-if __name__ == "__main__":
-    host = args.master_host
-    port = args.master_port
-    workers = args.master_workers
+            host = config_dict["server_host"]
+            port = config_dict["server_port"]
+            workers = config_dict["server_workers"]
+        except:
+            logger.warning("No valid config is loaded, quited.")
+            os._exit(42)
 
-    if host is None and port is None and scopes is None:
+    # for single hub, master config can override hub config
+    # if master config is not provided, then use hub config
+    if args.master_host and args.master_port:
+        host = args.master_host
+        port = args.master_port
+    if args.master_workers:
+        workers = args.master_workers
+
+    if host is None and port is None:
         logger.error("--master-host and --master-port must be provided when starting multiple Drivers Hubs within one server process, quited.")
         os._exit(42)
 
-    if scopes is not None:
-        if host is None:
-            host = scopes["host"]
-        if port is None:
-            port = scopes["port"]
-        if workers is None:
-            workers = scopes["workers"]
-
-    uvicorn.run("routing:app", host=host, port=port, log_level="info", access_log=False, proxy_headers=True, workers=workers, timeout_worker_healthcheck=120)
+    uvicorn.run("src.routing:createFullApp", factory=True, host=host, port=port, log_level="info", access_log=False, proxy_headers=True, workers=workers, timeout_worker_healthcheck=120)

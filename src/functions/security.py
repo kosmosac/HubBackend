@@ -7,11 +7,11 @@ import time
 
 from fastapi.responses import JSONResponse
 
-import multilang as ml
-from functions.dataop import *
-from functions.general import *
-from functions.iptype import *
-from static import *
+import src.multilang as ml
+from src.functions.dataop import *
+from src.functions.general import *
+from src.functions.iptype import *
+from src.static import *
 
 # redis auth:{authorization_token} <= app.state.cache_session(_extended)
 # redis ratelimit:{identifier} <= app.state.cache_ratelimit = {}

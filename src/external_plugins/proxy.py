@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from functions import *
+from src.functions import *
 
 DOMAIN_WHITELIST = []
 
@@ -25,7 +25,7 @@ async def get_proxy(request: Request, url: str):
         media_type=content_type
     )
 
-def init(config: dict, print_log: bool = False):
+def init(config: dict, print_log: bool = False): # pyright: ignore[reportUnusedParameter]
     routes = [
         APIRoute("/proxy", get_proxy, methods=["GET"])
     ]
