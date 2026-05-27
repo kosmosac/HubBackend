@@ -405,6 +405,7 @@
     "sold_garage": "Verkochte garage `{garage}` (ID: `{id}`) die eigendom is van `{username}` (Gebruikers-ID: `{userid}`).",
     "sold_slot": "Verkochte slot `#{id}` die eigendom is van `{username}` (Gebruikers-ID: `{userid}`).",
     "created_task": "Taak #{id} aangemaakt",
+    "created_task_recurring": "Terugkerende taak #{id} aangemaakt",
     "updated_task": "Taak #{id} bijgewerkt",
     "deleted_task": "Taak #{id} verwijderd",
     "task_not_found": "Taak Niet Gevonden",

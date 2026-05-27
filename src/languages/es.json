@@ -405,6 +405,7 @@
     "sold_garage": "Se vendió el garaje {garage} (ID: {id}) que es propiedad de {username} (ID de usuario: {userid}).",
     "sold_slot": "Vendido espacio `# {id}` que es propiedad de `{username}` (ID de usuario: `{userid}`).",
     "created_task": "Tarea `#{id}` creada",
+    "created_task_recurring": "Tarea recurrente `#{id}` creada",
     "updated_task": "Tarea `#{id}` actualizada",
     "deleted_task": "Tarea `#{id}` eliminada",
     "task_not_found": "Tarea no encontrada",

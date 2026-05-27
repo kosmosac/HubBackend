@@ -405,6 +405,7 @@
     "sold_garage": "Garage vendu `{garage}` (ID: `{id}`) qui appartient à `{username}` (ID utilisateur: `{userid}`).",
     "sold_slot": "Slot vendu `#{id}` qui appartient à `{username}` (ID utilisateur: `{userid}`).",
     "created_task": "Tâche `#{id}` créée",
+    "created_task_recurring": "Tâche récurrente `#{id}` créée",
     "updated_task": "Tâche `#{id}` mise à jour",
     "deleted_task": "Tâche `#{id}` supprimée",
     "task_not_found": "Tâche non trouvée",

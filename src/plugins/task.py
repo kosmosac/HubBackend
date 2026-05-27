@@ -167,10 +167,10 @@ async def RecurringTaskHandler(app):
             await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
             await app.db.extend_conn(dhrid, 5)
 
-            await app.db.execute(dhrid, f"SELECT taskid, title, due_timestamp, assign_mode, assign_to, recurring FROM task WHERE recurring > 0 AND due_timestamp <= {int(time.time())} AND taskid >= 0")
+            await app.db.execute(dhrid, f"SELECT userid, taskid, title, due_timestamp, assign_mode, assign_to, recurring FROM task WHERE recurring > 0 AND due_timestamp <= {int(time.time())} AND taskid >= 0")
             t = await app.db.fetchall(dhrid)
             for tt in t:
-                (taskid, title, due_timestamp, assign_mode, assign_to, recurring) = tt
+                (userid, taskid, title, due_timestamp, assign_mode, assign_to, recurring) = tt
                 assign_to = str2list(assign_to)
 
                 await app.db.execute(dhrid, f"INSERT INTO task(userid, title, description, priority, bonus, create_timestamp, due_timestamp, remind_timestamp, recurring, assign_mode, assign_to, mark_completed, mark_note, confirm_completed, confirm_note) SELECT userid, title, description, priority, bonus, {int(time.time())}, due_timestamp + recurring, remind_timestamp + recurring, recurring, assign_mode, assign_to, 0, '', 0, '' FROM task WHERE taskid = {taskid}")
@@ -178,7 +178,7 @@ async def RecurringTaskHandler(app):
                 await app.db.commit(dhrid)
                 await app.db.execute(dhrid, "SELECT LAST_INSERT_ID()")
                 taskid = (await app.db.fetchone(dhrid))[0]
-                await AuditLog(request, -999, "task", ml.ctr(request, "created_task", var = {"id": taskid}))
+                await AuditLog(request, userid, "task", ml.ctr(request, "created_task", var = {"id": taskid}))
                 await app.db.commit(dhrid)
 
                 due_timestamp += recurring

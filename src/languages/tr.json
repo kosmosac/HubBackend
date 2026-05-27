@@ -405,6 +405,7 @@
     "sold_garage": "Garaj {id} (ID: {garage}) {username} (Kullanıcı ID'si: {userid}) tarafından satıldı.",
     "sold_slot": "#{id} yuvası {username} (Kullanıcı ID'si: {userid}) tarafından satıldı.",
     "created_task": "#{id} numaralı görev oluşturuldu",
+    "created_task_recurring": "#{id} numaralı tekrarlayan görev oluşturuldu",
     "updated_task": "#{id} numaralı görev güncellendi",
     "deleted_task": "#{id} numaralı görev silindi",
     "task_not_found": "Görev Bulunamadı",

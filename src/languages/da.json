@@ -405,6 +405,7 @@
     "sold_garage": "Solgt garage `{garage}` (ID: `{id}`), som ejes af `{username}` (Bruger ID: `{userid}`).",
     "sold_slot": "Solgt slot `#{id}` som ejes af `{username}` (Bruger ID: `{userid}`).",
     "created_task": "Oprettet opgave `#{id}`",
+    "created_task_recurring": "Tilbagevendende opgave `#{id}` oprettet",
     "updated_task": "Opdateret opgave `#{id}`",
     "deleted_task": "Slettet opgave `#{id}`",
     "task_not_found": "Opgave ikke fundet",

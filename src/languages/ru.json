@@ -405,6 +405,7 @@
     "sold_garage": "Продан гараж `{garage}` (ID: `{id}`), который принадлежит `{username}` (ID пользователя: `{userid}`).",
     "sold_slot": "Продан слот `# {id}`, который принадлежит `{username}` (идентификатор пользователя: `{userid}`).",
     "created_task": "Создана задача #{id}",
+    "created_task_recurring": "Создана повторяющаяся задача #{id}",
     "updated_task": "Обновлена задача #{id}",
     "deleted_task": "Удалена задача #{id}",
     "task_not_found": "Задача не найдена",
