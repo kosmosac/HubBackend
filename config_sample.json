@@ -45,7 +45,7 @@
     "redis_db": 0,
     "redis_password": null,
 
-    "plugins": ["announcements", "applications", "banner", "challenges", "divisions", "downloads", "events", "polls", "route"],
+    "plugins": ["announcement", "application", "banner", "challenge", "division", "downloads", "economy", "event", "poll", "task", "route"],
     "external_plugins": [],
 
     "sync_discord_email": true,
@@ -162,7 +162,7 @@
         "manage_events": [],
         "manage_polls": [],
         "manage_public_tasks": [],
-        
+
         "driver": [100]
     },
 
@@ -210,7 +210,7 @@
         }],
         "role_change": []
     }],
-    
+
     "member_leave": [{
         "channel_id": "",
         "webhook_url": "",
@@ -226,7 +226,7 @@
         }],
         "role_change": []
     }],
-    
+
     "driver_role_add": [{
         "channel_id": "",
         "webhook_url": "",
@@ -242,7 +242,7 @@
         }],
         "role_change": []
     }],
-    
+
     "driver_role_remove": [{
         "channel_id": "",
         "webhook_url": "",
