@@ -295,7 +295,7 @@ def init(config: dict, print_log: bool = False): # pyright: ignore[reportUnusedP
             "distance_unit": config["distance_unit"],
             "use_highest_role_color": False,
             "domain": urlparse(config["frontend_urls"]["member"]).netloc,
-            "api_host": config["domain"],
+            "api_host": "https://" + config["domain"],
             "plugins": config["plugins"],
             "truckersmp_vtc_id": 0,
             "logo_key": "",
