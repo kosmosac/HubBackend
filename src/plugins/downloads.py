@@ -214,7 +214,7 @@ async def post_downloads(request: Request, response: Response, authorization: st
     await app.db.commit(dhrid)
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     downloadsid = (await app.db.fetchone(dhrid))[0]
-    await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "created_downloads", var = {"id": downloadsid}))
+    await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "created_downloads", var = {"id": downloadsid, "title": title}))
     await app.db.commit(dhrid)
 
     await notification_to_everyone(request, "new_downloads", ml.spl("new_downloadable_item_with_title", var = {"title": title}), discord_embed = {"title": title, "description": description, "fields": [{"name": "‎ ", "value": ml.spl("download_link", var = {"link": link}), "inline": True}], "footer": {"text": ml.spl("new_downloadable_item"), "icon_url": app.config.logo_url}}, only_to_members=True)
@@ -287,7 +287,7 @@ async def patch_downloads(request: Request, response: Response, downloadsid: int
         return {"error": ml.tr(request, "invalid_link", force_lang = au["language"])}
 
     await app.db.execute(dhrid, f"UPDATE downloads SET title = '{convertQuotation(title)}', description = '{convertQuotation(compress(description))}', link = '{convertQuotation(link)}', orderid = {orderid}, is_pinned = {is_pinned} WHERE downloadsid = {downloadsid}")
-    await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "updated_downloads", var = {"id": downloadsid}))
+    await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "updated_downloads", var = {"id": downloadsid, "title": title}))
     await app.db.commit(dhrid)
 
     return Response(status_code=204)
@@ -309,14 +309,15 @@ async def delete_downloads(request: Request, response: Response, downloadsid: in
         del au["code"]
         return au
 
-    await app.db.execute(dhrid, f"SELECT * FROM downloads WHERE downloadsid = {downloadsid} AND downloadsid >= 0")
+    await app.db.execute(dhrid, f"SELECT title FROM downloads WHERE downloadsid = {downloadsid} AND downloadsid >= 0")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:
         response.status_code = 404
         return {"error": ml.tr(request, "downloads_not_found", force_lang = au["language"])}
+    title = t[0][0]
 
     await app.db.execute(dhrid, f"UPDATE downloads SET downloadsid = -downloadsid WHERE downloadsid = {downloadsid}")
-    await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "deleted_downloads", var = {"id": downloadsid}))
+    await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "deleted_downloads", var = {"id": downloadsid, "title": title}))
     await app.db.commit(dhrid)
 
     return Response(status_code=204)

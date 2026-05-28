@@ -178,7 +178,7 @@ async def RecurringTaskHandler(app):
                 await app.db.commit(dhrid)
                 await app.db.execute(dhrid, "SELECT LAST_INSERT_ID()")
                 taskid = (await app.db.fetchone(dhrid))[0]
-                await AuditLog(request, userid, "task", ml.ctr(request, "created_task", var = {"id": taskid}))
+                await AuditLog(request, userid, "task", ml.ctr(request, "created_task_recurring", var = {"id": taskid, "title": title}))
                 await app.db.commit(dhrid)
 
                 due_timestamp += recurring
@@ -447,7 +447,7 @@ async def post_task(request: Request, response: Response, authorization: str | N
     await app.db.commit(dhrid)
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID()")
     taskid = (await app.db.fetchone(dhrid))[0]
-    await AuditLog(request, au["uid"], "task", ml.ctr(request, "created_task", var = {"id": taskid}))
+    await AuditLog(request, au["uid"], "task", ml.ctr(request, "created_task", var = {"id": taskid, "title": title}))
     await app.db.commit(dhrid)
 
     due_utc = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(due_timestamp)) + " UTC"
@@ -559,7 +559,7 @@ async def patch_task(request: Request, response: Response, taskid: int, authoriz
     await app.db.execute(dhrid, f"UPDATE task SET title = '{convertQuotation(title)}', description = '{convertQuotation(compress(description))}', priority = {priority}, bonus = {bonus}, due_timestamp = {due_timestamp}, remind_timestamp = {remind_timestamp}, recurring = {recurring}, assign_mode = {assign_mode}, assign_to = ',{list2str(assign_to)},' WHERE taskid = {taskid}")
     await app.db.commit(dhrid)
 
-    await AuditLog(request, au["uid"], "task", ml.ctr(request, "updated_task", var = {"id": taskid}))
+    await AuditLog(request, au["uid"], "task", ml.ctr(request, "updated_task", var = {"id": taskid, "title": title}))
 
     if assign_mode == 0:
         await notification(request, "task_updated", au["uid"], ml.tr(request, "user_task_updated", var = {"title": title, "taskid": taskid}, force_lang = await GetUserLanguage(request, au["uid"])))
@@ -594,19 +594,20 @@ async def delete_task(request: Request, response: Response, taskid: int, authori
         del au["code"]
         return
 
-    await app.db.execute(dhrid, f"SELECT userid FROM task WHERE taskid = {taskid} AND taskid >= 0")
+    await app.db.execute(dhrid, f"SELECT userid, title FROM task WHERE taskid = {taskid} AND taskid >= 0")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:
         response.status_code = 404
         return {"error": ml.tr(request, "task_not_found", force_lang = au["language"])}
+    (task_userid, title) = t[0]
 
-    if au["userid"] != t[0][0]:
+    if au["userid"] != task_userid:
         if not checkPerm(app, au["roles"], ["administrator", "manage_public_tasks"]):
             response.status_code = 403
             return {"error": ml.tr(request, "no_access_to_resource", force_lang = au["language"])}
 
     await app.db.execute(dhrid, f"UPDATE task SET taskid = -taskid WHERE taskid = {taskid}")
-    await AuditLog(request, au["uid"], "task", ml.ctr(request, "deleted_task", var = {"id": taskid}))
+    await AuditLog(request, au["uid"], "task", ml.ctr(request, "deleted_task", var = {"id": taskid, "title": title}))
     await app.db.commit(dhrid)
 
     return Response(status_code=204)

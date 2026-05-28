@@ -514,7 +514,7 @@ async def post_event(request: Request, response: Response, authorization: str | 
     await app.db.commit(dhrid)
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     eventid = (await app.db.fetchone(dhrid))[0]
-    await AuditLog(request, au["uid"], "event", ml.ctr(request, "created_event", var = {"id": eventid}))
+    await AuditLog(request, au["uid"], "event", ml.ctr(request, "created_event", var = {"id": eventid, "title": title}))
     await app.db.commit(dhrid)
 
     await notification_to_everyone(request, "new_event", ml.spl("new_event_with_title", var = {"title": title}), discord_embed = {"title": title, "url": link, "description": description, "fields": [{"name": ml.spl("departure"), "value": departure, "inline": True}, {"name": ml.spl("destination"), "value": destination, "inline": True}, {"name": ml.spl("distance"), "value": distance, "inline": True}, {"name": ml.spl("meetup_time"), "value": f"<t:{meetup_timestamp}:R>", "inline": True}, {"name": ml.spl("departure_time"), "value": f"<t:{departure_timestamp}:R>", "inline": True}], "footer": {"text": ml.spl("new_event"), "icon_url": app.config.logo_url}}, only_to_members=is_private)
@@ -613,7 +613,7 @@ async def patch_event(request: Request, response: Response, eventid: int, author
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
     await app.db.execute(dhrid, f"UPDATE event SET title = '{convertQuotation(title)}', description = '{convertQuotation(compress(description))}', link = '{convertQuotation(compress(link))}', departure = '{convertQuotation(departure)}', destination = '{convertQuotation(destination)}', distance = '{convertQuotation(distance)}', meetup_timestamp = {meetup_timestamp}, departure_timestamp = {departure_timestamp}, is_private = {is_private}, orderid = {orderid}, is_pinned = {is_pinned} WHERE eventid = {eventid}")
-    await AuditLog(request, au["uid"], "event", ml.ctr(request, "updated_event", var = {"id": eventid}))
+    await AuditLog(request, au["uid"], "event", ml.ctr(request, "updated_event", var = {"id": eventid, "title": title}))
     await app.db.commit(dhrid)
 
     return Response(status_code=204)
@@ -635,14 +635,15 @@ async def delete_event(request: Request, response: Response, eventid: int, autho
         del au["code"]
         return
 
-    await app.db.execute(dhrid, f"SELECT * FROM event WHERE eventid = {eventid} AND eventid >= 0")
+    await app.db.execute(dhrid, f"SELECT title FROM event WHERE eventid = {eventid} AND eventid >= 0")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:
         response.status_code = 404
         return {"error": ml.tr(request, "event_not_found", force_lang = au["language"])}
+    title = t[0][0]
 
     await app.db.execute(dhrid, f"UPDATE event SET eventid = -eventid WHERE eventid = {eventid}")
-    await AuditLog(request, au["uid"], "event", ml.ctr(request, "deleted_event", var = {"id": eventid}))
+    await AuditLog(request, au["uid"], "event", ml.ctr(request, "deleted_event", var = {"id": eventid, "title": title}))
     await app.db.commit(dhrid)
 
     return Response(status_code=204)

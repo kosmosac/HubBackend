@@ -444,7 +444,7 @@ async def post_challenge(request: Request, response: Response, authorization: st
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     challengeid = (await app.db.fetchone(dhrid))[0]
 
-    await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "created_challenge", var = {"id": challengeid}))
+    await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "created_challenge", var = {"id": challengeid, "title": title}))
 
     await notification_to_everyone(request, "new_challenge", ml.spl("new_challenge_with_title", var = {"title": title}),     discord_embed = {"title": title, "description": description, "fields": [{"name": ml.spl("start"), "value": f"<t:{start_time}:R>", "inline": True}, {"name": ml.spl("end"), "value": f"<t:{end_time}:R>", "inline": True}, {"name": ml.spl("reward_points"), "value": f"{reward_points}", "inline": True}], "footer": {"text": ml.spl("new_challenge"), "icon_url": app.config.logo_url}}, only_to_members=True)
 
@@ -903,7 +903,7 @@ async def patch_challenge(request: Request, response: Response, challengeid: int
             uid = (await GetUserInfo(request, userid = tuserid, is_internal_function = True))["uid"]
             await notification(request, "challenge", uid, ml.tr(request, "challenge_updated_lost_points", var = {"title": title, "challengeid": challengeid, "points": tseparator(reward)}, force_lang = await GetUserLanguage(request, uid)))
 
-    await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "updated_challenge", var = {"id": challengeid}))
+    await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "updated_challenge", var = {"id": challengeid, "title": title}))
 
     return Response(status_code=204)
 
@@ -932,18 +932,19 @@ async def delete_challenge(request: Request, response: Response, challengeid: in
         response.status_code = 404
         return {"error": ml.tr(request, "challenge_not_found", force_lang = au["language"])}
 
-    await app.db.execute(dhrid, f"SELECT * FROM challenge WHERE challengeid = {challengeid} AND challengeid >= 0")
+    await app.db.execute(dhrid, f"SELECT title FROM challenge WHERE challengeid = {challengeid} AND challengeid >= 0")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:
         response.status_code = 404
         return {"error": ml.tr(request, "challenge_not_found", force_lang = au["language"])}
+    title = t[0][0]
 
     await app.db.execute(dhrid, f"UPDATE challenge SET challengeid = -challengeid WHERE challengeid = {challengeid}")
     await app.db.execute(dhrid, f"UPDATE challenge_record SET challengeid = -challengeid WHERE challengeid = {challengeid}")
     await app.db.execute(dhrid, f"UPDATE challenge_completed SET challengeid = -challengeid WHERE challengeid = {challengeid}")
     await app.db.commit(dhrid)
 
-    await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "deleted_challenge", var = {"id": challengeid}))
+    await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "deleted_challenge", var = {"id": challengeid, "title": title}))
 
     return Response(status_code=204)
 

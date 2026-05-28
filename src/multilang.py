@@ -49,7 +49,7 @@ def translate(request: Request, key: str, var: dict | None = {}, force_lang: str
     if key in LANG_DATA:
         ret = LANG_DATA[key]
         for vkey in var.keys():
-            ret = ret.replace("{" + vkey + "}", str(var[vkey]))
+            ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
         return ret
     else: # no translation for key
         if lang != "en": # try english
@@ -57,7 +57,7 @@ def translate(request: Request, key: str, var: dict | None = {}, force_lang: str
             if key in LANG_DATA:
                 ret = LANG_DATA[key]
                 for vkey in var.keys():
-                    ret = ret.replace("{" + vkey + "}", str(var[vkey]))
+                    ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
                 return ret
             else: # invalid key
                 return key
@@ -88,7 +88,7 @@ def company_translate(request: Request, key: str, var: dict | None = {}, force_l
     if key in LANG_DATA:
         ret = LANG_DATA[key]
         for vkey in var.keys():
-            ret = ret.replace("{" + vkey + "}", str(var[vkey]))
+            ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
         return ret
     else: # no translation for key
         if lang != "en": # try english
@@ -96,7 +96,7 @@ def company_translate(request: Request, key: str, var: dict | None = {}, force_l
             if key in LANG_DATA:
                 ret = LANG_DATA[key]
                 for vkey in var.keys():
-                    ret = ret.replace("{" + vkey + "}", str(var[vkey]))
+                    ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
                 return ret
             else: # invalid key
                 return key
