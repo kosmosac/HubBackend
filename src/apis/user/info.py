@@ -21,7 +21,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /user/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -87,7 +87,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
             user["ban"] = {"reason": tt[1], "expire": tt[2]}
         else:
             user["ban"] = None
-        if "roles" in user.keys():
+        if "roles" in user:
             del user["roles"]
         ret.append(user)
 
@@ -110,7 +110,7 @@ async def get_profile(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'GET /user/profile', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -225,7 +225,7 @@ async def patch_profile(request: Request, response: Response, authorization: str
     rl = await ratelimit(request, 'PATCH /user/profile', 60, 15)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -380,7 +380,7 @@ async def patch_profile(request: Request, response: Response, authorization: str
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "avatar", "limit": "256"}, force_lang = au["language"])}
             join_timestamp = None
-            if "join_timestamp" in data.keys():
+            if "join_timestamp" in data:
                 join_timestamp = int(data["join_timestamp"])
                 if join_timestamp < 0 or join_timestamp > 4294967294:
                     response.status_code = 400
@@ -420,7 +420,7 @@ async def patch_bio(request: Request, response: Response, authorization: str | N
     rl = await ratelimit(request, 'PATCH /user/bio', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -464,7 +464,7 @@ async def patch_activity(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'PATCH /user/activity', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -499,7 +499,7 @@ async def patch_note(request: Request, response: Response, uid: int, authorizati
     rl = await ratelimit(request, 'PATCH /user/{uid}/note', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -540,7 +540,7 @@ async def post_tracker_switch(request: Request, response: Response, uid: int | N
     rl = await ratelimit(request, 'POST /user/tracker/switch', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

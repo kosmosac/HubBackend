@@ -16,7 +16,7 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
     rl = await ratelimit(request, 'POST /user/accept', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -32,7 +32,7 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
             data = await request.json()
         except:
             data = {}
-        if "tracker" in data.keys():
+        if "tracker" in data:
             tracker_in_use = data["tracker"].lower()
             if tracker_in_use == "tracksim":
                 tracker_in_use = 2
@@ -142,7 +142,7 @@ async def patch_connections(request: Request, response: Response, uid: int, auth
     rl = await ratelimit(request, 'PATCH /user/connections', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -172,22 +172,22 @@ async def patch_connections(request: Request, response: Response, uid: int, auth
 
     data = await request.json()
     try:
-        if "email" in data.keys():
+        if "email" in data:
             new_connections[0] = data["email"]
             if data["email"] is None or "@" not in data["email"]:
                 response.status_code = 400
                 return {"error": ml.tr(request, "connection_invalid", var = {"app": "Email"}, force_lang = au["language"])}
-        if "discordid" in data.keys():
+        if "discordid" in data:
             new_connections[1] = abs(int(data["discordid"]))
             if new_connections[1] > 18446744073709551615:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "discordid", "limit": "18,446,744,073,709,551,615"}, force_lang = au["language"])}
-        if "steamid" in data.keys():
+        if "steamid" in data:
             new_connections[2] = abs(int(data["steamid"]))
             if new_connections[2] > 18446744073709551615:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "steamid", "limit": "18,446,744,073,709,551,615"}, force_lang = au["language"])}
-        if "truckersmpid" in data.keys():
+        if "truckersmpid" in data:
             new_connections[3] = abs(int(data["truckersmpid"]))
             if new_connections[3] > 18446744073709551615:
                 response.status_code = 400
@@ -252,7 +252,7 @@ async def delete_connections(request: Request, response: Response, uid: int, con
     rl = await ratelimit(request, 'DELETE /user/connections', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -291,7 +291,7 @@ async def get_ban_list(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'GET /user/ban/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -363,7 +363,7 @@ async def get_ban(request: Request, response: Response, authorization: str | Non
     rl = await ratelimit(request, 'GET /user/ban', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -416,7 +416,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
     rl = await ratelimit(request, 'PUT /user/ban', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -433,7 +433,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
     try:
         fields = ["uid", "email", "discordid", "steamid", "truckersmpid"]
         for field in fields:
-            if field not in data.keys():
+            if field not in data:
                 data[field] = "NULL"
             else:
                 if field == "email":
@@ -446,7 +446,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
             connections.append(data[field])
 
         expire = 0
-        if "expire" in data.keys():
+        if "expire" in data:
             expire = nint(data["expire"])
         if expire <= 0:
             expire = "NULL"
@@ -455,7 +455,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "expire", "limit": "2,147,483,647"}, force_lang = au["language"])}
         reason = ""
-        if "reason" in data.keys():
+        if "reason" in data:
             reason = convertQuotation(data["reason"])
             if len(reason) > 256:
                 response.status_code = 400
@@ -516,7 +516,7 @@ async def delete_ban(request: Request, response: Response, authorization: str | 
     rl = await ratelimit(request, 'DELETE /user/ban', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -533,7 +533,7 @@ async def delete_ban(request: Request, response: Response, authorization: str | 
     try:
         fields = ["uid", "email", "discordid", "steamid", "truckersmpid"]
         for field in fields:
-            if field not in data.keys():
+            if field not in data:
                 data[field] = "NULL"
             else:
                 if field == "email":
@@ -575,7 +575,7 @@ async def delete_ban_history(request: Request, response: Response, historyid: in
     rl = await ratelimit(request, 'DELETE /user/ban/history', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -604,7 +604,7 @@ async def delete_user(request: Request, response: Response, uid: int, authorizat
     rl = await ratelimit(request, 'DELETE /user', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -695,7 +695,7 @@ async def patch_note_global(request: Request, response: Response, uid: int, auth
     rl = await ratelimit(request, 'PATCH /user/{uid}/note/global', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

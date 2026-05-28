@@ -149,7 +149,7 @@ async def RefreshDiscordAccessToken(app):
                 tokens = await discord_auth.refresh_token(refresh_token)
                 await app.db.extend_conn(dhrid, 2)
                 await app.db.execute(dhrid, f"DELETE FROM discord_access_token WHERE discordid = {discordid}")
-                if "error" in tokens.keys() or "access_token" not in tokens.keys():
+                if "error" in tokens or "access_token" not in tokens:
                     continue
 
                 (access_token, refresh_token, expire_timestamp) = (convertQuotation(tokens["access_token"]), convertQuotation(tokens["refresh_token"]), tokens["expires_in"] + int(time.time()) - 60)
@@ -221,19 +221,21 @@ async def UpdateDlogStats(app):
 
                     truck = obj["truck"]
                     if truck is not None:
-                        if "unique_id" in truck.keys() and "name" in truck.keys() and \
-                                truck["brand"] is not None and "name" in truck["brand"].keys():
+                        if "unique_id" in truck and "name" in truck and \
+                                truck["brand"] is not None and "name" in truck["brand"]:
                             dlog_stats[1] = [[convertQuotation(truck["unique_id"]), convertQuotation(truck["brand"]["name"]) + " " + convertQuotation(truck["name"]), 1, 0]]
-                        if "license_plate_country" in truck.keys() and truck["license_plate_country"] is not None and \
-                                "unique_id" in truck["license_plate_country"].keys() and "name" in truck["license_plate_country"].keys():
+                        if truck.get("license_plate_country") is not None and \
+                                "unique_id" in truck["license_plate_country"] and \
+                                "name" in truck["license_plate_country"]:
                             dlog_stats[3] = [[convertQuotation(truck["license_plate_country"]["unique_id"]), convertQuotation(truck["license_plate_country"]["name"]), 1, 0]]
 
                     for trailer in obj["trailers"]:
-                        if "body_type" in trailer.keys():
+                        if "body_type" in trailer:
                             body_type = trailer["body_type"]
                             dlog_stats[2]  = [[convertQuotation(body_type), convertQuotation(body_type), 1, 0]]
-                        if "license_plate_country" in trailer.keys() and trailer["license_plate_country"] is not None and \
-                                "unique_id" in trailer["license_plate_country"].keys() and "name" in trailer["license_plate_country"].keys():
+                        if trailer.get("license_plate_country") is not None and \
+                                "unique_id" in trailer["license_plate_country"] and \
+                                "name" in trailer["license_plate_country"]:
                             item = [convertQuotation(trailer["license_plate_country"]["unique_id"]), convertQuotation(trailer["license_plate_country"]["name"]), 1, 0]
                             duplicate = False
                             for i in range(len(dlog_stats[3])):
@@ -245,27 +247,27 @@ async def UpdateDlogStats(app):
                                 dlog_stats[3].append(item)
 
                     cargo = obj["cargo"]
-                    if cargo is not None and "unique_id" in cargo.keys() and "name" in cargo.keys():
+                    if cargo is not None and "unique_id" in cargo and "name" in cargo:
                         dlog_stats[4] = [[convertQuotation(cargo["unique_id"]), convertQuotation(cargo["name"]), 1, 0]]
 
-                    if "market" in obj.keys():
+                    if "market" in obj:
                         dlog_stats[5] = [[convertQuotation(obj["market"]), convertQuotation(obj["market"]), 1, 0]]
 
                     source_city = obj["source_city"]
-                    if source_city is not None and "unique_id" in source_city.keys() and "name" in source_city.keys():
+                    if source_city is not None and "unique_id" in source_city and "name" in source_city:
                         dlog_stats[6] = [[convertQuotation(source_city["unique_id"]), convertQuotation(source_city["name"]), 1, 0]]
                     source_company = obj["source_company"]
-                    if source_company is not None and "unique_id" in source_company.keys() and "name" in source_company.keys():
+                    if source_company is not None and "unique_id" in source_company and "name" in source_company:
                         dlog_stats[7] = [[convertQuotation(source_company["unique_id"]), convertQuotation(source_company["name"]), 1, 0]]
                     destination_city = obj["destination_city"]
-                    if destination_city is not None and "unique_id" in destination_city.keys() and "name" in destination_city.keys():
+                    if destination_city is not None and "unique_id" in destination_city and "name" in destination_city:
                         dlog_stats[8] = [[convertQuotation(destination_city["unique_id"]), convertQuotation(destination_city["name"]), 1, 0]]
                     destination_company = obj["destination_company"]
-                    if destination_company is not None and "unique_id" in destination_company.keys() and "name" in destination_company.keys():
+                    if destination_company is not None and "unique_id" in destination_company and "name" in destination_company:
                         dlog_stats[9] = [[convertQuotation(destination_company["unique_id"]), convertQuotation(destination_company["name"]), 1, 0]]
 
                     mode = ("single_player", "Single Player")
-                    if obj["multiplayer"] is not None and "type" in obj["multiplayer"].keys():
+                    if obj["multiplayer"] is not None and "type" in obj["multiplayer"]:
                         if obj["multiplayer"]["type"] == "truckersmp":
                             mode = ("truckersmp", "TruckersMP")
                         elif obj["multiplayer"]["type"] == "scs_convoy":
@@ -342,14 +344,14 @@ async def UpdateDlogStats(app):
                         await app.db.execute(dhrid, f"SELECT item_type, item_key, item_name FROM dlog_stats WHERE userid = {stat_userid}")
                         t = await app.db.fetchall(dhrid)
                         for tt in t:
-                            if tt[0] not in p.keys():
+                            if tt[0] not in p:
                                 p[tt[0]] = [tt[1]]
                             else:
                                 p[tt[0]].append(tt[1])
                             pname[(tt[0], tt[1])] = tt[2]
 
-                        for itype in dlog_stats.keys():
-                            if itype not in p.keys():
+                        for itype in dlog_stats:
+                            if itype not in p:
                                 for dd in dlog_stats[itype]:
                                     if dd[0] == "None":
                                         continue
@@ -447,11 +449,11 @@ async def SendDailyBonusNotification(app):
             await app.db.execute(dhrid, f"SELECT uid FROM settings WHERE skey = 'daily-bonus-notification-time' AND sval = '{matchtime}'")
             t = await app.db.fetchall(dhrid)
             for tt in t:
-                if tt[0] not in last10min.keys() and tt[0] in uid2userid.keys() and uid2userid[tt[0]]:
+                if tt[0] not in last10min and tt[0] in uid2userid and uid2userid[tt[0]]:
                     usertz = "UTC"
-                    if tt[0] in uid2timezone.keys():
+                    if tt[0] in uid2timezone:
                         usertz = uid2timezone[tt[0]]
-                    user_last_bonus = last_bonus[uid2userid[tt[0]]] if uid2userid[tt[0]] in last_bonus.keys() else 0
+                    user_last_bonus = last_bonus[uid2userid[tt[0]]] if uid2userid[tt[0]] in last_bonus else 0
                     user_date = utcnow.astimezone(ZoneInfo(usertz)).date()
                     lcutc = datetime.fromtimestamp(user_last_bonus, tz=timezone.utc)
                     lc_date = lcutc.astimezone(ZoneInfo(usertz)).date()
@@ -460,7 +462,7 @@ async def SendDailyBonusNotification(app):
                         to_notify.append(tt[0])
 
             for uid in to_notify:
-                await notification(request, "bonus", uid, ml.tr(request, "daily_bonus_reminder", force_lang = uid2language[uid] if uid in uid2language.keys() else ""), force = True) # regular notification does not manage this
+                await notification(request, "bonus", uid, ml.tr(request, "daily_bonus_reminder", force_lang = uid2language[uid] if uid in uid2language else ""), force = True) # regular notification does not manage this
                 last10min[uid] = int(time.time())
 
             if last10min == {}:

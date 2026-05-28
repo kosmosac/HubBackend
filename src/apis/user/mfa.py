@@ -16,7 +16,7 @@ async def post_enable(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'POST /user/mfa/enable', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -73,7 +73,7 @@ async def post_disable(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'POST /user/mfa/disable', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

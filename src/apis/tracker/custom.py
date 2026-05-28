@@ -149,7 +149,7 @@ async def post_update(response: Response, request: Request):
         return {"error": result[1]}
 
     (logid, userid, gameid, _) = result
-    if "route" in app.config.plugins and "route" in d["data"]["object"].keys():
+    if "route" in app.config.plugins and "route" in d["data"]["object"]:
         route = d["data"]["object"]["route"]
         asyncio.create_task(FetchRoute(app, gameid, userid, logid, route))
 

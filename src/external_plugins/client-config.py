@@ -44,7 +44,7 @@ async def get_client_assets(request: Request, response: Response, key: str):
     rl = await ratelimit(request, 'GET /client/assets', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     if key not in ["logo", "banner", "bgimage"]:
@@ -73,7 +73,7 @@ async def patch_client_global_config(request: Request, response: Response, autho
     rl = await ratelimit(request, 'PATCH /client/config/global', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     au = await auth(authorization, request, required_permission = ["administrator"])
@@ -117,17 +117,17 @@ async def patch_client_global_config(request: Request, response: Response, autho
         whitelist = ["abbr", "name", "color", "name_color", "theme_main_color", "theme_background_color", "theme_darken_ratio", "distance_unit", "use_highest_role_color", "domain", "api_host", "plugins", "logo_key", "banner_key", "bgimage_key", "truckersmp_vtc_id", "gallery"]
         blacklist = ["abbr", "domain", "api_host", "plugins", "logo_key", "banner_key", "bgimage_key", "gallery"]
 
-        keys = list(newconfig.keys())
+        keys = list(newconfig)
         for k in keys:
             if k not in whitelist or k in blacklist:
                 del newconfig[k]
 
-        keys = list(config.keys())
+        keys = list(config)
         for k in keys:
-            if k not in newconfig.keys():
+            if k not in newconfig:
                 newconfig[k] = config[k]
 
-        sorted_keys = sorted(newconfig.keys(), key=lambda x: whitelist.index(x))
+        sorted_keys = sorted(newconfig, key=lambda x: whitelist.index(x))
         newconfig = {key: newconfig[key] for key in sorted_keys}
         newconfig = json.dumps(newconfig)
     except:
@@ -149,7 +149,7 @@ async def patch_client_global_config_gallery(request: Request, response: Respons
     rl = await ratelimit(request, 'PATCH /client/config/global/gallery', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     au = await auth(authorization, request, required_permission = ["manage_gallery"])
@@ -219,7 +219,7 @@ async def patch_client_user_config(request: Request, response: Response, authori
     rl = await ratelimit(request, 'PATCH /client/config/user', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     au = await auth(authorization, request, check_member = False)
@@ -232,7 +232,7 @@ async def patch_client_user_config(request: Request, response: Response, authori
     data = await request.json()
 
     whitelist = ["name_color", "profile_upper_color", "profile_lower_color", "profile_banner_url"]
-    keys = data.keys()
+    keys = data
     for k in keys:
         if k not in whitelist:
             del data[k]

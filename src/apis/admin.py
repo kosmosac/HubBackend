@@ -35,7 +35,7 @@ async def post_discord_role_connection_enable(request: Request, response: Respon
     rl = await ratelimit(request, 'POST /discord/role-connection/enable', 60, 5)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -64,7 +64,7 @@ async def post_discord_role_connection_disable(request: Request, response: Respo
     rl = await ratelimit(request, 'POST /discord/role-connection/disable', 60, 5)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -93,7 +93,7 @@ async def get_config(request: Request, response: Response, authorization: str | 
     rl = await ratelimit(request, 'GET /config', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -111,7 +111,7 @@ async def get_config(request: Request, response: Response, authorization: str | 
         t = copy.deepcopy(app.backup_config)
         ttconfig = {}
 
-        for tt in t.keys():
+        for tt in t:
             if tt in public_config_whitelist:
                 if tt == "trackers":
                     ttconfig[tt] = [{"type": tracker["type"], "company_id": tracker["company_id"]} for tracker in t[tt]]
@@ -133,7 +133,7 @@ async def get_config(request: Request, response: Response, authorization: str | 
         ffconfig = {}
 
         # process whitelist
-        for tt in f.keys():
+        for tt in f:
             if tt in config_whitelist:
                 ffconfig[tt] = f[tt]
 
@@ -142,10 +142,10 @@ async def get_config(request: Request, response: Response, authorization: str | 
             ffconfig[tt] = ""
 
         # remove disabled plugins
-        for t in config_plugins.keys():
+        for t in config_plugins:
             if t not in app.config.plugins:
                 for tt in config_plugins[t]:
-                    if tt in ffconfig.keys():
+                    if tt in ffconfig:
                         del ffconfig[tt]
     except Exception as exc:
         ffconfig = {}
@@ -156,7 +156,7 @@ async def get_config(request: Request, response: Response, authorization: str | 
     ttconfig = {}
 
     # process whitelist
-    for tt in t.keys():
+    for tt in t:
         if tt in config_whitelist:
             ttconfig[tt] = t[tt]
 
@@ -165,10 +165,10 @@ async def get_config(request: Request, response: Response, authorization: str | 
         ttconfig[tt] = ""
 
     # remove disabled plugins
-    for t in config_plugins.keys():
+    for t in config_plugins:
         if t not in app.config.plugins:
             for tt in config_plugins[t]:
-                if tt in ffconfig.keys():
+                if tt in ffconfig:
                     del ttconfig[tt]
 
     return {"config": ffconfig, "backup": ttconfig, "config_last_modified": int(last_modified), "backup_last_modified": int(app.config_last_modified)}
@@ -186,7 +186,7 @@ async def patch_config(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'PATCH /config', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -213,12 +213,12 @@ async def patch_config(request: Request, response: Response, authorization: str 
     else:
         ttconfig = validateConfig(json.loads(open(app.config_path, "r", encoding="utf-8").read()))
 
-    for tt in new_config.keys():
+    for tt in new_config:
         if tt in config_whitelist:
             if tt == "trackers":
                 idx = 0
                 for tracker in new_config[tt]:
-                    if "type" not in tracker.keys() or tracker["type"] not in ["tracksim", "trucky", "custom", "unitracker"]:
+                    if "type" not in tracker or tracker["type"] not in ["tracksim", "trucky", "custom", "unitracker"]:
                         response.status_code = 400
                         return {"error": ml.tr(request, "config_invalid_tracker", force_lang = au["language"])}
                     idx += 1
@@ -234,10 +234,10 @@ async def patch_config(request: Request, response: Response, authorization: str 
                     return {"error": ml.tr(request, "config_invalid_distance_unit", force_lang = au["language"])}
 
             if tt == "economy":
-                if "garages" in new_config[tt].keys():
+                if "garages" in new_config[tt]:
                     garages = new_config[tt]["garages"]
                     for garage in garages:
-                        if "base_slots" in garage.keys() and isint(garage["base_slots"]):
+                        if "base_slots" in garage and isint(garage["base_slots"]):
                             if int(garage["base_slots"]) > 10:
                                 response.status_code = 400
                                 return {"error": ml.tr(request, "value_too_large", var = {"item": "economy.garages.base_slots", "limit": "10"}, force_lang = au["language"])}
@@ -318,7 +318,7 @@ async def post_config_reload(request: Request, response: Response, authorization
     rl = await ratelimit(request, 'POST /config/reload', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -384,7 +384,7 @@ async def post_restart(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'POST /restart', 600, 3)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -450,7 +450,7 @@ async def get_audit_list(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'GET /audit/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

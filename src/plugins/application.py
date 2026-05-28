@@ -20,7 +20,7 @@ async def get_types(request: Request):
     to_remove = ["webhook_url", "channel_id", "discord_role_change", "message"]
     for i in range(len(ret)):
         for k in to_remove:
-            if k in ret[i].keys():
+            if k in ret[i]:
                 del ret[i][k]
     return ret
 
@@ -37,7 +37,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /applications/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -50,7 +50,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         response.status_code = 400
         return {"error": ml.tr(request, "invalid_value", var = {"key": "order_by"})}
     cvt = {"respond_timestamp": "update_staff_timestamp", "applicant_uid": "uid", "respond_staff_userid": "update_staff_userid"}
-    if order_by in cvt.keys():
+    if order_by in cvt:
         order_by = cvt[order_by]
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
@@ -181,7 +181,7 @@ async def get_application(request: Request, response: Response, applicationid: i
     rl = await ratelimit(request, 'GET /applications', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -223,7 +223,7 @@ async def post_application(request: Request, response: Response, authorization: 
     rl = await ratelimit(request, 'POST /applications', 180, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -376,7 +376,7 @@ async def post_application(request: Request, response: Response, authorization: 
     await app.db.execute(dhrid, f"SELECT name, avatar, email, truckersmpid, steamid, userid FROM user WHERE uid = {uid}")
     t = await app.db.fetchall(dhrid)
     msg = f"**UID**: {uid}\n**User ID**: {userid}\n**Email**: {t[0][2]}\n**Discord**: <@{discordid}> (`{discordid}`)\n**Steam ID**: [{t[0][4]}](https://steamcommunity.com/profiles/{t[0][4]})\n**TruckersMP ID**: [{t[0][3]}](https://truckersmp.com/user/{t[0][3]})\n\n"
-    for d in application.keys():
+    for d in application:
         msg += f"**{d}**\n{application[d]}\n\n"
 
     if hook_url != "":
@@ -400,7 +400,7 @@ async def post_message(request: Request, response: Response, applicationid: int,
     rl = await ratelimit(request, 'POST /applications/message', 180, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -443,7 +443,7 @@ async def post_message(request: Request, response: Response, applicationid: int,
     application_type = t[0][3]
     i = 1
     while 1:
-        if f"[Message] {name} ({userid}) #{i}" not in data.keys():
+        if f"[Message] {name} ({userid}) #{i}" not in data:
             break
         i += 1
 
@@ -496,7 +496,7 @@ async def patch_status(request: Request, response: Response, applicationid: int,
     rl = await ratelimit(request, 'PATCH /applications/status', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -523,7 +523,7 @@ async def patch_status(request: Request, response: Response, applicationid: int,
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
     STATUS = {0: "pending", 1: "accepted", 2: "declined"}
     statustxt = "N/A"
-    if status in STATUS.keys():
+    if status in STATUS:
         statustxt = STATUS[int(status)]
 
     await app.db.execute(dhrid, f"SELECT * FROM application WHERE applicationid = {applicationid} AND applicationid >= 0")
@@ -556,7 +556,7 @@ async def patch_status(request: Request, response: Response, applicationid: int,
     data = json.loads(decompress(t[0][3]))
     i = 1
     while 1:
-        if f"[Message] {au['name']} ({au['userid']}) #{i}" not in data.keys():
+        if f"[Message] {au['name']} ({au['userid']}) #{i}" not in data:
             break
         i += 1
 
@@ -578,7 +578,7 @@ async def delete_application(request: Request, response: Response, applicationid
     rl = await ratelimit(request, 'DELETE /applications', 180, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -627,7 +627,7 @@ async def get_statistics(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'GET /applications/statistics', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

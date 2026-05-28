@@ -31,11 +31,11 @@ async def FetchRoute(app, gameid, userid, logid, trackerid, request, dhrid = Non
     if r.status_code != 200: # tracksim is being used as tracker but there's an error
         try:
             resp = r.json()
-            if "error" in resp.keys() and resp["error"] is not None:
+            if resp.get("error") is not None:
                 return {"error": TRACKER['tracksim'] + " " + resp["error"]}
-            elif "message" in resp.keys() and resp["message"] is not None:
+            elif resp.get("message") is not None:
                 return {"error": TRACKER['tracksim'] + " " + resp["message"]}
-            elif "detail" in resp.keys() and resp["detail"] is not None:
+            elif resp.get("detail") is not None:
                 return {"error": TRACKER['tracksim'] + " " + resp["detail"]}
             elif len(r.text) <= 64:
                 return {"error": TRACKER['tracksim'] + " " + r.text}
@@ -195,7 +195,7 @@ async def post_update_route(response: Response, request: Request, authorization:
     rl = await ratelimit(request, 'POST /tracksim/update/route', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -247,7 +247,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
     rl = await ratelimit(request, 'PUT /tracksim/driver', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -280,7 +280,7 @@ async def delete_driver(response: Response, request: Request, userid: int, autho
     rl = await ratelimit(request, 'PUT /tracksim/driver', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

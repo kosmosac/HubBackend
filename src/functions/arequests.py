@@ -11,7 +11,7 @@ def process_headers(headers):
     if headers is None:
         return {"User-Agent": USER_AGENT}
     else:
-        if "User-Agent" not in headers.keys():
+        if "User-Agent" not in headers:
             headers["User-Agent"] = USER_AGENT
         return headers
 

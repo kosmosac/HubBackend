@@ -15,7 +15,7 @@ async def patch_password(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'PATCH /user/password', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -93,7 +93,7 @@ async def post_password_disable(request: Request, response: Response, authorizat
     rl = await ratelimit(request, 'POST /user/password/disable', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

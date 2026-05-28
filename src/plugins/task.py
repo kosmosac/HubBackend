@@ -114,14 +114,14 @@ async def TaskReminderNotification(app):
                         await app.db.execute(dhrid, f"SELECT uid FROM user WHERE userid IN ({list2str(str2list(assign_to))})")
                         t = await app.db.fetchall(dhrid)
                         for tt in t:
-                            if tt[0] in tonotify.keys():
+                            if tt[0] in tonotify:
                                 task_to_notify.append(tt[0])
                     elif assign_mode == 2:
                         await app.db.execute(dhrid, "SELECT uid, roles FROM user WHERE userid >= 0")
                         t = await app.db.fetchall(dhrid)
                         for tt in t:
                             if any([role in str2list(tt[1]) for role in str2list(assign_to)]):
-                                if tt[0] in tonotify.keys():
+                                if tt[0] in tonotify:
                                     task_to_notify.append(tt[0])
 
                     due_utc = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(due_timestamp)) + " UTC"
@@ -226,7 +226,7 @@ async def get_task_list(request: Request, response: Response, authorization: str
     rl = await ratelimit(request, 'GET /tasks/list', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -344,7 +344,7 @@ async def get_task(request: Request, response: Response, taskid: int, authorizat
     rl = await ratelimit(request, 'GET /tasks', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -380,7 +380,7 @@ async def post_task(request: Request, response: Response, authorization: str | N
     rl = await ratelimit(request, 'POST /tasks', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -476,7 +476,7 @@ async def patch_task(request: Request, response: Response, taskid: int, authoriz
     rl = await ratelimit(request, 'PATCH /tasks', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -497,49 +497,49 @@ async def patch_task(request: Request, response: Response, taskid: int, authoriz
 
     data = await request.json()
     try:
-        if "title" in data.keys():
+        if "title" in data:
             title = data["title"]
             if len(title) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "title", "limit": "200"}, force_lang = au["language"])}
-        if "description" in data.keys():
+        if "description" in data:
             description = data["description"]
             if len(description) > 2000:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "description", "limit": "2,000"}, force_lang = au["language"])}
 
-        if "priority" in data.keys():
+        if "priority" in data:
             priority = int(data["priority"])
             if abs(priority) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "priority", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "bonus" in data.keys():
+        if "bonus" in data:
             bonus = int(data["bonus"])
             if abs(bonus) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "bonus", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "due_timestamp" in data.keys():
+        if "due_timestamp" in data:
             due_timestamp = int(data["due_timestamp"])
             if abs(due_timestamp) > 9223372036854775807:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "due_timestamp", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
-        if "remind_timestamp" in data.keys():
+        if "remind_timestamp" in data:
             remind_timestamp = int(data["remind_timestamp"])
             if abs(remind_timestamp) > 9223372036854775807:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "remind_timestamp", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
-        if "recurring" in data.keys():
+        if "recurring" in data:
             recurring = int(data["recurring"])
             if abs(recurring) > 9223372036854775807:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "recurring", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
 
-        if "assign_mode" in data.keys():
+        if "assign_mode" in data:
             assign_mode = data["assign_mode"]
             if assign_mode not in [0, 1, 2]:
                 response.status_code = 400
                 return {"error": ml.tr(request, "invalid_value", var = {"key": "assign_mode"}, force_lang = au["language"])}
-        if "assign_to" in data.keys():
+        if "assign_to" in data:
             assign_to = data["assign_to"]
             if not isinstance(assign_to, list) or any([not isinstance(i, int) for i in assign_to]):
                 response.status_code = 400
@@ -583,7 +583,7 @@ async def delete_task(request: Request, response: Response, taskid: int, authori
     rl = await ratelimit(request, 'DELETE /tasks', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -618,7 +618,7 @@ async def put_task_complete_mark(request: Request, response: Response, taskid: i
     rl = await ratelimit(request, 'PUT /tasks/complete/mark', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -632,7 +632,7 @@ async def put_task_complete_mark(request: Request, response: Response, taskid: i
     data = await request.json()
     try:
         note = ""
-        if "note" in data.keys():
+        if "note" in data:
             note = data["note"]
         if len(note) > 2000:
             response.status_code = 400
@@ -676,7 +676,7 @@ async def delete_task_complete_mark(request: Request, response: Response, taskid
     rl = await ratelimit(request, 'DELETE /tasks/complete/mark', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -690,7 +690,7 @@ async def delete_task_complete_mark(request: Request, response: Response, taskid
     data = await request.json()
     try:
         note = ""
-        if "note" in data.keys():
+        if "note" in data:
             note = data["note"]
         if len(note) > 2000:
             response.status_code = 400
@@ -734,7 +734,7 @@ async def post_task_complete_accept(request: Request, response: Response, taskid
     rl = await ratelimit(request, 'POST /tasks/complete/accept', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -748,14 +748,14 @@ async def post_task_complete_accept(request: Request, response: Response, taskid
     data = await request.json()
     try:
         note = ""
-        if "note" in data.keys():
+        if "note" in data:
             note = data["note"]
         if len(note) > 2000:
             response.status_code = 400
             return {"error": ml.tr(request, "content_too_long", var = {"item": "note", "limit": "2,000"}, force_lang = au["language"])}
 
         distribute_bonus = None # default, depends on due timestamp
-        if "distribute_bonus" in data.keys():
+        if "distribute_bonus" in data:
             distribute_bonus = data["distribute_bonus"]
             if not isinstance(distribute_bonus, bool):
                 response.status_code = 400
@@ -831,7 +831,7 @@ async def post_task_complete_reject(request: Request, response: Response, taskid
     rl = await ratelimit(request, 'POST /tasks/complete/reject', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -845,14 +845,14 @@ async def post_task_complete_reject(request: Request, response: Response, taskid
     data = await request.json()
     try:
         note = ""
-        if "note" in data.keys():
+        if "note" in data:
             note = data["note"]
         if len(note) > 2000:
             response.status_code = 400
             return {"error": ml.tr(request, "content_too_long", var = {"item": "note", "limit": "2,000"}, force_lang = au["language"])}
 
         remove_bonus = True # remove bonus points by default
-        if "remove_bonus" in data.keys():
+        if "remove_bonus" in data:
             remove_bonus = data["remove_bonus"]
             if not isinstance(remove_bonus, bool):
                 response.status_code = 400

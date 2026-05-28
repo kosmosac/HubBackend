@@ -22,7 +22,7 @@ def checkPerm(app, roles, perms):
         perms = [perms]
     for role in roles:
         for perm in perms:
-            if perm in app.config_dict["perms"].keys() and role in app.config_dict["perms"][perm]:
+            if perm in app.config_dict["perms"] and role in app.config_dict["perms"][perm]:
                 return True
     return False
 
@@ -34,7 +34,7 @@ async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False)
     # cidentifier is a worker-level identifier stored in memory to prevent excessive amount of traffic
     # cidentifier will only handle global ratelimit
     cidentifier = f"ip/{request.client.host}"
-    if "authorization" in request.headers.keys():
+    if "authorization" in request.headers:
         authorization = request.headers["authorization"]
         if len(authorization.split(" ")) < 2:
             return (True, JSONResponse(content = {"error": ml.tr(request, "invalid_authorization_token")}, status_code = 401))
@@ -98,7 +98,7 @@ async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False)
 
     # precise identifier for route ratelimit
     identifier = f"ip/{request.client.host}"
-    if "authorization" in request.headers.keys():
+    if "authorization" in request.headers:
         authorization = request.headers["authorization"]
         au = await auth(authorization, request, check_member=False)
         if not au["error"]:
@@ -207,7 +207,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
         if not allow_application_token:
             return {"error": ml.tr(request, "application_token_not_allowed"), "code": 401}
 
-        if not auth_cache or "uid" not in auth_cache.keys():
+        if not auth_cache or "uid" not in auth_cache:
             await app.db.new_conn(dhrid, db_name = app.config.db_name)
 
             # validate token if there's no cache
@@ -226,7 +226,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
         # application token will skip ip / country check
 
         user_cache = app.redis.hgetall(f"uinfo:{uid}")
-        if not user_cache or "uid" not in user_cache.keys():
+        if not user_cache or "uid" not in user_cache:
             # get user info
             await app.db.new_conn(dhrid, db_name = app.config.db_name)
 
@@ -269,7 +269,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
             ok = False
             for role in roles:
                 for perm in required_permission:
-                    if perm in app.config_dict["perms"].keys() and role in app.config_dict["perms"][perm] or role in app.config_dict["perms"]["administrator"]:
+                    if perm in app.config_dict["perms"] and role in app.config_dict["perms"][perm] or role in app.config_dict["perms"]["administrator"]:
                         ok = True
 
             if not ok:
@@ -292,7 +292,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
     elif tokentype == "Bearer":
         curCountry = getRequestCountry(request, abbr = True)
 
-        if not auth_cache or "uid" not in auth_cache.keys():
+        if not auth_cache or "uid" not in auth_cache:
             # validate token if there's no cache
             await app.db.new_conn(dhrid, db_name = app.config.db_name)
 
@@ -316,12 +316,12 @@ async def auth(authorization, request, allow_application_token = False, check_me
             last_used_timestamp = int(auth_cache["last_used_timestamp"])
 
         user_cache = app.redis.hgetall(f"uinfo:{uid}")
-        if not user_cache or "uid" not in user_cache.keys():
+        if not user_cache or "uid" not in user_cache:
             # get user info
             await app.db.new_conn(dhrid, db_name = app.config.db_name)
 
             userinfo = await get_user_info(uid)
-            if "error" in userinfo.keys():
+            if "error" in userinfo:
                 return userinfo
             else:
                 userid = userinfo["userid"]
@@ -410,7 +410,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
 
             for role in roles:
                 for perm in required_permission:
-                    if perm in app.config_dict["perms"].keys() and role in app.config_dict["perms"][perm] or role in app.config_dict["perms"]["administrator"]:
+                    if perm in app.config_dict["perms"] and role in app.config_dict["perms"][perm] or role in app.config_dict["perms"]["administrator"]:
                         ok = True
 
             if not ok:

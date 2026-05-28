@@ -8,7 +8,7 @@ def point2rank(app, rank_type_id, point):
                 rank_type_id = rank_type["id"]
 
     ranks = app.ranktypes[rank_type_id]
-    keys = list(ranks.keys())
+    keys = list(ranks)
     if point < keys[0]:
         return None
     if point >= keys[0] and (len(keys) == 1 or point < keys[1]):

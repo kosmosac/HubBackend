@@ -14,12 +14,12 @@ from src.static import *
 
 async def getHighestActiveRole(request):
     (app, dhrid) = (request.app, request.state.dhrid)
-    for roleid in app.roles.keys(): # this is sorted based on the order_id
+    for roleid in app.roles: # this is sorted based on the order_id
         await app.db.execute(dhrid, f"SELECT uid FROM user WHERE roles LIKE '%,{roleid},%'")
         t = await app.db.fetchall(dhrid)
         if len(t) > 0:
             return roleid
-    return list(app.roles.keys())[0]
+    return list(app.roles)[0]
 
 def getAvatarSrc(discordid, avatar):
     if avatar is None:
@@ -181,9 +181,9 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
     miscuserid = {-997: "Trucky", -998: ml.ctr(request, "discord_api"), -999: "system", -1000: "company", -1001: "dealership", -1002: "garage_agency", -1003: "client", -1004: "service_station", -1005: "scrap_station", -1005: "blackhole"}
     if userid == -1000 or uid == -1000:
         return {"uid": None, "userid": None, "name": app.config.name, "email": None, "discordid": None, "steamid": None, "truckersmpid": None, "tracker": None, "avatar": app.config.logo_url, "bio": None, "note": "", "global_note": None, "roles": [], "activity": None, "mfa": None, "join_timestamp": None}
-    if userid in miscuserid.keys():
+    if userid in miscuserid:
         return {"uid": None, "userid": None, "name": ml.tr(request, miscuserid[userid]), "email": None, "discordid": None, "steamid": None, "truckersmpid": None, "tracker": None, "avatar": None, "bio": None, "note": "", "global_note": None, "roles": [], "activity": None, "mfa": None, "join_timestamp": None}
-    if uid in miscuserid.keys():
+    if uid in miscuserid:
         return {"uid": None, "userid": None, "name": ml.tr(request, miscuserid[uid]), "email": None, "discordid": None, "steamid": None, "truckersmpid": None, "tracker": None, "avatar": None, "bio": None, "note": "", "global_note": None, "roles": [], "activity": None, "mfa": None, "join_timestamp": None}
 
     if privacy:
@@ -197,8 +197,8 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
 
     is_member = False
     request_uid = None
-    if request is not None and "_headers" in request.__dict__.keys():
-        if "authorization" in request.headers.keys():
+    if request is not None and "_headers" in request.__dict__:
+        if "authorization" in request.headers:
             authorization = request.headers["authorization"]
             au = await auth(authorization, request, allow_application_token = True, check_member = False)
             if not au["error"]:
@@ -227,7 +227,7 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
                 uid = int(res)
         if uid != -1:
             ret = app.redis.hgetall(f"uinfo:{uid}")
-            if ret and "uid" in ret.keys():
+            if ret and "uid" in ret:
                 ret["uid"] = int(ret["uid"])
                 ret["userid"] = int(ret["userid"])
                 ret["mfa"] = TF[ret["mfa"]]
@@ -258,7 +258,7 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
                 else:
                     cached_activity = app.redis.hgetall(f"uactivity:{uid}")
                     if cached_activity:
-                        if "error" in cached_activity.keys(): # error: no data
+                        if "error" in cached_activity: # error: no data
                             ret["activity"] = None
                         else:
                             ret["activity"] = {"status": cached_activity["status"], "last_seen": int(cached_activity["last_seen"])}
@@ -342,7 +342,7 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
     if not ignore_activity:
         cached_activity = app.redis.hgetall(f"uactivity:{uid}")
         if cached_activity:
-            if "error" in cached_activity.keys(): # error: no data
+            if "error" in cached_activity: # error: no data
                 activity = None
             else:
                 activity = {"status": cached_activity["status"], "last_seen": int(cached_activity["last_seen"])}
@@ -496,7 +496,7 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
     await app.db.execute(dhrid, f"SELECT userid, SUM(distance) FROM dlog WHERE userid = {userid} GROUP BY userid")
     t = await app.db.fetchall(dhrid)
     for tt in t:
-        if tt[0] not in userdistance.keys():
+        if tt[0] not in userdistance:
             userdistance[tt[0]] = nint(tt[1])
         else:
             userdistance[tt[0]] += nint(tt[1])
@@ -507,7 +507,7 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
     await app.db.execute(dhrid, f"SELECT userid, SUM(points) FROM challenge_completed WHERE userid = {userid} GROUP BY userid")
     o = await app.db.fetchall(dhrid)
     for oo in o:
-        if oo[0] not in userchallenge.keys():
+        if oo[0] not in userchallenge:
             userchallenge[oo[0]] = 0
         userchallenge[oo[0]] += oo[1]
 
@@ -518,7 +518,7 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
     for tt in t:
         attendees = str2list(tt[0])
         for attendee in attendees:
-            if attendee not in userevent.keys():
+            if attendee not in userevent:
                 userevent[attendee] = tt[1]
             else:
                 userevent[attendee] += tt[1]
@@ -531,9 +531,9 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
         GROUP BY userid, divisionid")
     o = await app.db.fetchall(dhrid)
     for oo in o:
-        if oo[0] not in userdivision.keys():
+        if oo[0] not in userdivision:
             userdivision[oo[0]] = 0
-        if oo[1] in app.division_points.keys():
+        if oo[1] in app.division_points:
             if app.division_points[oo[1]]["mode"] == "static":
                 userdivision[oo[0]] += float(oo[2]) * app.division_points[oo[1]]["value"]
             elif app.division_points[oo[1]]["mode"] == "ratio":
@@ -546,7 +546,7 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
     await app.db.execute(dhrid, f"SELECT userid, SUM(point) FROM bonus_point WHERE userid = {userid} GROUP BY userid")
     o = await app.db.fetchall(dhrid)
     for oo in o:
-        if oo[0] not in userbonus.keys():
+        if oo[0] not in userbonus:
             userbonus[oo[0]] = 0
         userbonus[oo[0]] += oo[1]
 
@@ -555,15 +555,15 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
     eventpnt = 0
     divisionpnt = 0
     bonuspnt = 0
-    if userid in userdistance.keys() and "distance" in point_types:
+    if userid in userdistance and "distance" in point_types:
         distancepnt = userdistance[userid]
-    if userid in userchallenge.keys() and "challenge" in point_types:
+    if userid in userchallenge and "challenge" in point_types:
         challengepnt = userchallenge[userid]
-    if userid in userevent.keys() and "event" in point_types:
+    if userid in userevent and "event" in point_types:
         eventpnt = userevent[userid]
-    if userid in userdivision.keys() and "division" in point_types:
+    if userid in userdivision and "division" in point_types:
         divisionpnt = userdivision[userid]
-    if userid in userbonus.keys() and "bonus" in point_types:
+    if userid in userbonus and "bonus" in point_types:
         bonuspnt = userbonus[userid]
 
     totalpnt = round(distancepnt * ratio) + round(challengepnt) + round(eventpnt) + round(divisionpnt) + round(bonuspnt)

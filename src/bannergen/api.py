@@ -59,7 +59,7 @@ LOCALIZATION = {
 # font = TTFont("./font.ttf")
 # d = []
 # for table in font['cmap'].tables:
-#     for key in table.cmap.keys():
+#     for key in table.cmap:
 #         if not key in d:
 #             d.append(key)
 # d = sorted(d)
@@ -107,7 +107,7 @@ def process_headers(headers):
     if headers is None:
         return {"User-Agent": USER_AGENT}
     else:
-        if "User-Agent" not in headers.keys():
+        if "User-Agent" not in headers:
             headers["User-Agent"] = USER_AGENT
         return headers
 
@@ -146,7 +146,7 @@ async def get_banner(request: Request, response: Response):
     userid = data["userid"]
 
     language = "en"
-    if "language" in data.keys() and data["language"] in LOCALIZATION.keys():
+    if "language" in data and data["language"] in LOCALIZATION:
         language = data["language"]
 
     try:

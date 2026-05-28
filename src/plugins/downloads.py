@@ -23,7 +23,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /downloads/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -97,7 +97,7 @@ async def get_downloads(request: Request, response: Response, downloadsid: int, 
     rl = await ratelimit(request, 'GET /downloads', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -133,7 +133,7 @@ async def get_redirect(request: Request, response: Response, secret: str):
     rl = await ratelimit(request, 'GET /downloads/redirect', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -168,7 +168,7 @@ async def post_downloads(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'POST /downloads', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -193,9 +193,9 @@ async def post_downloads(request: Request, response: Response, authorization: st
         if len(data["link"]) > 200:
             response.status_code = 400
             return {"error": ml.tr(request, "content_too_long", var = {"item": "link", "limit": "200"}, force_lang = au["language"])}
-        if "orderid" not in data.keys():
+        if "orderid" not in data:
             data["orderid"] = 0
-        if "is_pinned" not in data.keys():
+        if "is_pinned" not in data:
             data["is_pinned"] = False
         orderid = int(data["orderid"])
         if abs(orderid) > 2147483647:
@@ -235,7 +235,7 @@ async def patch_downloads(request: Request, response: Response, downloadsid: int
     rl = await ratelimit(request, 'PATCH /downloads', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -256,27 +256,27 @@ async def patch_downloads(request: Request, response: Response, downloadsid: int
 
     data = await request.json()
     try:
-        if "title" in data.keys():
+        if "title" in data:
             title = data["title"]
             if len(data["title"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "title", "limit": "200"}, force_lang = au["language"])}
-        if "description" in data.keys():
+        if "description" in data:
             description = data["description"]
             if len(data["description"]) > 2000:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "description", "limit": "2,000"}, force_lang = au["language"])}
-        if "link" in data.keys():
+        if "link" in data:
             link = data["link"]
             if len(data["link"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "link", "limit": "200"}, force_lang = au["language"])}
-        if "orderid" in data.keys():
+        if "orderid" in data:
             orderid = int(data["orderid"])
             if abs(orderid) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "orderid", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "is_pinned" in data.keys():
+        if "is_pinned" in data:
             is_pinned = int(bool(data["is_pinned"]))
     except:
         response.status_code = 400
@@ -298,7 +298,7 @@ async def delete_downloads(request: Request, response: Response, downloadsid: in
     rl = await ratelimit(request, 'DELETE /downloads', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

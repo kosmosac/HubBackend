@@ -24,7 +24,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /dlog/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -154,7 +154,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         division_name = None
         division = None
         if division_id is not None:
-            if division_id in app.division_name.keys():
+            if division_id in app.division_name:
                 division_name = app.division_name[division_id]
             division = {"divisionid": division_id, "name": division_name, "status": division_status}
 
@@ -219,7 +219,7 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
     rl = await ratelimit(request, 'GET /dlog', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -244,7 +244,7 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
     data = {}
     if t[0][1] != "":
         data = json.loads(decompress(t[0][1]))
-    if "data" in data.keys():
+    if "data" in data:
         del data["data"]["object"]["driver"]
     distance = t[0][3]
     view_count = t[0][4] + 1
@@ -291,7 +291,7 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
         division_id = p[0][0]
         division_status = p[0][1]
         division_name = None
-        if division_id in app.division_name.keys():
+        if division_id in app.division_name:
             division_name = app.division_name[division_id]
         division = {"divisionid": division_id, "name": division_name, "status": division_status}
 
@@ -334,7 +334,7 @@ async def delete_dlog(request: Request, response: Response, logid: int, authoriz
     rl = await ratelimit(request, 'DELETE /dlog', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

@@ -75,7 +75,7 @@ def getDomainFromUrl(s):
         return False
 
 def getFullCountry(abbr):
-    if abbr.upper() in ISO_COUNTRIES.keys():
+    if abbr.upper() in ISO_COUNTRIES:
         return convertQuotation(ISO_COUNTRIES[abbr.upper()])
     else:
         return ""
@@ -86,9 +86,9 @@ def is_local_ip(ip):
     return bool(private_ipv4.match(ip) or private_ipv6.match(ip))
 
 def getRequestCountry(request, abbr = False):
-    if "cf-ipcountry" in request.headers.keys():
+    if "cf-ipcountry" in request.headers:
         country = request.headers["cf-ipcountry"]
-        if country.upper() in ISO_COUNTRIES.keys(): # makre sure abbr is a valid country code
+        if country.upper() in ISO_COUNTRIES: # makre sure abbr is a valid country code
             if abbr:
                 return convertQuotation(request.headers["cf-ipcountry"])
             else:
@@ -104,7 +104,7 @@ def getRequestCountry(request, abbr = False):
         return "Unknown Region"
 
 def getUserAgent(request):
-    if "user-agent" in request.headers.keys():
+    if "user-agent" in request.headers:
         if len(request.headers["user-agent"]) < 256:
             return convertQuotation(request.headers["user-agent"])
         else:

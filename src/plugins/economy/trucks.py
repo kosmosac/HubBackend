@@ -22,7 +22,7 @@ async def GetTruckInfo(request, vehicleid):
     STATUS = {0: "inactive", 1: "active", -1: "require_service", -2: "scrapped"}
 
     truck = {"id": tt[1], "brand": None, "model": None}
-    if tt[1] in app.trucks.keys():
+    if tt[1] in app.trucks:
         (truck["brand"], truck["model"]) = (app.trucks[tt[1]]["brand"], app.trucks[tt[1]]["model"])
 
     return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
@@ -33,7 +33,7 @@ async def get_all_trucks(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'GET /economy/trucks', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -61,7 +61,7 @@ async def get_truck_list(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'GET /economy/trucks/list', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -147,7 +147,7 @@ async def get_truck_list(request: Request, response: Response, authorization: st
     ret = []
     for tt in t:
         truck = {"id": tt[1], "brand": None, "model": None}
-        if tt[1] in app.trucks.keys():
+        if tt[1] in app.trucks:
             (truck["brand"], truck["model"]) = (app.trucks[tt[1]]["brand"], app.trucks[tt[1]]["model"])
         ret.append({"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price),"purchase_timestamp": tt[8], "status": STATUS[tt[9]]})
 
@@ -160,7 +160,7 @@ async def get_truck(request: Request, response: Response, vehicleid: int, author
     rl = await ratelimit(request, 'GET /economy/trucks/vehicleid', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -183,7 +183,7 @@ async def get_truck(request: Request, response: Response, vehicleid: int, author
     STATUS = {0: "inactive", 1: "active", -1: "require_service", -2: "scrapped"}
 
     truck = {"id": tt[1], "brand": None, "model": None}
-    if tt[1] in app.trucks.keys():
+    if tt[1] in app.trucks:
         (truck["brand"], truck["model"]) = (app.trucks[tt[1]]["brand"], app.trucks[tt[1]]["model"])
 
     return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
@@ -197,7 +197,7 @@ async def get_truck_operation_history(request: Request, response: Response, vehi
     rl = await ratelimit(request, 'GET /economy/trucks/operation/history', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -326,7 +326,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
     rl = await ratelimit(request, 'POST /economy/trucks/purchase', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -340,7 +340,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
@@ -348,7 +348,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
 
         # assignee only work for company trucks
         assigneeid = "NULL"
-        if "assigneeid" in data.keys():
+        if "assigneeid" in data:
             assigneeid = data["assigneeid"]
             if assigneeid is None:
                 assigneeid = "NULL"
@@ -370,7 +370,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
         return {"error": ml.tr(request, "purchase_company_forbidden", var = {"item": ml.tr(request, "economy_truck", force_lang = au["language"])}, force_lang = au["language"])}
 
     # check truckid
-    if truckid not in app.trucks.keys():
+    if truckid not in app.trucks:
         response.status_code = 404
         return {"error": ml.tr(request, "truck_not_found", force_lang = au["language"])}
     truck = app.trucks[truckid]
@@ -467,7 +467,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
     rl = await ratelimit(request, 'POST /economy/trucks/transfer', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -493,7 +493,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
     try:
         # to reassign a truck, set owner to company and update assigneeid
 
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             if current_owner == -1000:
@@ -503,14 +503,14 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
 
         # assignee only work for company trucks
         assigneeid = "NULL"
-        if "assigneeid" in data.keys():
+        if "assigneeid" in data:
             assigneeid = data["assigneeid"]
             if assigneeid is None:
                 assigneeid = "NULL"
             else:
                 assigneeid = int(assigneeid)
 
-        if "message" in data.keys():
+        if "message" in data:
             message = data["message"]
         else:
             message = ""
@@ -609,7 +609,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
         to_message = "  \n" + ml.tr(request, "economy_transaction_message", var = {"message": message}, force_lang = to_user_language)
 
     truck = ml.ctr(request, "unknown") + " (" + truckid + ")"
-    if truckid in app.trucks.keys():
+    if truckid in app.trucks:
         truck = app.trucks[truckid]["brand"] + " " + app.trucks[truckid]["model"]
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": ml.tr(request, "truck", force_lang = from_user_language).title(), "name": f"#{vehicleid} ({truck})", "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
@@ -626,7 +626,7 @@ async def post_truck_relocate(request: Request, response: Response, vehicleid: i
     rl = await ratelimit(request, 'POST /economy/trucks/relocate', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -686,7 +686,7 @@ async def post_truck_relocate(request: Request, response: Response, vehicleid: i
     await app.db.commit(dhrid)
 
     garage = ml.ctr(request, "unknown_garage")
-    if garage in app.garages.keys():
+    if garage in app.garages:
         garage = app.garages[garage]["name"]
 
     await AuditLog(request, au["uid"], "economy", ml.ctr(request, "relocated_truck", var = {"id": vehicleid, "garage": garage, "garageid": garageid, "slotid": slotid}))
@@ -702,7 +702,7 @@ async def post_truck_activate(request: Request, response: Response, vehicleid: i
     rl = await ratelimit(request, 'POST /economy/trucks/activate', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -765,7 +765,7 @@ async def post_truck_deactivate(request: Request, response: Response, vehicleid:
     rl = await ratelimit(request, 'POST /economy/trucks/deactivate', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -813,7 +813,7 @@ async def post_truck_repair(request: Request, response: Response, vehicleid: int
     rl = await ratelimit(request, 'POST /economy/trucks/repair', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -898,7 +898,7 @@ async def post_truck_sell(request: Request, response: Response, vehicleid: int, 
     rl = await ratelimit(request, 'POST /economy/trucks/sell', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -956,7 +956,7 @@ async def post_truck_scrap(request: Request, response: Response, vehicleid: int,
     rl = await ratelimit(request, 'POST /economy/trucks/scrap', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

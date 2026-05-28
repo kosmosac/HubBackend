@@ -18,7 +18,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     rl = await ratelimit(request, 'PATCH /member/roles', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -31,7 +31,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
 
     staff_highest_order_id = None
     for role in au["roles"]:
-        if role in app.roles.keys():
+        if role in app.roles:
             if staff_highest_order_id is None or app.roles[role]["order_id"] < staff_highest_order_id:
                 staff_highest_order_id = app.roles[role]["order_id"]
     if staff_highest_order_id is None:
@@ -71,7 +71,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
         if role not in new_roles:
             removed_roles.append(role)
     for role in new_roles:
-        if role not in app.roles.keys():
+        if role not in app.roles:
             response.status_code = 400
             return {"error": ml.tr(request, "role_not_found", force_lang = au["language"])}
 
@@ -81,13 +81,13 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
 
         # NOTE: Added/Removed role may be already gone in config, so we need to check if it still exists
         for add in added_roles:
-            if add in app.roles.keys():
+            if add in app.roles:
                 if app.roles[add]["order_id"] <= staff_highest_order_id:
                     response.status_code = 403
                     return {"error": ml.tr(request, "add_role_higher_or_equal", force_lang = au["language"])}
 
         for remove in removed_roles:
-            if remove in app.roles.keys():
+            if remove in app.roles:
                 if app.roles[remove]["order_id"] <= staff_highest_order_id:
                     response.status_code = 403
                     return {"error": ml.tr(request, "remove_role_higher_or_equal", force_lang = au["language"])}
@@ -172,10 +172,10 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
         for role in app.config.roles:
             try:
                 if int(role["id"]) in added_roles:
-                    if "discord_role_id" in role.keys() and isint(role["discord_role_id"]):
+                    if "discord_role_id" in role and isint(role["discord_role_id"]):
                         opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when role is added on Drivers Hub."}, f"add_role,{int(role['discord_role_id'])},{discordid}")
                 elif int(role["id"]) in removed_roles and not sync_add_only:
-                    if "discord_role_id" in role.keys() and isint(role["discord_role_id"]):
+                    if "discord_role_id" in role and isint(role["discord_role_id"]):
                         opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when role is removed on Drivers Hub."}, f"remove_role,{int(role['discord_role_id'])},{discordid}")
             except:
                 pass
@@ -184,13 +184,13 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     upd = ""
     for add in added_roles:
         role_name = f"{ml.ctr(request, 'role')} #{add}\n"
-        if add in app.roles.keys():
+        if add in app.roles:
             role_name = app.roles[add]["name"]
         upd += f"`+ {role_name}`  \n"
         audit += f"`+ {role_name}`  \n"
     for remove in removed_roles:
         role_name = f"{ml.ctr(request, 'role')} #{remove}\n"
-        if remove in app.roles.keys():
+        if remove in app.roles:
             role_name = app.roles[remove]["name"]
         upd += f"`- {role_name}`  \n"
         audit += f"`- {role_name}`  \n"
@@ -214,7 +214,7 @@ async def patch_points(request: Request, response: Response, userid: int, author
     rl = await ratelimit(request, 'PATCH /member/points', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -232,7 +232,7 @@ async def patch_points(request: Request, response: Response, userid: int, author
             response.status_code = 400
             return {"error": ml.tr(request, "value_too_large", var = {"item": "distance", "limit": "2,147,483,647"}, force_lang = au["language"])}
         distance_note = ""
-        if "distance_note" in data.keys():
+        if "distance_note" in data:
             distance_note = data["distance_note"]
             if len(distance_note) > 256:
                 response.status_code = 400
@@ -242,7 +242,7 @@ async def patch_points(request: Request, response: Response, userid: int, author
             response.status_code = 400
             return {"error": ml.tr(request, "value_too_large", var = {"item": "bonus", "limit": "2,147,483,647"}, force_lang = au["language"])}
         bonus_note = ""
-        if "bonus_note" in data.keys():
+        if "bonus_note" in data:
             bonus_note = data["bonus_note"]
             if len(bonus_note) > 256:
                 response.status_code = 400
@@ -286,7 +286,7 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
     rl = await ratelimit(request, 'POST /member/dismiss', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -299,7 +299,7 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
 
     staff_highest_order_id = None
     for role in au["roles"]:
-        if role in app.roles.keys():
+        if role in app.roles:
             if staff_highest_order_id is None or app.roles[role]["order_id"] < staff_highest_order_id:
                 staff_highest_order_id = app.roles[role]["order_id"]
 
@@ -322,7 +322,7 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
 
     user_highest_order_id = None
     for role in roles:
-        if role in app.roles.keys():
+        if role in app.roles:
             if user_highest_order_id is None or app.roles[role]["order_id"] < user_highest_order_id:
                 user_highest_order_id = app.roles[role]["order_id"]
 
@@ -384,7 +384,7 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
     for role in app.config.roles:
         try:
             if int(role["id"]) in roles:
-                if "discord_role_id" in role.keys() and isint(role["discord_role_id"]):
+                if "discord_role_id" in role and isint(role["discord_role_id"]):
                     opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"remove_role,{int(role['discord_role_id'])},{discordid}")
         except:
             pass

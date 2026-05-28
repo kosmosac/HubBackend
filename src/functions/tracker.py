@@ -38,13 +38,13 @@ async def add_driver(request, steamid, staff_uid, userid, username, trackers = [
                 if r.status_code != 200:
                     try:
                         resp = r.json()
-                        if "error" in resp.keys() and resp["error"] is not None:
+                        if resp.get("error") is not None:
                             resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['error']}`"
                             plain_error = resp['error']
-                        elif "message" in resp.keys() and resp["message"] is not None:
+                        elif resp.get("message") is not None:
                             resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['message']}`"
                             plain_error = resp['message']
-                        elif "detail" in resp.keys() and resp["detail"] is not None:
+                        elif resp.get("detail") is not None:
                             resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['detail']}`"
                             plain_error = resp['detail']
                         else:
@@ -93,13 +93,13 @@ async def remove_driver(request, steamid, staff_uid, userid, username, trackers 
                 if r.status_code != 200:
                     try:
                         resp = r.json()
-                        if "error" in resp.keys() and resp["error"] is not None:
+                        if resp.get("error") is not None:
                             resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['error']}`"
                             plain_error = resp['error']
-                        elif "message" in resp.keys() and resp["message"] is not None:
+                        elif resp.get("message") is not None:
                             resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['message']}`"
                             plain_error = resp['message']
-                        elif "detail" in resp.keys() and resp["detail"] is not None:
+                        elif resp.get("detail") is not None:
                             resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['detail']}`"
                             plain_error = resp['detail']
                         else:
@@ -487,7 +487,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
 
                 if jobreq["enabled_realistic_settings"] != "":
                     required_realistic_settings = jobreq["enabled_realistic_settings"].split(",")
-                    for attr in data["game"]["realistic_settings"].keys():
+                    for attr in data["game"]["realistic_settings"]:
                         if data["game"]["realistic_settings"][attr] is True:
                             enabled_realistic_settings.append(attr)
                     for attr in required_realistic_settings:
@@ -566,11 +566,11 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                             usercnt = {}
                             for tt in t:
                                 tuserid = tt[0]
-                                if tuserid not in usercnt.keys():
+                                if tuserid not in usercnt:
                                     usercnt[tuserid] = 1
                                 else:
                                     usercnt[tuserid] += 1
-                            for tuserid in usercnt.keys():
+                            for tuserid in usercnt:
                                 s = usercnt[tuserid]
                                 reward = round(reward_points * s / delivery_count)
                                 await app.db.execute(dhrid, f"INSERT INTO challenge_completed VALUES ({tuserid}, {challengeid}, {reward}, {curtime})")
@@ -605,13 +605,13 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                             for tt in t:
                                 totalcnt += tt[1]
                                 tuserid = tt[0]
-                                if tuserid not in usercnt.keys():
+                                if tuserid not in usercnt:
                                     usercnt[tuserid] = tt[1] - max(totalcnt - delivery_count, 0)
                                 else:
                                     usercnt[tuserid] += tt[1] - max(totalcnt - delivery_count, 0)
                                 if totalcnt >= delivery_count:
                                     break
-                            for tuserid in usercnt.keys():
+                            for tuserid in usercnt:
                                 s = usercnt[tuserid]
                                 reward = round(reward_points * s / delivery_count)
                                 await app.db.execute(dhrid, f"INSERT INTO challenge_completed VALUES ({tuserid}, {challengeid}, {reward}, {curtime})")
@@ -694,7 +694,7 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
         if not isrented:
             truck_damage = data["truck"]["total_damage"]
             damage = 0
-            for item in truck_damage.keys():
+            for item in truck_damage:
                 damage += nfloat(truck_damage[item])
 
             damage = damage * app.config.economy.wear_ratio
@@ -760,7 +760,7 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
             driven_distance = 0
     else:
         revenue = 0
-        if "penalty" in data["events"][-1]["meta"].keys():
+        if "penalty" in data["events"][-1]["meta"]:
             revenue = -float(data["events"][-1]["meta"]["penalty"])
         driven_distance = 0
 
@@ -783,24 +783,24 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
 
     enabled_realistic_settings = []
     if "realistic_settings" in data["game"] and data["game"]["realistic_settings"] is not None:
-        for attr in data["game"]["realistic_settings"].keys():
+        for attr in data["game"]["realistic_settings"]:
             if data["game"]["realistic_settings"][attr] is True:
                 enabled_realistic_settings.append(attr)
 
     meta_revenue = revenue # metadata revenue (for aggregation only)
-    if "action" in app.config_dict["delivery_rules"].keys() \
+    if "action" in app.config_dict["delivery_rules"] \
             and app.config_dict["delivery_rules"]["action"] != "keep_job":
         action = app.config_dict["delivery_rules"]["action"]
         delivery_rules = app.config_dict["delivery_rules"]
 
-        if "max_speed" in delivery_rules.keys() and isint(delivery_rules["max_speed"]) and \
+        if "max_speed" in delivery_rules and isint(delivery_rules["max_speed"]) and \
                 top_speed > int(delivery_rules["max_speed"]) and \
                 action == "block_job":
             delivery_rule_ok = False
             delivery_rule_key = "max_speed"
             delivery_rule_value = str(top_speed)
 
-        if "max_profit" in delivery_rules.keys() and isint(delivery_rules["max_profit"]) and \
+        if "max_profit" in delivery_rules and isint(delivery_rules["max_profit"]) and \
                 revenue > int(delivery_rules["max_profit"]):
             if action == "block_job":
                 delivery_rule_ok = False
@@ -810,14 +810,14 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
                 meta_revenue = 0
 
         if "warp" in data and data["warp"] is not None and \
-                "max_warp" in delivery_rules.keys() and isint(delivery_rules["max_warp"]) and \
+                "max_warp" in delivery_rules and isint(delivery_rules["max_warp"]) and \
                 data["warp"] > int(delivery_rules["max_warp"]) and action == "block_job":
             delivery_rule_ok = False
             delivery_rule_key = "warp"
             delivery_rule_value = str(data["warp"])
 
         if "realistic_settings" in data["game"] and data["game"]["realistic_settings"] is not None and \
-                "required_realistic_settings" in delivery_rules.keys() and \
+                "required_realistic_settings" in delivery_rules and \
                 isinstance(delivery_rules["required_realistic_settings"], list) and \
                 action == "block_job":
             for attr in delivery_rules["required_realistic_settings"]:

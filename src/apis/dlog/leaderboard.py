@@ -20,7 +20,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
     rl = await ratelimit(request, 'GET /dlog/leaderboard', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -97,7 +97,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         nlusecache = True
         nlcachetime = t["cache"]
         nlusertot = t["ut"]
-        nlusertot_id = list(nlusertot.keys())[::-1]
+        nlusertot_id = list(nlusertot)[::-1]
         nlrank = t["r"]
         nluserrank = t["ur"]
 
@@ -152,7 +152,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for tt in t:
             if tt[0] not in allusers:
                 continue
-            if tt[0] not in userdistance.keys():
+            if tt[0] not in userdistance:
                 userdistance[tt[0]] = tt[1]
             else:
                 userdistance[tt[0]] += tt[1]
@@ -164,7 +164,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for oo in o:
             if oo[0] not in allusers:
                 continue
-            if oo[0] not in userchallenge.keys():
+            if oo[0] not in userchallenge:
                 userchallenge[oo[0]] = 0
             userchallenge[oo[0]] += int(oo[1])
 
@@ -176,7 +176,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
             for attendee in attendees:
                 if attendee not in allusers:
                     continue
-                if attendee not in userevent.keys():
+                if attendee not in userevent:
                     userevent[attendee] = int(tt[1])
                 else:
                     userevent[attendee] += int(tt[1])
@@ -202,9 +202,9 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for oo in o:
             if oo[0] not in allusers:
                 continue
-            if oo[0] not in userdivision.keys():
+            if oo[0] not in userdivision:
                 userdivision[oo[0]] = 0
-            if oo[1] in app.division_points.keys():
+            if oo[1] in app.division_points:
                 if app.division_points[oo[1]]["mode"] == "static":
                     userdivision[oo[0]] += float(oo[2]) * app.division_points[oo[1]]["value"]
                 elif app.division_points[oo[1]]["mode"] == "ratio":
@@ -218,39 +218,39 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for oo in o:
             if oo[0] not in allusers:
                 continue
-            if oo[0] not in userbonus.keys():
+            if oo[0] not in userbonus:
                 userbonus[oo[0]] = 0
             userbonus[oo[0]] += int(oo[1])
 
     # calculate total point
     limittype = limittype.split(",")
     usertot = {}
-    for k in userdistance.keys():
+    for k in userdistance:
         if "distance" in limittype:
             usertot[k] = round(userdistance[k] * ratio)
-    for k in userchallenge.keys():
-        if k not in usertot.keys():
+    for k in userchallenge:
+        if k not in usertot:
             usertot[k] = 0
         if "challenge" in limittype:
             usertot[k] += userchallenge[k]
-    for k in userevent.keys():
-        if k not in usertot.keys():
+    for k in userevent:
+        if k not in usertot:
             usertot[k] = 0
         if "event" in limittype:
             usertot[k] += userevent[k]
-    for k in userdivision.keys():
-        if k not in usertot.keys():
+    for k in userdivision:
+        if k not in usertot:
             usertot[k] = 0
         if "division" in limittype:
             usertot[k] += userdivision[k]
-    for k in userbonus.keys():
-        if k not in usertot.keys():
+    for k in userbonus:
+        if k not in usertot:
             usertot[k] = 0
         if "bonus" in limittype:
             usertot[k] += userbonus[k]
 
     usertot = dict(sorted(usertot.items(),key=lambda x: (x[1], x[0])))
-    usertot_id = list(usertot.keys())[::-1]
+    usertot_id = list(usertot)[::-1]
 
     # calculate rank
     userrank = {}
@@ -263,7 +263,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         userrank[userid] = rank
         usertot[userid] = int(usertot[userid])
     for userid in allusers:
-        if userid not in userrank.keys():
+        if userid not in userrank:
             userrank[userid] = rank
             usertot[userid] = 0
 
@@ -275,7 +275,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for tt in t:
             if tt[0] not in allusers:
                 continue
-            if tt[0] not in nluserdistance.keys():
+            if tt[0] not in nluserdistance:
                 nluserdistance[tt[0]] = tt[1]
             else:
                 nluserdistance[tt[0]] += tt[1]
@@ -287,7 +287,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for oo in o:
             if oo[0] not in allusers:
                 continue
-            if oo[0] not in nluserchallenge.keys():
+            if oo[0] not in nluserchallenge:
                 nluserchallenge[oo[0]] = 0
             nluserchallenge[oo[0]] += int(oo[1])
 
@@ -299,7 +299,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
             for attendee in attendees:
                 if attendee not in allusers:
                     continue
-                if attendee not in nluserevent.keys():
+                if attendee not in nluserevent:
                     nluserevent[attendee] = tt[1]
                 else:
                     nluserevent[attendee] += int(tt[1])
@@ -313,9 +313,9 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for oo in o:
             if oo[0] not in allusers:
                 continue
-            if oo[0] not in nluserdivision.keys():
+            if oo[0] not in nluserdivision:
                 nluserdivision[oo[0]] = 0
-            if oo[1] in app.division_points.keys():
+            if oo[1] in app.division_points:
                 if app.division_points[oo[1]]["mode"] == "static":
                     nluserdivision[oo[0]] += float(oo[2]) * app.division_points[oo[1]]["value"]
                 elif app.division_points[oo[1]]["mode"] == "ratio":
@@ -329,32 +329,32 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         for oo in o:
             if oo[0] not in allusers:
                 continue
-            if oo[0] not in nluserbonus.keys():
+            if oo[0] not in nluserbonus:
                 nluserbonus[oo[0]] = 0
             nluserbonus[oo[0]] += int(oo[1])
 
         # calculate total point
-        for k in nluserdistance.keys():
+        for k in nluserdistance:
             nlusertot[k] = round(nluserdistance[k] * ratio)
-        for k in nluserchallenge.keys():
-            if k not in nlusertot.keys():
+        for k in nluserchallenge:
+            if k not in nlusertot:
                 nlusertot[k] = 0
             nlusertot[k] += nluserchallenge[k]
-        for k in nluserevent.keys():
-            if k not in nlusertot.keys():
+        for k in nluserevent:
+            if k not in nlusertot:
                 nlusertot[k] = 0
             nlusertot[k] += nluserevent[k]
-        for k in nluserdivision.keys():
-            if k not in nlusertot.keys():
+        for k in nluserdivision:
+            if k not in nlusertot:
                 nlusertot[k] = 0
             nlusertot[k] += nluserdivision[k]
-        for k in nluserbonus.keys():
-            if k not in nlusertot.keys():
+        for k in nluserbonus:
+            if k not in nlusertot:
                 nlusertot[k] = 0
             nlusertot[k] += nluserbonus[k]
 
         nlusertot = dict(sorted(nlusertot.items(),key=lambda x: (x[1], x[0])))
-        nlusertot_id = list(nlusertot.keys())[::-1]
+        nlusertot_id = list(nlusertot)[::-1]
 
         # calculate rank
         nluserrank = {}
@@ -367,7 +367,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
             nluserrank[userid] = nlrank
             nlusertot[userid] = int(nlusertot[userid])
         for userid in allusers:
-            if userid not in nluserrank.keys():
+            if userid not in nluserrank:
                 nluserrank[userid] = nlrank
                 nlusertot[userid] = 0
 
@@ -398,15 +398,15 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         eventpnt = 0
         divisionpnt = 0
         bonuspnt = 0
-        if userid in userdistance.keys():
+        if userid in userdistance:
             distance = userdistance[userid]
-        if userid in userchallenge.keys():
+        if userid in userchallenge:
             challengepnt = userchallenge[userid]
-        if userid in userevent.keys():
+        if userid in userevent:
             eventpnt = userevent[userid]
-        if userid in userdivision.keys():
+        if userid in userdivision:
             divisionpnt = userdivision[userid]
-        if userid in userbonus.keys():
+        if userid in userbonus:
             bonuspnt = userbonus[userid]
 
         if userid in limituser or len(limituser) == 0:

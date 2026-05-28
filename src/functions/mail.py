@@ -14,7 +14,7 @@ def emailConfigured(app):
     return app.config.smtp_host != "" and app.config.smtp_port != "" and app.config.smtp_email != "" and app.config.smtp_password != ""
 
 async def sendEmail(app, name, email, category, link):
-    if category not in app.config_dict["email_template"].keys():
+    if category not in app.config_dict["email_template"]:
         raise ValueError("Invalid Category")
 
     if not emailConfigured(app):

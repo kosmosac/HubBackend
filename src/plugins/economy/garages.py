@@ -17,7 +17,7 @@ async def get_all_garages(request: Request, response: Response, authorization: s
     rl = await ratelimit(request, 'GET /economy/garages', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -43,7 +43,7 @@ async def get_garage_list(request: Request, response: Response, authorization: s
     rl = await ratelimit(request, 'GET /economy/garages/list', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -75,7 +75,7 @@ async def get_garage_list(request: Request, response: Response, authorization: s
         having = "HAVING " + having[4:]
 
     cvt = {"income": "tot_income", "truck": "tot_truck", "slot": "tot_slot"}
-    if order_by in cvt.keys():
+    if order_by in cvt:
         order_by = cvt[order_by]
     if order_by not in ['garageid', 'tot_income', 'tot_truck', 'tot_slot']:
         response.status_code = 400
@@ -123,7 +123,7 @@ async def get_garage(request: Request, response: Response, garageid: str, author
     rl = await ratelimit(request, 'GET /economy/garages/garageid', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -163,7 +163,7 @@ async def get_garage_slots_list(request: Request, response: Response, garageid: 
     rl = await ratelimit(request, 'GET /economy/garages/slots/list', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -234,7 +234,7 @@ async def get_garage_slot(request: Request, response: Response, garageid: str, s
     rl = await ratelimit(request, 'GET /economy/garages/slots/slotid', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -271,7 +271,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
     rl = await ratelimit(request, 'POST /economy/garages/purchase', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -285,7 +285,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
@@ -293,7 +293,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
         response.status_code = 400
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
-    if garageid not in app.garages.keys():
+    if garageid not in app.garages:
         response.status_code = 404
         return {"error": ml.tr(request, "garage_not_found", force_lang = au["language"])}
     garage = app.garages[garageid]
@@ -376,7 +376,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
     rl = await ratelimit(request, 'POST /economy/garages/slots/purchase', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -390,7 +390,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
@@ -398,7 +398,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
         response.status_code = 400
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
-    if garageid not in app.garages.keys():
+    if garageid not in app.garages:
         response.status_code = 404
         return {"error": ml.tr(request, "garage_not_found", force_lang = au["language"])}
     garage = app.garages[garageid]
@@ -476,7 +476,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
     rl = await ratelimit(request, 'POST /economy/garages/transfer', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -492,12 +492,12 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
 
-        if "message" in data.keys():
+        if "message" in data:
             message = data["message"]
         else:
             message = ""
@@ -550,7 +550,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
     await app.db.commit(dhrid)
 
     garage = ml.ctr(request, "unknown_garage")
-    if garageid in app.garages.keys():
+    if garageid in app.garages:
         garage = app.garages[garageid]["name"]
     username = (await GetUserInfo(request, userid = foruser, is_internal_function = True))["name"]
     await AuditLog(request, au["uid"], "economy", ml.ctr(request, "transferred_garage", var = {"garage": garage, "id": garageid, "username": username, "userid": foruser}))
@@ -567,7 +567,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
         to_message = "  \n" + ml.tr(request, "economy_transaction_message", var = {"message": message}, force_lang = to_user_language)
 
     garage = ml.ctr(request, "unknown") + " (" + garageid + ")"
-    if garageid in app.garages.keys():
+    if garageid in app.garages:
         garage = app.garages[garageid]["name"]
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": ml.tr(request, "garage", force_lang = from_user_language).title(), "name": garage, "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
@@ -588,7 +588,7 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
     rl = await ratelimit(request, 'POST /economy/garages/slots/transfer', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -604,12 +604,12 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
 
-        if "message" in data.keys():
+        if "message" in data:
             message = data["message"]
         else:
             message = ""
@@ -676,7 +676,7 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
         to_message = "  \n" + ml.tr(request, "economy_transaction_message", var = {"message": message}, force_lang = to_user_language)
 
     garage = ml.ctr(request, "unknown") + " (" + garageid + ")"
-    if garageid in app.garages.keys():
+    if garageid in app.garages:
         garage = app.garages[garageid]["name"]
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": ml.tr(request, "garage_slot", force_lang = from_user_language).title(), "name": f"#{slotid} ({garage})", "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
@@ -693,7 +693,7 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
     rl = await ratelimit(request, 'POST /economy/garages/sell', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -746,7 +746,7 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
     await app.db.commit(dhrid)
 
     garage = ml.ctr(request, "unknown_garage")
-    if garageid in app.garages.keys():
+    if garageid in app.garages:
         garage = app.garages[garageid]["name"]
     username = (await GetUserInfo(request, userid = current_owner, is_internal_function = True))["name"]
     await AuditLog(request, au["uid"], "economy", ml.ctr(request, "sold_garage", var = {"garage": garage, "id": garageid, "username": username, "userid": current_owner}))
@@ -762,7 +762,7 @@ async def post_garage_slot_sell(request: Request, response: Response, garageid: 
     rl = await ratelimit(request, 'POST /economy/garages/slots/sell', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

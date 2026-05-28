@@ -15,7 +15,7 @@ async def get_privacy(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'GET /user/privacy', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -38,7 +38,7 @@ async def patch_privacy(request: Request, response: Response, authorization: str
     rl = await ratelimit(request, 'PATCH /user/privacy', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -53,12 +53,12 @@ async def patch_privacy(request: Request, response: Response, authorization: str
     data = await request.json()
     privacy = (await GetUserPrivacy(request, uid))
     try:
-        role_history = int(bool(data["role_history"])) if "role_history" in data.keys() else int(privacy["role_history"])
-        ban_history = int(bool(data["ban_history"])) if "ban_history" in data.keys() else int(privacy["ban_history"])
-        email = int(bool(data["email"])) if "email" in data.keys() else int(privacy["email"])
-        account_connections = int(bool(data["account_connections"])) if "account_connections" in data.keys() else int(privacy["account_connections"])
-        activity = int(bool(data["activity"])) if "activity" in data.keys() else int(privacy["activity"])
-        public_profile = int(bool(data["public_profile"])) if "public_profile" in data.keys() else int(privacy["public_profile"])
+        role_history = int(bool(data["role_history"])) if "role_history" in data else int(privacy["role_history"])
+        ban_history = int(bool(data["ban_history"])) if "ban_history" in data else int(privacy["ban_history"])
+        email = int(bool(data["email"])) if "email" in data else int(privacy["email"])
+        account_connections = int(bool(data["account_connections"])) if "account_connections" in data else int(privacy["account_connections"])
+        activity = int(bool(data["activity"])) if "activity" in data else int(privacy["activity"])
+        public_profile = int(bool(data["public_profile"])) if "public_profile" in data else int(privacy["public_profile"])
     except:
         response.status_code = 400
         return {"error": ml.tr(request, "bad_json", force_lang = au["privacy"])}

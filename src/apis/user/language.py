@@ -15,7 +15,7 @@ async def get_language(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'GET /user/language', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -38,7 +38,7 @@ async def patch_language(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'PATCH /user/language', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

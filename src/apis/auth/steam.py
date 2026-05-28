@@ -21,7 +21,7 @@ async def get_callback(request: Request, response: Response):
     rl = await ratelimit(request, 'GET /auth/steam/callback', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

@@ -27,7 +27,7 @@ async def get_callback(request: Request, response: Response, code: str | None = 
     rl = await ratelimit(request, 'GET /auth/discord/callback', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -36,7 +36,7 @@ async def get_callback(request: Request, response: Response, code: str | None = 
         discord_auth = DiscordAuth(app.config.discord_client_id, app.config.discord_client_secret, callback_url)
         tokens = await discord_auth.get_tokens(code)
 
-        if "access_token" in tokens.keys():
+        if "access_token" in tokens:
             await app.db.extend_conn(dhrid, 30)
             user_data = await discord_auth.get_user_data_from_token(tokens["access_token"])
             await app.db.extend_conn(dhrid, 2)
@@ -52,7 +52,7 @@ async def get_callback(request: Request, response: Response, code: str | None = 
                 username = str(user_data['username'])
             username = convertQuotation(username).replace(",","")
             email = "NULL"
-            if "email" in user_data.keys() and user_data["email"] is not None and "@" in str(user_data["email"]):
+            if user_data.get("email") is not None and "@" in str(user_data["email"]):
                 email = "'" + convertQuotation(user_data['email']) + "'"
             avatar = getAvatarSrc(discordid, convertQuotation(user_data['avatar']))
             tokens = {**tokens, **user_data}
@@ -160,10 +160,10 @@ async def get_callback(request: Request, response: Response, code: str | None = 
 
             return {"token": stoken, "mfa": False}
 
-        elif 'error_description' in tokens.keys():
+        elif 'error_description' in tokens:
             response.status_code = 400
             return {"error": tokens['error_description']}
-        elif 'error' in tokens.keys():
+        elif 'error' in tokens:
             response.status_code = 400
             return {"error": tokens['error']}
         else:

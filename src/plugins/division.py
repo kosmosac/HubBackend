@@ -15,7 +15,7 @@ async def get_all_divisions(request: Request):
     to_remove = ["webhook_url", "channel_id", "message"]
     for i in range(len(ret)):
         for k in to_remove:
-            if k in ret[i].keys():
+            if k in ret[i]:
                 del ret[i][k]
     return ret
 
@@ -26,7 +26,7 @@ async def get_divisions_statistics(request: Request, response: Response, authori
     rl = await ratelimit(request, 'GET /divisions/statistics', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -103,7 +103,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
     rl = await ratelimit(request, 'GET /divisions/activity', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -145,7 +145,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
         all_users[tt[0]] = {"userid": tt[0], "name": tt[1], "roles": str2list(tt[2])}
 
     all_division_userids = []
-    for k in all_users.keys():
+    for k in all_users:
         if division_role_id in all_users[k]["roles"]:
             all_division_userids.append(k)
 
@@ -172,7 +172,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
         GROUP BY dlog.userid")
     t = await app.db.fetchall(dhrid)
     for tt in t:
-        if not include_previous_drivers and (tt[0] not in all_users.keys() or division_role_id not in all_users[tt[0]]["roles"]):
+        if not include_previous_drivers and (tt[0] not in all_users or division_role_id not in all_users[tt[0]]["roles"]):
             continue
         user_points = 0
         if division_point["mode"] == "static":
@@ -218,7 +218,7 @@ async def get_dlog_division(request: Request, response: Response, logid: int, au
     rl = await ratelimit(request, 'GET /dlog/division', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -267,7 +267,7 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
     rl = await ratelimit(request, 'POST /dlog/division', 180, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -327,7 +327,7 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
     language = await GetUserLanguage(request, uid)
     await notification(request, "division", uid, ml.tr(request, "division_validation_request_submitted", var = {"logid": logid}, force_lang = language), \
         discord_embed = {"title": ml.tr(request, "division_validation_request_submitted_title", force_lang = language), "description": "", \
-            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.division_name[divisionid] if divisionid in app.division_name.keys() else "/", "inline": True},
+            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.division_name[divisionid] if divisionid in app.division_name else "/", "inline": True},
                        {"name": ml.tr(request, "log_id", force_lang = language), "value": f"{logid}", "inline": True}, \
                        {"name": ml.tr(request, "status", force_lang = language), "value": ml.tr(request, "pending", force_lang = language), "inline": True}]})
 
@@ -336,7 +336,7 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
     t = await app.db.fetchall(dhrid)
     tt = t[0]
     msg = f"**UID**: {uid}\n**User ID**: {tt[0]}\n**Name**: {tt[1]}\n**Discord**: <@{discordid}> (`{discordid}`)\n\n"
-    msg += f"**Delivery ID**: [{logid}]({dlglink})\n**Division**: {app.division_name[divisionid] if divisionid in app.division_name.keys() else '/'}"
+    msg += f"**Delivery ID**: [{logid}]({dlglink})\n**Division**: {app.division_name[divisionid] if divisionid in app.division_name else '/'}"
     avatar = tt[2]
 
     hook_message = ""
@@ -369,7 +369,7 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
     rl = await ratelimit(request, 'PATCH /dlog/division', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -383,7 +383,7 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
     data = await request.json()
     try:
         message = ""
-        if "message" in data.keys():
+        if "message" in data:
             message = str(data["message"])
             if len(data["message"]) > 200:
                 response.status_code = 400
@@ -401,7 +401,7 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
     if len(t) == 0:
         response.status_code = 404
         return {"error": ml.tr(request, "division_validation_not_found", force_lang = au["language"])}
-    if divisionid not in app.division_name.keys():
+    if divisionid not in app.division_name:
         divisionid = t[0][0]
     userid = t[0][2]
 
@@ -432,7 +432,7 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
 
     await notification(request, "division", uid, ml.tr(request, "division_validation_request_status_updated", var = {"logid": logid, "status": statustxtTR.lower()}, force_lang = await GetUserLanguage(request, uid)), \
         discord_embed = {"title": ml.tr(request, "division_validation_request_status_updated_title", force_lang = language), "description": message, \
-            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.division_name[divisionid] if divisionid in app.division_name.keys() else "/", "inline": True},
+            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.division_name[divisionid] if divisionid in app.division_name else "/", "inline": True},
                        {"name": ml.tr(request, "log_id", force_lang = language), "value": f"{logid}", "inline": True}, \
                        {"name": ml.tr(request, "status", force_lang = language), "value": statustxtTR, "inline": True}]})
 
@@ -447,7 +447,7 @@ async def get_list_pending(request: Request, response: Response, authorization: 
     rl = await ratelimit(request, 'GET /divisions/list/pending', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

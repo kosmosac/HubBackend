@@ -582,13 +582,13 @@ DEFAULT_EMBED = {
     }
 
 def validateEmbed(embed):
-    for k in DEFAULT_EMBED.keys():
-        if k not in embed.keys():
+    for k in DEFAULT_EMBED:
+        if k not in embed:
             embed[k] = copy.deepcopy(DEFAULT_EMBED[k])
     return embed
 
 def validateConfig(cfg):
-    if 'hex_color' not in cfg.keys():
+    if 'hex_color' not in cfg:
         cfg["hex_color"] = "2fc1f7"
     hex_color = cfg["hex_color"][-6:]
     try:
@@ -601,22 +601,22 @@ def validateConfig(cfg):
         cfg["hex_color"] = "2fc1f7"
 
     # validate perms
-    if 'perms' not in cfg.keys() or type(cfg["perms"]) != dict:
+    if 'perms' not in cfg or type(cfg["perms"]) != dict:
         cfg["perms"] = default_config["perms"]
 
     # v2.8.7 perm rename
     PERM_RENAME_MAP = {"admin": "administrator", "config": "update_config", "restart": "restart_service", "add_member": "accept_members", "dismiss_member": "dismiss_members", "update_member_roles": "update_roles", "update_member_points": "update_points", "update_user_connections": "update_connections", "disable_user_mfa": "disable_mfa", "manage_profile": "manage_profiles", "get_sensitive_profile": "view_sensitive_profile", "get_privacy_protected_data": "view_privacy_protected_data", "get_user_global_note": "view_global_note", "update_user_global_note": "update_global_note", "get_pending_user_list": "view_external_user_list", "ban_user": "ban_users", "delete_user": "delete_users", "import_dlog": "import_dlogs", "delete_dlog": "delete_dlogs", "audit": "view_audit_log", "announcement": "manage_announcements", "application": "manage_applications", "delete_application": "delete_applications", "challenge": "manage_challenges", "economy_manager": "manage_economy", "balance_manager": "manage_economy_balance", "truck_manager": "manage_economy_truck", "garage_manager": "manage_economy_garage", "merch_manager": "manage_economy_merch", "division": "manage_divisions", "downloads": "manage_downloads", "event": "manage_events", "poll": "manage_polls"}
     HRM_PERMS = ["update_connections", "disable_mfa", "delete_notifications", "delete_users", "manage_applications", "delete_applications", "import_dlogs", "delete_dlogs"]
     HR_PERMS = ["manage_profiles", "view_global_note", "update_global_note", "view_sensitive_profile", "view_privacy_protected_data", "accept_members", "dismiss_members", "update_roles", "update_points", "view_external_user_list", "ban_users"]
-    PERM_RENAME_KEYS = PERM_RENAME_MAP.keys()
+    PERM_RENAME_KEYS = PERM_RENAME_MAP
     perms = cfg["perms"]
     for key in PERM_RENAME_KEYS:
-        if key in perms.keys() and PERM_RENAME_MAP[key] not in perms.keys():
+        if key in perms and PERM_RENAME_MAP[key] not in perms:
             perms[PERM_RENAME_MAP[key]] = perms[key]
             del perms[key]
 
     # after rename, do perm check & validation
-    for perm in perms.keys():
+    for perm in perms:
         roles = perms[perm]
         newroles = []
         try:
@@ -629,18 +629,18 @@ def validateConfig(cfg):
             pass
         perms[perm] = newroles
     for perm in default_config["perms"]:
-        if perm not in perms.keys():
+        if perm not in perms:
             perms[perm] = []
 
     # finally, check hrm & hr roles, this has to be done at last to ensure all necessary perm keys exist
-    if "hrm" in perms.keys():
+    if "hrm" in perms:
         hrm_roles = perms["hrm"]
         for key in HRM_PERMS + HR_PERMS:
             for role in hrm_roles:
                 if role not in perms[key]:
                     perms[key].append(role)
         del perms["hrm"]
-    if "hr" in perms.keys():
+    if "hr" in perms:
         hr_roles = perms["hr"]
         for key in HR_PERMS:
             for role in hr_roles:
@@ -650,7 +650,7 @@ def validateConfig(cfg):
 
     cfg["perms"] = perms
 
-    if 'roles' not in cfg.keys() or type(cfg["roles"]) != list:
+    if 'roles' not in cfg or type(cfg["roles"]) != list:
         cfg["roles"] = default_config["roles"]
     roles = cfg["roles"]
     newroles = []
@@ -666,7 +666,7 @@ def validateConfig(cfg):
             continue
 
         # v2.5.6
-        if 'order_id' not in role.keys() or not isint(role["order_id"]):
+        if 'order_id' not in role or not isint(role["order_id"]):
             role["order_id"] = role["id"]
         else:
             try:
@@ -674,21 +674,21 @@ def validateConfig(cfg):
             except:
                 pass
 
-        if "id" in role.keys() and "name" in role.keys():
+        if "id" in role and "name" in role:
             newroles.append(role)
     cfg["roles"] = newroles
 
-    if 'divisions' not in cfg.keys() or type(cfg["divisions"]) != list:
+    if 'divisions' not in cfg or type(cfg["divisions"]) != list:
         cfg["divisions"] = default_config["divisions"]
     divisions = cfg["divisions"]
     newdivisions = []
     for i in range(len(divisions)):
         division = divisions[i]
-        if "point" in division.keys():
+        if "point" in division:
             division["points"] = division["point"]
             del division["point"]
         # v2.8.8
-        if "staff_role_ids" not in division.keys():
+        if "staff_role_ids" not in division:
             division["staff_role_ids"] = cfg["perms"]["manage_divisions"]
         try:
             for i in range(len(division["staff_role_ids"])):
@@ -696,22 +696,22 @@ def validateConfig(cfg):
         except:
             continue
         hook_keys = ["message", "channel_id", "webhook_url"]
-        if "hook_division" in cfg.keys():
-            if "message_content" in cfg["hook_division"].keys():
+        if "hook_division" in cfg:
+            if "message_content" in cfg["hook_division"]:
                 cfg["hook_division"]["message"] = cfg["hook_division"]["message_content"]
             for key in hook_keys:
-                if key in cfg["hook_division"].keys() and key not in division.keys():
+                if key in cfg["hook_division"] and key not in division:
                     division[key] = cfg["hook_division"][key]
         else:
             for key in hook_keys:
-                if key not in division.keys():
+                if key not in division:
                     division[key] = ""
         try:
             int(division["channel_id"])
         except:
             division["channel_id"] = ""
 
-        if "id" in division.keys() and "name" in division.keys() and "role_id" in division.keys() and "points" in division.keys():
+        if "id" in division and "name" in division and "role_id" in division and "points" in division:
             try:
                 division["id"] = int(division["id"])
                 division["role_id"] = int(division["role_id"])
@@ -720,7 +720,7 @@ def validateConfig(cfg):
                     division["points"] = min(max(int(division["points"]), -2147483647), 2147483647)
                     division["points"] = {"mode": "static", "value": int(division["points"])}
                 elif type(division["points"]) == dict:
-                    if 'mode' not in division['points'].keys() or 'value' not in division['points'].keys():
+                    if 'mode' not in division['points'] or 'value' not in division['points']:
                         continue
                     if division["points"]["mode"] not in ["static", "ratio"]:
                         continue
@@ -742,16 +742,16 @@ def validateConfig(cfg):
                 pass
     cfg["divisions"] = newdivisions
 
-    if 'economy' not in cfg.keys() or type(cfg["economy"]) != dict:
+    if 'economy' not in cfg or type(cfg["economy"]) != dict:
         cfg["economy"] = default_config["economy"]
 
-    if 'trucks' not in cfg['economy'].keys() or type(cfg["economy"]["trucks"]) != list:
+    if 'trucks' not in cfg['economy'] or type(cfg["economy"]["trucks"]) != list:
         cfg["economy"]["trucks"] = default_config["economy"]["trucks"]
     economy_trucks = cfg["economy"]["trucks"]
     new_economy_trucks = []
     for i in range(len(economy_trucks)):
         truck = economy_trucks[i]
-        if "id" in truck.keys() and "brand" in truck.keys() and "model" in truck.keys() and "price" in truck.keys():
+        if "id" in truck and "brand" in truck and "model" in truck and "price" in truck:
             try:
                 truck["id"] = str(truck["id"])
                 truck["brand"] = str(truck["brand"])
@@ -763,13 +763,13 @@ def validateConfig(cfg):
             new_economy_trucks.append(truck)
     cfg["economy"]["trucks"] = new_economy_trucks
 
-    if 'garages' not in cfg['economy'].keys() or type(cfg["economy"]["garages"]) != list:
+    if 'garages' not in cfg['economy'] or type(cfg["economy"]["garages"]) != list:
         cfg["economy"]["garages"] = default_config["economy"]["garages"]
     economy_garages = cfg["economy"]["garages"]
     new_economy_garages = []
     for i in range(len(economy_garages)):
         garage = economy_garages[i]
-        if "id" in garage.keys() and "name" in garage.keys() and "x" in garage.keys() and "z" in garage.keys() and "price" in garage.keys() and "base_slots" in garage.keys() and "slot_price" in garage.keys():
+        if "id" in garage and "name" in garage and "x" in garage and "z" in garage and "price" in garage and "base_slots" in garage and "slot_price" in garage:
             try:
                 garage["x"] = float(garage["x"])
                 garage["z"] = float(garage["z"])
@@ -781,13 +781,13 @@ def validateConfig(cfg):
             new_economy_garages.append(garage)
     cfg["economy"]["garages"] = new_economy_garages
 
-    if 'merch' not in cfg['economy'].keys() or type(cfg["economy"]["merch"]) != list:
+    if 'merch' not in cfg['economy'] or type(cfg["economy"]["merch"]) != list:
         cfg["economy"]["merch"] = default_config["economy"]["merch"]
     economy_merch = cfg["economy"]["merch"]
     new_economy_merch = []
     for i in range(len(economy_merch)):
         merch = economy_merch[i]
-        if "id" in merch.keys() and "name" in merch.keys() and "buy_price" in merch.keys() and "sell_price" in merch.keys():
+        if "id" in merch and "name" in merch and "buy_price" in merch and "sell_price" in merch:
             try:
                 merch["buy_price"] = min(int(merch["buy_price"]), 4294967296)
                 merch["sell_price"] = min(int(merch["sell_price"]), 4294967296)
@@ -798,20 +798,20 @@ def validateConfig(cfg):
 
     economy_must_float = ['truck_refund', 'scrap_refund', 'garage_refund', 'slot_refund', 'usd_to_coin', 'eur_to_coin', 'wear_ratio', 'revenue_share_to_company', 'truck_rental_cost', 'max_wear_before_service', 'max_distance_before_scrap', 'unit_service_price']
     for item in economy_must_float:
-        if item not in cfg['economy'].keys() or not isfloat(cfg["economy"][item]):
+        if item not in cfg['economy'] or not isfloat(cfg["economy"][item]):
             cfg["economy"][item] = default_config["economy"][item]
         else:
             cfg["economy"][item] = float(cfg["economy"][item])
 
     economy_must_bool = ['allow_purchase_truck', 'allow_purchase_garage', 'allow_purchase_slot', 'enable_balance_leaderboard']
     for item in economy_must_bool:
-        if item not in cfg['economy'].keys() or type(cfg["economy"][item]) != bool:
+        if item not in cfg['economy'] or type(cfg["economy"][item]) != bool:
             cfg["economy"][item] = default_config["economy"][item]
 
-    if 'currency_name' not in cfg['economy'].keys():
+    if 'currency_name' not in cfg['economy']:
         cfg["economy"]["currency_name"] = "coin"
 
-    if 'application_types' not in cfg.keys() or type(cfg["application_types"]) != list:
+    if 'application_types' not in cfg or type(cfg["application_types"]) != list:
         cfg["application_types"] = default_config["application_types"]
     application_types = cfg["application_types"]
     new_application_types = []
@@ -821,7 +821,7 @@ def validateConfig(cfg):
         try:
             application_type["id"] = int(application_type["id"])
             # v2.7.3
-            if "staff_role_id" in application_type.keys():
+            if "staff_role_id" in application_type:
                 application_type["staff_role_ids"] = application_type["staff_role_id"]
                 del application_type["staff_role_id"]
             ########
@@ -830,14 +830,14 @@ def validateConfig(cfg):
         except:
             continue
         # v2.7.11
-        if "discord_role_id" in application_type.keys():
+        if "discord_role_id" in application_type:
             application_type["role_change"] = [f"+{application_type['discord_role_id']}"]
             del application_type["discord_role_id"]
         # v2.8.8 role_change -> discord_role_change
-        if "role_change" in application_type.keys() and "discord_role_change" not in application_type.keys():
+        if "role_change" in application_type and "discord_role_change" not in application_type:
             application_type["discord_role_change"] = application_type["role_change"]
             del application_type["role_change"]
-        if "discord_role_change" not in application_type.keys():
+        if "discord_role_change" not in application_type:
             application_type["discord_role_change"] = []
         try:
             int(application_type["channel_id"])
@@ -846,27 +846,27 @@ def validateConfig(cfg):
             application_type["channel_id"] = ""
 
         # v2.6.0
-        if "webhook" in application_type.keys():
+        if "webhook" in application_type:
             application_type["webhook_url"] = application_type["webhook"]
             del application_type["webhook"]
-        if 'channel_id' not in application_type.keys():
+        if 'channel_id' not in application_type:
             application_type["channel_id"] = ""
         #########
 
         # v2.8.8
-        if "allow_multiple" in application_type.keys() and "allow_multiple_pending" not in application_type.keys():
+        if "allow_multiple" in application_type and "allow_multiple_pending" not in application_type:
             application_type["allow_multiple_pending"] = application_type["allow_multiple"]
             del application_type["allow_multiple"]
 
         # v2.7.6
         meta = {"required_connections": [], "required_member_state": -1, "required_either_user_role_ids": [], "required_all_user_role_ids": [], "prohibited_either_user_role_ids": [], "prohibited_all_user_role_ids": [], "cooldown_hours": 2, "allow_multiple_pending": False}
-        for key in meta.keys():
-            if key not in application_type.keys() or not isinstance(application_type[key], type(meta[key])):
+        for key in meta:
+            if key not in application_type or not isinstance(application_type[key], type(meta[key])):
                 application_type[key] = meta[key]
         if application_type["required_member_state"] not in [-1, 0, 1]:
             application_type["required_member_state"] = -1
         application_type["cooldown_hours"] = max(0, min(application_type["cooldown_hours"], 1000000))
-        if "note" in application_type.keys():
+        if "note" in application_type:
             if application_type["note"] == "driver":
                 application_type["required_connections"] = ["discord", "steam"]
                 application_type["required_member_state"] = 0
@@ -876,13 +876,13 @@ def validateConfig(cfg):
 
         ok = True
         for req in reqs:
-            if req not in application_type.keys():
+            if req not in application_type:
                 ok = False
         if ok:
             new_application_types.append(application_type)
     cfg["application_types"] = new_application_types
 
-    if 'external_plugins' not in cfg.keys() or type(cfg["external_plugins"]) != list:
+    if 'external_plugins' not in cfg or type(cfg["external_plugins"]) != list:
         cfg["external_plugins"] = default_config["external_plugins"]
     external_plugins = cfg["external_plugins"]
     new_external_plugins = []
@@ -897,34 +897,34 @@ def validateConfig(cfg):
         cfg["db_pool_size"] = 10
 
     # renamed configs
-    if "apidoc" in cfg.keys():
+    if "apidoc" in cfg:
         cfg["openapi"] = cfg["apidoc"]
         del cfg["apidoc"]
 
-    if "allowed_navio_ips" in cfg.keys():
+    if "allowed_navio_ips" in cfg:
         cfg["allowed_tracker_ips"] = cfg["allowed_navio_ips"]
         del cfg["allowed_navio_ips"]
 
-    if 'member_accept' not in cfg.keys() and "team_update" in cfg.keys():
+    if 'member_accept' not in cfg and "team_update" in cfg:
         cfg["member_accept"] = cfg["team_update"]
         del cfg["team_update"]
 
-    if 'email_confirm' not in cfg['frontend_urls'].keys():
+    if 'email_confirm' not in cfg['frontend_urls']:
         cfg["frontend_urls"]["email_confirm"] = f"https://{cfg['domain']}/auth/email?secret={{secret}}"
 
-    if 'server_host' not in cfg.keys() and "server_ip" in cfg.keys():
+    if 'server_host' not in cfg and "server_ip" in cfg:
         cfg["server_host"] = cfg["server_ip"]
         del cfg["server_ip"]
 
     # v2.4.4
-    if 'plugins' not in cfg.keys() and "enabled_plugins" in cfg.keys():
+    if 'plugins' not in cfg and "enabled_plugins" in cfg:
         cfg["plugins"] = cfg["enabled_plugins"]
         del cfg["enabled_plugins"]
 
     # v2.5.4
-    if "openapi" in cfg.keys() and type(cfg["openapi"]) is not bool:
+    if "openapi" in cfg and type(cfg["openapi"]) is not bool:
         cfg["openapi"] = False
-    if 'prefix' not in cfg.keys() and "abbr" in cfg.keys():
+    if 'prefix' not in cfg and "abbr" in cfg:
         cfg["prefix"] = "/" + cfg["abbr"]
     if not cfg["prefix"].startswith("/"):
         cfg["prefix"] = "/" + cfg["prefix"]
@@ -933,24 +933,24 @@ def validateConfig(cfg):
     embed_auto_validate = ["member_accept", "member_leave", "rank_up", "driver_role_add", "driver_role_remove", "announcement_forwarding", "challenge_forwarding", "challenge_completed_forwarding", "downloads_forwarding", "event_forwarding", "event_upcoming_forwarding", "poll_forwarding"]
     discord_msg_ensure = ["channel_id", "webhook_url", "content"]
     for embed_type in embed_auto_validate:
-        if embed_type not in cfg.keys():
+        if embed_type not in cfg:
             cfg[embed_type] = default_config[embed_type]
         if type(cfg[embed_type]) is dict:
             cfg[embed_type] = [cfg[embed_type]]
-    if "member_welcome" in cfg.keys():
+    if "member_welcome" in cfg:
         cfg["member_accept"].append(cfg["member_welcome"])
         del cfg["member_welcome"]
     for embed_type in embed_auto_validate:
         for i in range(len(cfg[embed_type])):
             # v2.7.6
-            if "embed" in cfg[embed_type][i].keys() and 'embeds' not in cfg[embed_type][i].keys():
+            if "embed" in cfg[embed_type][i] and 'embeds' not in cfg[embed_type][i]:
                 cfg[embed_type][i]["embeds"] = [cfg[embed_type][i]["embed"]]
                 del cfg[embed_type][i]["embed"]
             ########
-            if "embeds" in cfg[embed_type][i].keys() and type(cfg[embed_type][i]["embeds"]) == list:
+            if "embeds" in cfg[embed_type][i] and type(cfg[embed_type][i]["embeds"]) == list:
                 for j in range(len(cfg[embed_type][i]["embeds"])):
                     # v2.7.6
-                    if "image_url" in cfg[embed_type][i]["embeds"][j].keys() and "image" not in cfg[embed_type][i]["embeds"][j].keys():
+                    if "image_url" in cfg[embed_type][i]["embeds"][j] and "image" not in cfg[embed_type][i]["embeds"][j]:
                         cfg[embed_type][i]["embeds"][j]["image"] = {"url": cfg[embed_type][i]["embeds"][j]["image_url"]}
                         del cfg[embed_type][i]["embeds"][j]["image_url"]
                     ########
@@ -958,25 +958,25 @@ def validateConfig(cfg):
             else:
                 cfg[embed_type][i]["embeds"] = []
             for to_ensure in discord_msg_ensure:
-                if to_ensure not in cfg[embed_type][i].keys():
+                if to_ensure not in cfg[embed_type][i]:
                     cfg[embed_type][i][to_ensure] = ""
             if embed_type in ["member_accept", "member_leave", "driver_role_add", "driver_role_remove"]:
-                if 'role_change' not in cfg[embed_type][i].keys():
+                if 'role_change' not in cfg[embed_type][i]:
                     cfg[embed_type][i]["role_change"] = []
             if embed_type in ["announcement_forwarding", "event_forwarding", "event_upcoming_forwarding"]:
-                if 'is_private' not in cfg[embed_type][i].keys():
+                if 'is_private' not in cfg[embed_type][i]:
                     cfg[embed_type][i]["is_private"] = None
             if embed_type in ["event_upcoming_forwarding"]:
-                if 'seconds_ahead' not in cfg[embed_type][i].keys():
+                if 'seconds_ahead' not in cfg[embed_type][i]:
                     cfg[embed_type][i]["seconds_ahead"] = 3600
                 else:
                     cfg[embed_type][i]["seconds_ahead"] = min(max(int(cfg[embed_type][i]["seconds_ahead"]), 0), 86400 * 7)
 
     # v2.5.8
-    if "apidomain" in cfg.keys():
+    if "apidomain" in cfg:
         cfg["domain"] = cfg["apidomain"]
         del cfg["apidomain"]
-    if 'security_level' not in cfg.keys():
+    if 'security_level' not in cfg:
         cfg["security_level"] = 1
     else:
         try:
@@ -992,44 +992,44 @@ def validateConfig(cfg):
         cfg["economy"]["merch"] = []
 
     # v2.8.6
-    if 'mysql_host' in cfg.keys():
+    if 'mysql_host' in cfg:
         cfg["db_host"] = cfg["mysql_host"]
         del cfg["mysql_host"]
-    if 'mysql_user' in cfg.keys():
+    if 'mysql_user' in cfg:
         cfg["db_user"] = cfg["mysql_user"]
         del cfg["mysql_user"]
-    if 'mysql_passwd' in cfg.keys():
+    if 'mysql_passwd' in cfg:
         cfg["db_password"] = cfg["mysql_passwd"]
         del cfg["mysql_passwd"]
-    if 'mysql_db' in cfg.keys():
+    if 'mysql_db' in cfg:
         cfg["db_name"] = cfg["mysql_db"]
         del cfg["mysql_db"]
-    if 'mysql_ext' in cfg.keys():
+    if 'mysql_ext' in cfg:
         cfg["db_data_directory"] = cfg["mysql_ext"]
         del cfg["mysql_ext"]
-    if 'mysql_pool_size' in cfg.keys():
+    if 'mysql_pool_size' in cfg:
         cfg["db_pool_size"] = cfg["mysql_pool_size"]
         del cfg["mysql_pool_size"]
-    if 'mysql_err_keywords' in cfg.keys():
+    if 'mysql_err_keywords' in cfg:
         cfg["db_error_keywords"] = cfg["mysql_err_keywords"]
         del cfg["mysql_err_keywords"]
     # v2.5.9
-    if 'db_error_keywords' not in cfg.keys():
+    if 'db_error_keywords' not in cfg:
         cfg["db_error_keywords"] = ["lost connection", "deadlock", "readexactly", "timeout", "[aiosql]"]
 
     # v2.5.10
-    if 'sync_discord_email' not in cfg.keys():
+    if 'sync_discord_email' not in cfg:
         cfg["sync_discord_email"] = True
 
     # v2.5.11
-    if "language" in cfg.keys():
+    if "language" in cfg:
         cfg["language"] = cfg["language"].lower()
 
     # v2.6.0
-    if 'hook_delivery_log' not in cfg.keys() and "delivery_log_channel_id" in cfg.keys():
+    if 'hook_delivery_log' not in cfg and "delivery_log_channel_id" in cfg:
         cfg["hook_delivery_log"] = {"channel_id": cfg["delivery_log_channel_id"], "webhook_url": ""}
         del cfg["delivery_log_channel_id"]
-    if 'hook_audit_log' not in cfg.keys() and "webhook_audit" in cfg.keys():
+    if 'hook_audit_log' not in cfg and "webhook_audit" in cfg:
         cfg["hook_audit_log"] = {"channel_id": "", "webhook_url": cfg["webhook_audit"]}
         del cfg["webhook_audit"]
 
@@ -1037,18 +1037,18 @@ def validateConfig(cfg):
     # hook_audit_log became a list in v2.9.1 and will not be validated here
     for hook in hook_validate:
         new_hook = {"channel_id": "", "webhook_url": ""}
-        if "channel_id" in cfg[hook].keys():
+        if "channel_id" in cfg[hook]:
             try:
                 new_hook["channel_id"] = str(int(cfg[hook]["channel_id"]))
             except:
                 pass
-        if "webhook_url" in cfg[hook].keys():
+        if "webhook_url" in cfg[hook]:
             new_hook["webhook_url"] = cfg[hook]["webhook_url"]
 
         cfg[hook] = new_hook
 
     # v2.6.1
-    if "hcaptcha_secret" in cfg.keys() and 'captcha' not in cfg.keys():
+    if "hcaptcha_secret" in cfg and 'captcha' not in cfg:
         cfg["captcha"] = {"provider": "hcaptcha", "secret": cfg["hcaptcha_secret"]}
         del cfg["hcaptcha_secret"]
 
@@ -1058,7 +1058,7 @@ def validateConfig(cfg):
         cfg["plugins"].remove("tracker")
 
     # v2.7.2
-    if 'announcement_types' not in cfg.keys() or type(cfg["announcement_types"]) != list:
+    if 'announcement_types' not in cfg or type(cfg["announcement_types"]) != list:
         cfg["announcement_types"] = default_config["announcement_types"]
     announcement_types = cfg["announcement_types"]
     new_announcement_types = []
@@ -1074,7 +1074,7 @@ def validateConfig(cfg):
 
         ok = True
         for req in reqs:
-            if req not in announcement_type.keys():
+            if req not in announcement_type:
                 ok = False
         if ok:
             new_announcement_types.append(announcement_type)
@@ -1082,7 +1082,7 @@ def validateConfig(cfg):
     ########
 
     # v2.7.15
-    if "delivery_post_gifs" in cfg.keys() and 'delivery_webhook_image_urls' not in cfg.keys():
+    if "delivery_post_gifs" in cfg and 'delivery_webhook_image_urls' not in cfg:
         cfg["delivery_webhook_image_urls"] = cfg["delivery_post_gifs"]
         del cfg["delivery_post_gifs"]
     new_dwiu = []
@@ -1093,7 +1093,7 @@ def validateConfig(cfg):
     ########
 
     # v2.8.1
-    if "discord_guild_message_replace_rules" not in cfg.keys():
+    if "discord_guild_message_replace_rules" not in cfg:
         cfg["discord_guild_message_replace_rules"] = {}
     else:
         if not isinstance(cfg["discord_guild_message_replace_rules"], dict):
@@ -1104,8 +1104,8 @@ def validateConfig(cfg):
                 new_discord_guild_message_replace_rules[re.escape(k)] = re.escape(v)
             cfg["discord_guild_message_replace_rules"] = new_discord_guild_message_replace_rules
 
-    if "rank_types" not in cfg.keys():
-        if "ranks" in cfg.keys():
+    if "rank_types" not in cfg:
+        if "ranks" in cfg:
             cfg["rank_types"] = [{"id": 1, "name": "Default", "default": True, "point_types": ["distance", "challenge", "division", "event", "bonus"], "details": cfg["ranks"]}]
             del cfg["ranks"]
         else:
@@ -1114,7 +1114,7 @@ def validateConfig(cfg):
     new_rank_types = []
     has_default = False
     for rank_type in cfg["rank_types"]:
-        if 'id' not in rank_type.keys() or 'name' not in rank_type.keys() or "default" not in rank_type.keys() or "point_types" not in rank_type.keys() or "details" not in rank_type.keys():
+        if 'id' not in rank_type or 'name' not in rank_type or "default" not in rank_type or "point_types" not in rank_type or "details" not in rank_type:
             continue
 
         if has_default:
@@ -1139,7 +1139,7 @@ def validateConfig(cfg):
         newranks = []
         for i in range(len(ranks)):
             rank = ranks[i]
-            if "distance" in rank.keys():
+            if "distance" in rank:
                 rank["points"] = rank["distance"]
                 del rank["distance"]
             try:
@@ -1153,14 +1153,14 @@ def validateConfig(cfg):
                 rank["discord_role_id"] = None
 
             # v2.7.5
-            if "bonus" in rank.keys() and 'distance_bonus' not in rank.keys():
+            if "bonus" in rank and 'distance_bonus' not in rank:
                 rank["distance_bonus"] = rank["bonus"]
                 del rank["bonus"]
             # v2.6.0
-            if "distance_bonus" not in rank.keys() or rank["distance_bonus"] is None or type(rank["distance_bonus"]) != dict:
+            if "distance_bonus" not in rank or rank["distance_bonus"] is None or type(rank["distance_bonus"]) != dict:
                 rank["distance_bonus"] = None
             else:
-                if "min_distance" not in rank["distance_bonus"].keys():
+                if "min_distance" not in rank["distance_bonus"]:
                     rank["distance_bonus"]["min_distance"] = -1
                 else:
                     try:
@@ -1168,7 +1168,7 @@ def validateConfig(cfg):
                     except:
                         rank["distance_bonus"]["min_distance"] = -1
 
-                if "max_distance" not in rank["distance_bonus"].keys():
+                if "max_distance" not in rank["distance_bonus"]:
                     rank["distance_bonus"]["max_distance"] = -1
                 else:
                     try:
@@ -1176,7 +1176,7 @@ def validateConfig(cfg):
                     except:
                         rank["distance_bonus"]["max_distance"] = -1
 
-                if 'probability' not in rank["distance_bonus"].keys():
+                if 'probability' not in rank["distance_bonus"]:
                     rank["distance_bonus"] = None
                 else:
                     try:
@@ -1186,12 +1186,12 @@ def validateConfig(cfg):
                     except:
                         rank["distance_bonus"]["probability"] = 1
 
-                if 'type' not in rank["distance_bonus"].keys() or \
+                if 'type' not in rank["distance_bonus"] or \
                         rank["distance_bonus"]["type"] not in ["fixed_value", "fixed_percentage", "random_value", "random_percentage"]:
                     rank["distance_bonus"] = None
                 else:
                     if rank["distance_bonus"]["type"] == "fixed_value":
-                        if 'value' not in rank["distance_bonus"].keys():
+                        if 'value' not in rank["distance_bonus"]:
                             rank["distance_bonus"] = None
                         else:
                             try:
@@ -1199,7 +1199,7 @@ def validateConfig(cfg):
                             except:
                                 rank["distance_bonus"]["value"] = 0
                     elif rank["distance_bonus"]["type"] == "fixed_percentage":
-                        if 'value' not in rank["distance_bonus"].keys():
+                        if 'value' not in rank["distance_bonus"]:
                             rank["distance_bonus"] = None
                         else:
                             try:
@@ -1207,7 +1207,7 @@ def validateConfig(cfg):
                             except:
                                 rank["distance_bonus"]["value"] = 0
                     elif rank["distance_bonus"]["type"] == "random_value":
-                        if 'min' not in rank["distance_bonus"].keys() or 'max' not in rank["distance_bonus"].keys():
+                        if 'min' not in rank["distance_bonus"] or 'max' not in rank["distance_bonus"]:
                             rank["distance_bonus"] = None
                         else:
                             try:
@@ -1219,7 +1219,7 @@ def validateConfig(cfg):
                                 rank["distance_bonus"]["min"] = 0
                                 rank["distance_bonus"]["max"] = 0
                     elif rank["distance_bonus"]["type"] == "random_percentage":
-                        if 'min' not in rank["distance_bonus"].keys() or 'max' not in rank["distance_bonus"].keys():
+                        if 'min' not in rank["distance_bonus"] or 'max' not in rank["distance_bonus"]:
                             rank["distance_bonus"] = None
                         else:
                             try:
@@ -1233,15 +1233,15 @@ def validateConfig(cfg):
 
             ########
             # v2.6.3
-            if 'daily_bonus' not in rank.keys() or rank["daily_bonus"] is None or type(rank["daily_bonus"]) != dict:
+            if 'daily_bonus' not in rank or rank["daily_bonus"] is None or type(rank["daily_bonus"]) != dict:
                 rank["daily_bonus"] = None
             else:
                 cbonus = rank['daily_bonus']
 
-                if 'type' not in cbonus.keys() or cbonus["type"] not in ["fixed", "streak"]:
+                if 'type' not in cbonus or cbonus["type"] not in ["fixed", "streak"]:
                     cbonus = None
                 else:
-                    if "base" not in cbonus.keys():
+                    if "base" not in cbonus:
                         cbonus["base"] = 0
                     else:
                         try:
@@ -1250,7 +1250,7 @@ def validateConfig(cfg):
                             cbonus["base"] = 0
 
                 if cbonus is not None and cbonus["type"] == "streak":
-                    if "streak_type" not in cbonus.keys() or cbonus["streak_type"] not in ["fixed", "algo"] or 'streak_value' not in cbonus.keys():
+                    if "streak_type" not in cbonus or cbonus["streak_type"] not in ["fixed", "algo"] or 'streak_value' not in cbonus:
                         cbonus = None
                     else:
                         if cbonus["streak_type"] == "fixed":
@@ -1266,7 +1266,7 @@ def validateConfig(cfg):
                             except:
                                 cbonus['streak_value'] = 1
 
-                            if "algo_offset" in cbonus.keys():
+                            if "algo_offset" in cbonus:
                                 cbonus["algo_offset"] = abs(cbonus["algo_offset"])
                             else:
                                 cbonus["algo_offset"] = 15
@@ -1274,7 +1274,7 @@ def validateConfig(cfg):
                 rank["daily_bonus"] = cbonus
             ########
 
-            if "discord_role_id" in rank.keys() and "points" in rank.keys() and "name" in rank.keys():
+            if "discord_role_id" in rank and "points" in rank and "name" in rank:
                 newranks.append(rank)
         rank_type["details"] = newranks
         new_rank_types.append(rank_type)
@@ -1285,19 +1285,19 @@ def validateConfig(cfg):
 
     # v2.8.2
     # single-tracker => multi-tracker
-    if "tracker" in cfg.keys():
+    if "tracker" in cfg:
         cfg["trackers"] = cfg["tracker"]
         del cfg["tracker"]
-    if "trackers" in cfg.keys() and type(cfg["trackers"]) == str and "tracker_company_id" in cfg.keys() and "tracker_api_token" in cfg.keys() and "tracker_webhook_secret" in cfg.keys() and "allowed_tracker_ips" in cfg.keys():
+    if "trackers" in cfg and type(cfg["trackers"]) == str and "tracker_company_id" in cfg and "tracker_api_token" in cfg and "tracker_webhook_secret" in cfg and "allowed_tracker_ips" in cfg:
         cfg["trackers"] = [{"type": cfg["trackers"], "company_id": cfg["tracker_company_id"], "api_token": cfg["tracker_api_token"], "webhook_secret": cfg["tracker_webhook_secret"], "ip_whitelist": cfg["allowed_tracker_ips"]}]
         del cfg["tracker_company_id"], cfg["tracker_api_token"], cfg["tracker_webhook_secret"], cfg["allowed_tracker_ips"]
     if type(cfg["trackers"]) != list:
         cfg["trackers"] = []
     new_trackers = []
     for tracker in cfg["trackers"]:
-        if "type" not in tracker.keys() or "company_id" not in tracker.keys() or "api_token" not in tracker.keys() or "webhook_secret" not in tracker.keys():
+        if "type" not in tracker or "company_id" not in tracker or "api_token" not in tracker or "webhook_secret" not in tracker:
             continue
-        if "ip_whitelist" not in tracker.keys():
+        if "ip_whitelist" not in tracker:
             tracker["ip_whitelist"] = []
         if tracker["type"] not in ["tracksim", "trucky", "custom", "unitracker"]:
             continue
@@ -1309,49 +1309,49 @@ def validateConfig(cfg):
             tracker["company_id"] = None
         new_trackers.append(tracker)
     cfg["trackers"] = new_trackers
-    ordered_perms = {key: cfg["perms"][key] for key in default_config["perms"].keys() if key in cfg["perms"].keys()}
-    extra_perms = {key: cfg["perms"][key] for key in cfg["perms"].keys() if key not in default_config["perms"].keys()}
+    ordered_perms = {key: cfg["perms"][key] for key in default_config["perms"] if key in cfg["perms"]}
+    extra_perms = {key: cfg["perms"][key] for key in cfg["perms"] if key not in default_config["perms"]}
     ordered_perms.update(extra_perms)
     cfg["perms"] = ordered_perms
 
     # v2.8.6
-    if "guild_id" in cfg.keys():
+    if "guild_id" in cfg:
         cfg["discord_guild_id"] = cfg["guild_id"]
         del cfg["guild_id"]
 
     # v2.8.7
-    if 'delivery_rules' not in cfg.keys():
+    if 'delivery_rules' not in cfg:
         cfg["delivery_rules"] = default_config["delivery_rules"]
-    if 'action' not in cfg['delivery_rules'].keys():
+    if 'action' not in cfg['delivery_rules']:
         cfg["delivery_rules"]["action"] = "block_job"
     else:
         rename_mapping = {"bypass": "keep_job", "drop": "drop_data", "block": "block_job"}
-        if cfg["delivery_rules"]["action"] in rename_mapping.keys():
+        if cfg["delivery_rules"]["action"] in rename_mapping:
             cfg["delivery_rules"]["action"] = rename_mapping[cfg["delivery_rules"]["action"]]
         else:
             cfg["delivery_rules"]["action"] = "block_job"
-    for key in default_config["delivery_rules"].keys():
-        if key not in cfg["delivery_rules"].keys():
+    for key in default_config["delivery_rules"]:
+        if key not in cfg["delivery_rules"]:
             cfg["delivery_rules"][key] = default_config["delivery_rules"][key]
 
     # v2.8.8
-    if 'smtp_password' not in cfg.keys() and 'smtp_passwd' in cfg.keys():
+    if 'smtp_password' not in cfg and 'smtp_passwd' in cfg:
         cfg['smtp_password'] = cfg['smtp_passwd']
         del cfg['smtp_passwd']
 
     # v2.9.0
-    if 'redis_host' not in cfg.keys():
+    if 'redis_host' not in cfg:
         cfg['redis_host'] = '127.0.0.1'
-    if 'redis_port' not in cfg.keys():
+    if 'redis_port' not in cfg:
         cfg['redis_port'] = 6379
     else:
         try:
             cfg['redis_port'] = int(cfg['redis_port'])
         except:
             cfg['redis_port'] = 6379
-    if 'redis_db' not in cfg.keys():
+    if 'redis_db' not in cfg:
         cfg['redis_db'] = 0
-    if 'redis_password' not in cfg.keys():
+    if 'redis_password' not in cfg:
         cfg['redis_password'] = None
 
     # v2.9.1
@@ -1360,23 +1360,23 @@ def validateConfig(cfg):
     new_hook_audit_log = []
     for hook in cfg['hook_audit_log']:
         new_hook = {"category": "*", "channel_id": "", "webhook_url": ""}
-        if "category" in hook.keys():
+        if "category" in hook:
             new_hook["category"] = hook["category"]
-        if "channel_id" in hook.keys():
+        if "channel_id" in hook:
             try:
                 new_hook["channel_id"] = str(int(hook["channel_id"]))
             except:
                 pass
-        if "webhook_url" in hook.keys():
+        if "webhook_url" in hook:
             new_hook["webhook_url"] = hook["webhook_url"]
 
         new_hook_audit_log.append(new_hook)
     cfg['hook_audit_log'] = new_hook_audit_log
 
     # v2.9.5
-    if "banner_info_first_row" not in cfg.keys() or cfg["banner_info_first_row"] not in ["rank", "division", "division_first"]:
+    if "banner_info_first_row" not in cfg or cfg["banner_info_first_row"] not in ["rank", "division", "division_first"]:
         cfg["banner_info_first_row"] = "division_first"
-    if "banner_background_opacity" not in cfg.keys() or not isfloat(cfg["banner_background_opacity"]):
+    if "banner_background_opacity" not in cfg or not isfloat(cfg["banner_background_opacity"]):
         cfg["banner_background_opacity"] = 0.15
     else:
         try:
@@ -1385,7 +1385,7 @@ def validateConfig(cfg):
             cfg["banner_background_opacity"] = 0.15
 
     # v2.11.0
-    if "db_port" not in cfg.keys():
+    if "db_port" not in cfg:
         cfg["db_port"] = 3306
     else:
         try:
@@ -1395,7 +1395,7 @@ def validateConfig(cfg):
 
     tcfg = {}
     for key in config_keys_order:
-        if key in cfg.keys():
+        if key in cfg:
             tcfg[key] = cfg[key]
         else:
             tcfg[key] = default_config[key]

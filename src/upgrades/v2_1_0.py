@@ -61,7 +61,7 @@ def run(app):
         discordid2uid[row[1]] = uid
         if row[0] >= 0:
             userid2uid[row[0]] = uid
-    logger.info(f"Created {len(list(discordid2uid.keys()))} discordid -> uid links.")
+    logger.info(f"Created {len(list(discordid2uid))} discordid -> uid links.")
 
     logger.info("Updating user_password table (discordid -> uid)...")
     try:
@@ -75,7 +75,7 @@ def run(app):
     cur.execute("CREATE TABLE user_password (uid INT, email TEXT, password TEXT)")
     for row in rows:
         row = process_row(row)
-        if row[0] not in discordid2uid.keys():
+        if row[0] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[0]}: User does not exist.")
             continue
         try:
@@ -95,7 +95,7 @@ def run(app):
     cur.execute("CREATE TABLE user_activity (uid INT, activity TEXT, timestamp BIGINT)")
     for row in rows:
         row = process_row(row)
-        if row[0] not in discordid2uid.keys():
+        if row[0] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[0]}: User does not exist.")
             continue
         try:
@@ -115,7 +115,7 @@ def run(app):
     cur.execute("CREATE TABLE user_notification (notificationid INT AUTO_INCREMENT PRIMARY KEY, uid INT, content TEXT, timestamp BIGINT, status INT)")
     for row in rows:
         row = process_row(row)
-        if row[1] not in discordid2uid.keys():
+        if row[1] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[1]}: User does not exist.")
             continue
         try:
@@ -135,7 +135,7 @@ def run(app):
     cur.execute("CREATE TABLE banned (uid INT, email TEXT, discordid BIGINT UNSIGNED, steamid BIGINT UNSIGNED, truckersmpid BIGINT UNSIGNED, expire_timestamp BIGINT, reason TEXT)")
     for row in rows:
         row = process_row(row)
-        if row[0] not in discordid2uid.keys():
+        if row[0] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[0]}: User does not exist.")
             continue
         email = userinfo[row[0]][5]
@@ -158,7 +158,7 @@ def run(app):
     cur.execute(f"CREATE TABLE application (applicationid INT AUTO_INCREMENT PRIMARY KEY, application_type INT, uid INT, data TEXT, status INT, submit_timestamp BIGINT, update_staff_userid INT, update_staff_timestamp BIGINT) DATA DIRECTORY = '{app.config.db_data_directory}'")
     for row in rows:
         row = process_row(row)
-        if row[2] not in discordid2uid.keys():
+        if row[2] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[2]}: User does not exist.")
             continue
         try:
@@ -178,7 +178,7 @@ def run(app):
     cur.execute("CREATE TABLE session (token CHAR(36), uid INT, timestamp BIGINT, ip TEXT, country TEXT, user_agent TEXT, last_used_timestamp BIGINT)")
     for row in rows:
         row = process_row(row)
-        if row[1] not in discordid2uid.keys():
+        if row[1] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[1]}: User does not exist.")
             continue
         try:
@@ -202,7 +202,7 @@ def run(app):
             cur.execute("DELETE FROM auth_ticket")
     for row in rows:
         row = process_row(row)
-        if row[1] not in discordid2uid.keys():
+        if row[1] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[1]}: User does not exist.")
             continue
         try:
@@ -222,7 +222,7 @@ def run(app):
     cur.execute("CREATE TABLE application_token (app_name TEXT, token CHAR(36), uid BIGINT UNSIGNED, timestamp BIGINT, last_used_timestamp BIGINT)")
     for row in rows:
         row = process_row(row)
-        if row[2] not in discordid2uid.keys():
+        if row[2] not in discordid2uid:
             # logger.info(f"[WARN] Skipped {row[2]}: User does not exist.")
             continue
         try:
@@ -242,7 +242,7 @@ def run(app):
     cur.execute("CREATE TABLE auditlog (uid INT, operation TEXT, timestamp BIGINT)")
     for row in rows:
         row = process_row(row)
-        if row[0] not in userid2uid.keys():
+        if row[0] not in userid2uid:
             # logger.info(f"[WARN] Skipped {row[0]}: User does not exist.")
             continue
         try:
@@ -267,7 +267,7 @@ def run(app):
             except:
                 traceback.print_exc()
         else:
-            if row[0] not in discordid2uid.keys():
+            if row[0] not in discordid2uid:
                 # logger.info(f"[WARN] Skipped {row[0]}: User does not exist.")
                 continue
             try:
@@ -277,7 +277,7 @@ def run(app):
 
     skey2table = {"nxtnotificationid": "user_notification", "nxtlogid": "dlog", "nxtappid": "application", "nxtannid": "announcement", "nxtchallengeid": "challenge", "nxtdownloadsid": "downloads", "nxteventid": "event"}
     logger.info("Updating tables (add AUTO_INCREMENT property)")
-    for skey in skey2table.keys():
+    for skey in skey2table:
         table = skey2table[skey]
         if table in ["user", "user_notification"]:
             continue
@@ -299,7 +299,7 @@ def run(app):
             cur.execute(f"ALTER IGNORE TABLE {table} MODIFY COLUMN {idcolumn} INT NOT NULL AUTO_INCREMENT PRIMARY KEY")
 
     logger.info("Updating settings table (nxtid)...")
-    for skey in skey2table.keys():
+    for skey in skey2table:
         cur.execute(f"SELECT sval FROM settings WHERE skey = '{skey}'")
         sval = cur.fetchone()[0]
         cur.execute(f"ALTER TABLE {skey2table[skey]} AUTO_INCREMENT={sval};")

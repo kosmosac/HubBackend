@@ -21,7 +21,7 @@ async def FetchDiscordMembers(app):
             return
         app.redis.set("multiprocess-pid", os.getpid())
 
-        accept_discord_roles = [str(x["discord_role_id"]) for x in app.config.roles if x["id"] in app.config.perms.driver and "discord_role_id" in x.keys() and isint(x["discord_role_id"])]
+        accept_discord_roles = [str(x["discord_role_id"]) for x in app.config.roles if x["id"] in app.config.perms.driver and "discord_role_id" in x and isint(x["discord_role_id"])]
         if len(accept_discord_roles) == 0:
             await asyncio.sleep(3600)
             continue

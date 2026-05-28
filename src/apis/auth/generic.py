@@ -17,7 +17,7 @@ async def post_password(request: Request, response: Response):
     rl = await ratelimit(request, 'POST /auth/password', 60, 3)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -127,7 +127,7 @@ async def post_register(request: Request, response: Response):
     rl = await ratelimit(request, 'POST /auth/register', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -200,7 +200,7 @@ async def post_register(request: Request, response: Response):
     rl = await ratelimit(request, 'POST /auth/register', 60, 2)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     password = password.encode('utf-8')
@@ -259,7 +259,7 @@ async def post_reset(request: Request, response: Response):
     rl = await ratelimit(request, 'POST /auth/reset', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -292,7 +292,7 @@ async def post_reset(request: Request, response: Response):
     rl = await ratelimit(request, 'POST /auth/reset', 60, 2)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.execute(dhrid, f"SELECT uid, name FROM user WHERE email = '{email}'")
@@ -325,7 +325,7 @@ async def post_mfa(request: Request, response: Response):
     rl = await ratelimit(request, 'POST /auth/mfa', 60, 3)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -418,7 +418,7 @@ async def post_email(request: Request, response: Response, secret: str):
     rl = await ratelimit(request, 'POST /auth/email', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

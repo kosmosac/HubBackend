@@ -102,7 +102,7 @@ async def PollResultNotification(app):
                 await app.db.execute(dhrid, f"SELECT choiceid, userid FROM poll_vote WHERE pollid = {pollid}")
                 p = await app.db.fetchall(dhrid)
                 for pp in p:
-                    if pp[1] not in votes.keys():
+                    if pp[1] not in votes:
                         votes[pp[1]] = [pp[0]]
                     else:
                         votes[pp[1]].append(pp[0])
@@ -115,9 +115,9 @@ async def PollResultNotification(app):
                     userinfo = await GetUserInfo(request, userid = userid, is_internal_function = True)
                     uid = userinfo["uid"]
                     isstaff = checkPerm(app, userinfo["roles"], ["administrator", "manage_polls"])
-                    if uid in tonotify.keys() and (isstaff or (config["show_stats_before_vote"] or config["show_stats"] or config["show_stats_when_ended"])):
+                    if uid in tonotify and (isstaff or (config["show_stats_before_vote"] or config["show_stats"] or config["show_stats_when_ended"])):
                         ctxt = ""
-                        for choiceid in choices.keys():
+                        for choiceid in choices:
                             content = choices[choiceid]
                             if total_vote != 0:
                                 stats = f"{round((choice_vote[choiceid] / total_vote)*100, 2)}% ({choice_vote[choiceid]}/{total_vote})"
@@ -162,7 +162,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /polls/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -276,7 +276,7 @@ async def get_poll(request: Request, response: Response, pollid: int, authorizat
     rl = await ratelimit(request, 'GET /polls', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -360,7 +360,7 @@ async def put_poll_vote(request: Request, response: Response, pollid: int, autho
     rl = await ratelimit(request, 'PUT /polls/vote', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -437,7 +437,7 @@ async def patch_poll_vote(request: Request, response: Response, pollid: int, aut
     rl = await ratelimit(request, 'PATCH /polls/vote', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -516,7 +516,7 @@ async def delete_poll_vote(request: Request, response: Response, pollid: int, au
     rl = await ratelimit(request, 'DELETE /polls/vote', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -571,7 +571,7 @@ async def post_poll(request: Request, response: Response, authorization: str | N
     rl = await ratelimit(request, 'POST /polls', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -609,14 +609,14 @@ async def post_poll(request: Request, response: Response, authorization: str | N
             new_choices.append(choice)
         choices = new_choices
 
-        if "config" in data.keys():
+        if "config" in data:
             config = data["config"]
             if type(config) is not dict:
                 response.status_code = 400
                 return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
             new_config = {}
             for key in POLL_CONFIG_KEYS:
-                if key not in config.keys():
+                if key not in config:
                     new_config[key] = copy.deepcopy(POLL_DEFAULT_CONFIG)[key]
                 else:
                     new_config[key] = config[key]
@@ -631,11 +631,11 @@ async def post_poll(request: Request, response: Response, authorization: str | N
         else:
             config = copy.deepcopy(POLL_DEFAULT_CONFIG)
         new_config = []
-        for key in config.keys():
+        for key in config:
             new_config.append(int(config[key]))
         config = list2str(new_config)
 
-        if "end_time" not in data.keys():
+        if "end_time" not in data:
             data["end_time"] = 0
         end_time = nint(data["end_time"])
         if end_time <= 0:
@@ -645,9 +645,9 @@ async def post_poll(request: Request, response: Response, authorization: str | N
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "end_time", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
 
-        if "orderid" not in data.keys():
+        if "orderid" not in data:
             data["orderid"] = 0
-        if "is_pinned" not in data.keys():
+        if "is_pinned" not in data:
             data["is_pinned"] = False
         orderid = int(data["orderid"])
         if abs(orderid) > 2147483647:
@@ -691,7 +691,7 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
     rl = await ratelimit(request, 'PATCH /polls', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -725,18 +725,18 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
 
     data = await request.json()
     try:
-        if "title" in data.keys():
+        if "title" in data:
             title = data["title"]
             if len(data["title"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "title", "limit": "200"}, force_lang = au["language"])}
-        if "description" in data.keys():
+        if "description" in data:
             description = data["description"]
             if len(data["description"]) > 2000:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "description", "limit": "2,000"}, force_lang = au["language"])}
 
-        if "choices" in data.keys():
+        if "choices" in data:
             # NOTE
             # The choice item must be dict!
             # {"choiceid": N, "orderid": N}
@@ -748,17 +748,17 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "choices", "limit": "10"}, force_lang = au["language"])}
             for choice in choices:
-                if "choiceid" in choice.keys() and "orderid" in choice.keys() and int(choice["choiceid"]) in choices_orderid.keys():
+                if "choiceid" in choice and "orderid" in choice and int(choice["choiceid"]) in choices_orderid:
                     choices_orderid[choice["choiceid"]] = choice["orderid"]
 
-        if "config" in data.keys():
+        if "config" in data:
             config = data["config"]
             if type(config) is not dict:
                 response.status_code = 400
                 return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
             new_config = old_config
             for key in POLL_CONFIG_KEYS:
-                if key in config.keys():
+                if key in config:
                     new_config[key] = config[key]
             config = new_config
             try:
@@ -769,11 +769,11 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
                 response.status_code = 400
                 return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
             new_config = []
-            for key in config.keys():
+            for key in config:
                 new_config.append(int(config[key]))
             config = list2str(new_config)
 
-        if "end_time" in data.keys():
+        if "end_time" in data:
             end_time = nint(data["end_time"])
             if end_time <= 0:
                 end_time = "NULL"
@@ -782,19 +782,19 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
                     response.status_code = 400
                     return {"error": ml.tr(request, "value_too_large", var = {"item": "end_time", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
 
-        if "orderid" in data.keys():
+        if "orderid" in data:
             orderid = int(data["orderid"])
             if abs(orderid) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "orderid", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "is_pinned" in data.keys():
+        if "is_pinned" in data:
             is_pinned = int(bool(data["is_pinned"]))
     except:
         response.status_code = 400
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
     await app.db.execute(dhrid, f"UPDATE poll SET title = '{convertQuotation(title)}', description = '{convertQuotation(compress(description))}', config = '{config}', orderid = {orderid}, is_pinned = {is_pinned}, end_time = {end_time} WHERE pollid = {pollid}")
-    for choiceid in choices_orderid.keys():
+    for choiceid in choices_orderid:
         orderid = choices_orderid[choiceid]
         if orderid is not None:
             await app.db.execute(dhrid, f"UPDATE poll_choice SET orderid = {orderid} WHERE choiceid = {choiceid}")
@@ -809,7 +809,7 @@ async def delete_poll(request: Request, response: Response, pollid: int, authori
     rl = await ratelimit(request, 'DELETE /polls', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

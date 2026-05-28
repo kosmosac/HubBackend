@@ -17,7 +17,7 @@ from src.functions import *
 
 def convert_format(data):
     job_event_type_mapping = {"job_completed": "job.delivered", "job_canceled": "job.cancelled"}
-    if data["event"] not in job_event_type_mapping.keys():
+    if data["event"] not in job_event_type_mapping:
         return None
     job_event_type = job_event_type_mapping[data["event"]]
 
@@ -345,7 +345,7 @@ async def post_import(response: Response, request: Request, jobid: int, authoriz
     rl = await ratelimit(request, 'POST /trucky/import', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -361,7 +361,7 @@ async def post_import(response: Response, request: Request, jobid: int, authoriz
         if r.status_code != 200:
             d = r.json()
             response.status_code = r.status_code
-            if "message" in d.keys():
+            if "message" in d:
                 return {"error": d["message"]}
             else:
                 return {"error": ml.tr(request, "unknown_error")}
@@ -375,7 +375,7 @@ async def post_import(response: Response, request: Request, jobid: int, authoriz
         if r.status_code != 200:
             d = r.json()
             response.status_code = r.status_code
-            if "message" in d.keys():
+            if "message" in d:
                 return {"error": d["message"]}
             else:
                 return {"error": ml.tr(request, "unknown_error")}
@@ -408,7 +408,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
     rl = await ratelimit(request, 'PUT /trucky/driver', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -441,7 +441,7 @@ async def delete_driver(response: Response, request: Request, userid: int, autho
     rl = await ratelimit(request, 'PUT /trucky/driver', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

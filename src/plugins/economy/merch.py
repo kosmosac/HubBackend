@@ -19,7 +19,7 @@ async def get_all_merch(request: Request, response: Response, authorization: str
     rl = await ratelimit(request, 'GET /economy/merch', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -44,7 +44,7 @@ async def get_merch_list(request: Request, response: Response, authorization: st
     rl = await ratelimit(request, 'GET /economy/merch/list', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -125,7 +125,7 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
     rl = await ratelimit(request, 'POST /economy/merch/purchase', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -139,7 +139,7 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
@@ -147,7 +147,7 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
         response.status_code = 400
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
-    if merchid not in app.merch.keys():
+    if merchid not in app.merch:
         response.status_code = 404
         return {"error": ml.tr(request, "merch_not_found", force_lang = au["language"])}
     merch = app.merch[merchid]
@@ -216,7 +216,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
     rl = await ratelimit(request, 'POST /economy/merch/transfer', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -230,12 +230,12 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
 
     data = await request.json()
     try:
-        if "owner" in data.keys():
+        if "owner" in data:
             owner = data["owner"] # owner = self | company | user-{userid}
         else:
             owner = "self"
 
-        if "message" in data.keys():
+        if "message" in data:
             message = data["message"]
         else:
             message = ""
@@ -297,7 +297,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
         to_message = "  \n" + ml.tr(request, "economy_transaction_message", var = {"message": message}, force_lang = to_user_language)
 
     merch = ml.ctr(request, "unknown") + " (" + merchid + ")"
-    if merchid in app.merch.keys():
+    if merchid in app.merch:
         merch = app.merch[merchid]["name"]
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": "1x " + ml.tr(request, "merch", force_lang = from_user_language).title(), "name": merch, "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
@@ -312,7 +312,7 @@ async def post_merch_sell(request: Request, response: Response, itemid: int, aut
     rl = await ratelimit(request, 'POST /economy/merch/sell', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

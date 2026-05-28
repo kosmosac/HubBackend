@@ -19,7 +19,7 @@ for LANGUAGE in LANGUAGES:
         pass
 if "en" not in LANGUAGES:
     LANGUAGES.append("en")
-LANGUAGES = sorted(list(LANG_DATAS.keys())) # must be valid language file
+LANGUAGES = sorted(list(LANG_DATAS)) # must be valid language file
 
 def get_lang(request: Request | None):
     if request is None:
@@ -48,7 +48,7 @@ def translate(request: Request, key: str, var: dict | None = {}, force_lang: str
 
     if key in LANG_DATA:
         ret = LANG_DATA[key]
-        for vkey in var.keys():
+        for vkey in var:
             ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
         return ret
     else: # no translation for key
@@ -56,7 +56,7 @@ def translate(request: Request, key: str, var: dict | None = {}, force_lang: str
             LANG_DATA = EN_STRINGTABLE
             if key in LANG_DATA:
                 ret = LANG_DATA[key]
-                for vkey in var.keys():
+                for vkey in var:
                     ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
                 return ret
             else: # invalid key
@@ -87,7 +87,7 @@ def company_translate(request: Request, key: str, var: dict | None = {}, force_l
 
     if key in LANG_DATA:
         ret = LANG_DATA[key]
-        for vkey in var.keys():
+        for vkey in var:
             ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
         return ret
     else: # no translation for key
@@ -95,7 +95,7 @@ def company_translate(request: Request, key: str, var: dict | None = {}, force_l
             LANG_DATA = EN_STRINGTABLE
             if key in LANG_DATA:
                 ret = LANG_DATA[key]
-                for vkey in var.keys():
+                for vkey in var:
                     ret = ret.replace("{" + vkey + "}", str(var[vkey]).replace("`", "\\`"))
                 return ret
             else: # invalid key

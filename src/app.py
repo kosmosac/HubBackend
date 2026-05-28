@@ -109,7 +109,7 @@ def initApp(app, first_init = False, args = {}):
     if app.config.db_pool_size < 5 and not app.use_master_db:
         logger.warning(f"[{app.config.abbr}] Database pool size is smaller than 5, database error rate may increase")
 
-    if "disable_upgrader" not in args.keys() or not args["disable_upgrader"]:
+    if "disable_upgrader" not in args or not args["disable_upgrader"]:
         import src.upgrades.manager as manager
         cur_version = app.version.replace(".dev", "").replace(".", "_")
         pre_version = cur_version.lstrip("v")
@@ -121,7 +121,7 @@ def initApp(app, first_init = False, args = {}):
         conn.close()
         if len(t) != 0:
             pre_version = t[0][0].replace(".dev", "").replace(".", "_").lstrip("v")
-        if "force_upgrade_from" in args.keys() and args["force_upgrade_from"] is not None:
+        if args.get("force_upgrade_from") is not None:
             pre_version = args["force_upgrade_from"]
             if pre_version not in manager.VERSION_CHAIN:
                 logger.warning(f"[{app.config.abbr}] Force upgrade version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
@@ -137,7 +137,7 @@ def initApp(app, first_init = False, args = {}):
             cur_idx = manager.VERSION_CHAIN.index(cur_version)
             for idx in range(pre_idx + 1, cur_idx + 1):
                 v = manager.VERSION_CHAIN[idx]
-                if v in manager.UPGRADER.keys():
+                if v in manager.UPGRADER:
                     logger.info(f"[{app.config.abbr}] Updating data to be compatible with {v.replace('_', '.')}...")
                     manager.UPGRADER[v].run(app)
         manager.unload()
@@ -179,7 +179,7 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
         if dry_run:
             logger.error(f"Unable to parse config file '{config_path}' as JSON.")
         return None
-    if "abbr" not in config_json.keys() or "name" not in config_json.keys():
+    if "abbr" not in config_json or "name" not in config_json:
         if dry_run:
             logger.error(f"Invalid config file '{config_path}'.")
         return None
@@ -212,8 +212,8 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
     else:
         # create individual database pool
         app.db = db.aiosql(host = app.config.db_host, user = app.config.db_user, passwd = app.config.db_password, db_name = app.config.db_name, db_pool_size = app.config.db_pool_size)
-    app.enable_performance_header = "enable_performance_header" in args.keys() and args["enable_performance_header"]
-    app.memory_threshold = args["memory_threshold"] if "memory_threshold" in args.keys() else 0
+    app.enable_performance_header = "enable_performance_header" in args and args["enable_performance_header"]
+    app.memory_threshold = args["memory_threshold"] if "memory_threshold" in args else 0
     app.banner_service_url = args["banner_service_url"]
 
     app.redis = PrefixedRedis(redis.Redis(app.config.redis_host, app.config.redis_port, app.config.redis_db, app.config.redis_password, decode_responses = True), app.config.abbr)
@@ -270,10 +270,10 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
             test_app.external_middleware = {"startup": [], "request": [], "response_ok": [], "response_fail": [], "error_handler": [], "discord_request": []}
             for route in routes:
                 test_app.add_api_route(path=route.path, endpoint=route.endpoint, methods=route.methods, response_class=route.response_class)
-            for state in states.keys():
-                if state not in app.state.__dict__.keys():
+            for state in states:
+                if state not in app.state.__dict__:
                     test_app.state.__dict__[state] = states[state]
-            for middleware_type in middlewares.keys():
+            for middleware_type in middlewares:
                 if middleware_type in test_app.external_middleware:
                     middleware = middlewares[middleware_type]
                     if callable(middleware):
@@ -292,10 +292,10 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
             for route in routes:
                 app.add_api_route(path=route.path, endpoint=route.endpoint, methods=route.methods, response_class=route.response_class)
                 external_routes.append(route.path)
-            for state in states.keys():
-                if state not in app.state.__dict__.keys():
+            for state in states:
+                if state not in app.state.__dict__:
                     app.state.__dict__[state] = states[state]
-            for middleware_type in middlewares.keys():
+            for middleware_type in middlewares:
                 if middleware_type in app.external_middleware:
                     middleware = middlewares[middleware_type]
                     if callable(middleware):
@@ -381,7 +381,7 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
             logger.error(f"[{app.config.abbr}] Error initializing app: {exc}")
         return None
 
-    if dry_run and "rebuild_dlog_stats" in args.keys() and args["rebuild_dlog_stats"]:
+    if dry_run and "rebuild_dlog_stats" in args and args["rebuild_dlog_stats"]:
         logger.warning(f"[{app.config.abbr}] Rebuilding dlog stats, this might take some time...")
         apis.dlog.statistics.rebuild(app)
 

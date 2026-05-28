@@ -38,7 +38,7 @@ def run(app):
                     logger.info(f"Changing User ID: {userid} to {max_userid}")
                     for table in USERID_TABLES:
                         cur.execute(f"UPDATE {table} SET userid = {max_userid} WHERE userid = {userid}")
-                    for table in SPECIAL_USERID_TABLES.keys():
+                    for table in SPECIAL_USERID_TABLES:
                         for COLUMN in SPECIAL_USERID_TABLES[table]:
                             cur.execute(f"UPDATE {table} SET {COLUMN} = {max_userid} WHERE {COLUMN} = {userid}")
                 logger.info("Update settings...")

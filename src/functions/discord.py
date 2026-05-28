@@ -136,7 +136,7 @@ class opqueue:
                 idx = 0
                 for i in range(len(app.state.discord_opqueue)):
                     (method, key, url, data, headers, error_msg, retry_count) = app.state.discord_opqueue[i]
-                    if key not in app.state.discord_retry_after.keys() or \
+                    if key not in app.state.discord_retry_after or \
                             app.state.discord_retry_after[key] < time.time():
                         ok = True
                         idx = i

@@ -43,19 +43,20 @@ def run(app):
                 source_company = "N/A"
                 destination_city = "N/A"
                 destination_company = "N/A"
-                if "data" in data.keys() and data["data"]["object"]["source_city"] is not None:
-                    source_city = data["data"]["object"]["source_city"]["name"]
-                if "data" in data.keys() and data["data"]["object"]["source_company"] is not None:
-                    source_company = data["data"]["object"]["source_company"]["name"]
-                if "data" in data.keys() and data["data"]["object"]["destination_city"] is not None:
-                    destination_city = data["data"]["object"]["destination_city"]["name"]
-                if "data" in data.keys() and data["data"]["object"]["destination_company"] is not None:
-                    destination_company = data["data"]["object"]["destination_company"]["name"]
                 cargo_name = "N/A"
                 cargo_mass = 0
-                if "data" in data.keys() and data["data"]["object"]["cargo"] is not None:
-                    cargo_name = data["data"]["object"]["cargo"]["name"]
-                    cargo_mass = min(data["data"]["object"]["cargo"]["mass"], 2147483647)
+                if "data" in data:
+                    if data["data"]["object"]["source_city"] is not None:
+                        source_city = data["data"]["object"]["source_city"]["name"]
+                    if data["data"]["object"]["source_company"] is not None:
+                        source_company = data["data"]["object"]["source_company"]["name"]
+                    if data["data"]["object"]["destination_city"] is not None:
+                        destination_city = data["data"]["object"]["destination_city"]["name"]
+                    if data["data"]["object"]["destination_company"] is not None:
+                        destination_company = data["data"]["object"]["destination_company"]["name"]
+                    if data["data"]["object"]["cargo"] is not None:
+                        cargo_name = data["data"]["object"]["cargo"]["name"]
+                        cargo_mass = min(data["data"]["object"]["cargo"]["mass"], 2147483647)
 
                 cur.execute(f"INSERT INTO dlog_meta (logid, source_city, source_company, destination_city, destination_company, cargo_name, cargo_mass) VALUES ({logid}, '{convertQuotation(source_city)}', '{convertQuotation(source_company)}', '{convertQuotation(destination_city)}', '{convertQuotation(destination_company)}', '{convertQuotation(cargo_name)}', {cargo_mass})")
     except:

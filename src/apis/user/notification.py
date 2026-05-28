@@ -23,7 +23,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /user/notification/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -89,7 +89,7 @@ async def get_notification(request: Request, response: Response, notificationid:
     rl = await ratelimit(request, 'GET /user/notification', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -116,7 +116,7 @@ async def delete_notification(request: Request, response: Response, after_notifi
     rl = await ratelimit(request, 'DELETE /user/notification', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -146,7 +146,7 @@ async def patch_status(request: Request, response: Response, notificationid: str
     rl = await ratelimit(request, 'PATCH /user/notification/status', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -187,7 +187,7 @@ async def get_settings(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'GET /user/notification/settings', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -206,7 +206,7 @@ async def get_settings(request: Request, response: Response, authorization: str 
     if len(t) != 0:
         d = t[0][0].split(",")
         for dd in d:
-            if dd in settings.keys():
+            if dd in settings:
                 settings[dd] = True
 
     return settings
@@ -215,7 +215,7 @@ async def get_settings(request: Request, response: Response, authorization: str 
 async def post_settings_enable(request: Request, response: Response, notification_type: str, authorization: str | None = Header(None)):
     """Enables a specific type of notification of the authorized user"""
     app = request.app
-    if notification_type not in copy.deepcopy(NOTIFICATION_SETTINGS).keys():
+    if notification_type not in NOTIFICATION_SETTINGS:
         response.status_code = 404
         return {"error": "Not Found"}
 
@@ -223,7 +223,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
     rl = await ratelimit(request, 'POST /user/notification/settings/enable', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -245,7 +245,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
         settingsok = True
         d = t[0][0].split(",")
         for dd in d:
-            if dd in settings.keys():
+            if dd in settings:
                 settings[dd] = True
 
     if settings[notification_type] is True:
@@ -266,7 +266,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
         rl = await ratelimit(request, 'POST /user/notification/discord/enable', 60, 5)
         if rl[0]:
             return rl[1]
-        for k in rl[1].keys():
+        for k in rl[1]:
             response.headers[k] = rl[1][k]
 
         headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
@@ -314,7 +314,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
             return {"error": ml.tr(request, "unable_to_dm", force_lang = au["language"])}
 
     res = ""
-    for tt in settings.keys():
+    for tt in settings:
         if settings[tt]:
             res += tt + ","
     res = res[:-1]
@@ -329,7 +329,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
 async def post_settings_disable(request: Request, response: Response, notification_type: str, authorization: str | None = Header(None)):
     """Disables a specific type of notification of the authorized user"""
     app = request.app
-    if notification_type not in copy.deepcopy(NOTIFICATION_SETTINGS).keys():
+    if notification_type not in NOTIFICATION_SETTINGS:
         response.status_code = 404
         return {"error": "Not Found"}
 
@@ -337,7 +337,7 @@ async def post_settings_disable(request: Request, response: Response, notificati
     rl = await ratelimit(request, 'POST /user/notification/settings/disable', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -358,7 +358,7 @@ async def post_settings_disable(request: Request, response: Response, notificati
         settingsok = True
         d = t[0][0].split(",")
         for dd in d:
-            if dd in settings.keys():
+            if dd in settings:
                 settings[dd] = True
 
     settings[notification_type] = False
@@ -367,7 +367,7 @@ async def post_settings_disable(request: Request, response: Response, notificati
         await app.db.execute(dhrid, f"DELETE FROM settings WHERE uid = {uid} AND skey = 'discord-notification'")
 
     res = ""
-    for tt in settings.keys():
+    for tt in settings:
         if settings[tt]:
             res += tt + ","
     res = res[:-1]

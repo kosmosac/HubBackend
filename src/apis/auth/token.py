@@ -17,7 +17,7 @@ async def get_token(request: Request, response: Response, authorization: str | N
     rl = await ratelimit(request, 'GET /token', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -38,7 +38,7 @@ async def patch_token(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'PATCH /token', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -67,7 +67,7 @@ async def delete_token(request: Request, response: Response, authorization: str 
     rl = await ratelimit(request, 'DELETE /token', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -94,7 +94,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /token/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -146,7 +146,7 @@ async def delete_hash(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'DELETE /token/hash', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -193,7 +193,7 @@ async def delete_all(request: Request, response: Response, authorization: str | 
     rl = await ratelimit(request, 'DELETE /token/all', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -225,7 +225,7 @@ async def get_application_list(request: Request, response: Response, authorizati
     rl = await ratelimit(request, 'GET /token/application/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -274,7 +274,7 @@ async def post_application(request: Request, response: Response, authorization: 
     rl = await ratelimit(request, 'POST /token/application', 120, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -327,7 +327,7 @@ async def delete_application(request: Request, response: Response, authorization
     rl = await ratelimit(request, 'DELETE /token/application', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -370,7 +370,7 @@ async def delete_application_all(request: Request, response: Response, authoriza
     rl = await ratelimit(request, 'DELETE /token/application/all', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

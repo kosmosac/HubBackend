@@ -18,7 +18,7 @@ async def post_resend_confirmation(request: Request, response: Response, authori
     rl = await ratelimit(request, 'POST /user/resend-confirmation', 60, 1)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -70,7 +70,7 @@ async def patch_email(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'PATCH /user/email', 60, 1)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -134,7 +134,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
     rl = await ratelimit(request, 'PATCH /user/discord', 60, 3)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -149,7 +149,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
     try:
         discord_auth = DiscordAuth(app.config.discord_client_id, app.config.discord_client_secret, callback_url)
         tokens = await discord_auth.get_tokens(code)
-        if "access_token" in tokens.keys():
+        if "access_token" in tokens:
             await app.db.extend_conn(dhrid, 30)
             user_data = await discord_auth.get_user_data_from_token(tokens["access_token"])
             await app.db.extend_conn(dhrid, 2)
@@ -158,7 +158,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
                 return {"error": user_data['message']}
             discordid = user_data['id']
             email = "NULL"
-            if "email" in user_data.keys() and user_data["email"] is not None and "@" in str(user_data["email"]):
+            if user_data.get("email") is not None and "@" in str(user_data["email"]):
                 email = "'" + convertQuotation(user_data['email']) + "'"
             tokens = {**tokens, **user_data}
 
@@ -218,10 +218,10 @@ async def patch_discord(request: Request, response: Response, authorization: str
 
             return Response(status_code=204)
 
-        elif 'error_description' in tokens.keys():
+        elif 'error_description' in tokens:
             response.status_code = 400
             return {"error": tokens['error_description']}
-        elif 'error' in tokens.keys():
+        elif 'error' in tokens:
             response.status_code = 400
             return {"error": tokens['error']}
         else:
@@ -248,7 +248,7 @@ async def patch_steam(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'PATCH /user/steam', 60, 3)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -361,7 +361,7 @@ async def patch_truckersmp(request: Request, response: Response, authorization: 
     rl = await ratelimit(request, 'PATCH /user/truckersmp', 60, 3)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

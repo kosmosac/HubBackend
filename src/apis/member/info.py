@@ -39,7 +39,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /member/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -114,14 +114,14 @@ async def get_list(request: Request, response: Response, authorization: str | No
     t = await app.db.fetchall(dhrid)
     rret = {}
     for tt in t:
-        if tt[0] in hrole.keys(): # prevent duplicate result from SQL query
+        if tt[0] in hrole: # prevent duplicate result from SQL query
             continue
         roles = str2list(tt[1])
         highest_role_order_id = float('inf')
         include_ok = (len(include_roles) == 0)
         exclude_ok = True
         for role in roles:
-            if role in app.roles.keys():
+            if role in app.roles:
                 if app.roles[role]["order_id"] < highest_role_order_id:
                     highest_role_order_id = app.roles[role]["order_id"]
             if role in include_roles:
@@ -140,7 +140,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         hrole = dict(sorted(hrole.items(), key=lambda x: (x[1], x[0])))
         if hrole_order_by == "ASC":
             hrole = dict(reversed(list(hrole.items())))
-    for userid in hrole.keys():
+    for userid in hrole:
         ret.append(rret[userid])
 
     if after_userid is not None:
@@ -201,7 +201,7 @@ async def get_banner(request: Request, response: Response,
     highest = None
     highest_role = ""
     for role in roles:
-        if role in app.roles.keys():
+        if role in app.roles:
             if highest is None or app.roles[role]["order_id"] < highest:
                 highest = app.roles[role]["order_id"]
                 highest_role = app.roles[role]["name"]
@@ -216,7 +216,7 @@ async def get_banner(request: Request, response: Response,
     rl = await ratelimit(request, 'GET /member/banner', 10, 5)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     rank_name = None
@@ -289,7 +289,7 @@ async def get_banner(request: Request, response: Response,
             return {"error": ml.tr(request, "banner_service_unavailable")}
 
         response = StreamingResponse(iter([r.content]), media_type="image/jpeg")
-        for k in rl[1].keys():
+        for k in rl[1]:
             response.headers[k] = rl[1][k]
         response.headers["Cache-Control"] = "public, max-age=600, stale-if-error=86400"
         return response

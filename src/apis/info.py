@@ -17,7 +17,7 @@ async def get_index(request: Request, response: Response, authorization: str | N
     rl = await ratelimit(request, 'GET /', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     if authorization is not None:
@@ -33,7 +33,7 @@ async def get_status(request: Request, response: Response):
     rl = await ratelimit(request, 'GET /status', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     dbstatus = "unavailable"

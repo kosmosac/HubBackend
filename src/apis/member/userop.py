@@ -24,7 +24,7 @@ async def patch_roles_rank_default(request: Request, response: Response, authori
     rl = await ratelimit(request, 'PATCH /member/roles/rank', 10, 1)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -118,14 +118,14 @@ async def patch_roles_rank_default(request: Request, response: Response, authori
 async def patch_roles_rank(request: Request, response: Response, rank_type_id: int, authorization: str | None = Header(None)):
     """Updates rank role of the authorized user in Discord, returns 204"""
     app = request.app
-    if rank_type_id not in app.ranktypes.keys():
+    if rank_type_id not in app.ranktypes:
         response.status_code = 404
         return {"error": "Not Found"}
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /member/roles/rank', 10, 1)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -229,7 +229,7 @@ async def get_bonus_history(request: Request, response: Response, authorization:
     rl = await ratelimit(request, 'GET /member/bonus/history', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -309,7 +309,7 @@ async def post_bonus_claim(request: Request, response: Response, authorization: 
     rl = await ratelimit(request, 'POST /member/bonus/claim', 60, 5)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -362,7 +362,7 @@ async def post_bonus_claim(request: Request, response: Response, authorization: 
             bonuspnt += bonus["streak_value"] * streak
         elif bonus["streak_type"] == "algo":
             offset = ALGO_OFFSET
-            if "algo_offset" in bonus.keys():
+            if "algo_offset" in bonus:
                 offset = bonus["algo_offset"]
             bonuspnt = bonuspnt * (1 + math.log(streak + offset, math.e ** (1 / bonus["streak_value"]))) - bonuspnt * math.log(offset, math.e ** (1 / bonus["streak_value"]))
     bonuspnt = round(bonuspnt)
@@ -391,7 +391,7 @@ async def get_bonus_notification_settings(request: Request, response: Response, 
     rl = await ratelimit(request, 'GET /member/bonus/notification/settings', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -417,7 +417,7 @@ async def patch_bonus_notification_settings(request: Request, response: Response
     rl = await ratelimit(request, 'PATCH /member/bonus/notification/settings', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -454,7 +454,7 @@ async def delete_role_history(request: Request, response: Response, historyid: i
     rl = await ratelimit(request, 'DELETE /member/roles/history', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -487,7 +487,7 @@ async def post_resign(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'POST /member/resign', 60, 60)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -575,7 +575,7 @@ async def post_resign(request: Request, response: Response, authorization: str |
     for role in app.config.roles:
         try:
             if int(role["id"]) in roles:
-                if "discord_role_id" in role.keys() and isint(role["discord_role_id"]):
+                if "discord_role_id" in role and isint(role["discord_role_id"]):
                     opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member resigns."}, f"remove_role,{int(role['discord_role_id'])},{discordid}")
         except:
             pass

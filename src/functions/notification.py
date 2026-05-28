@@ -46,7 +46,7 @@ async def ProcessDiscordMessage(app): # thread
             ok = False
             for i in range(len(app.state.discord_message_queue)):
                 (channelid, data) = app.state.discord_message_queue[i]
-                if channelid not in app.state.discord_retry_after.keys() or\
+                if channelid not in app.state.discord_retry_after or\
                     app.state.discord_retry_after[channelid] < time.time():
                     ok = True
                     break
@@ -63,7 +63,7 @@ async def ProcessDiscordMessage(app): # thread
             for i in range(1, len(app.state.discord_message_queue)):
                 (chnid, d) = app.state.discord_message_queue[i]
                 if chnid == channelid and \
-                        "content" not in d.keys() and "embeds" in d.keys():
+                        "content" not in d and "embeds" in d:
                     # not a text message but a rich embed
                     if len(str(data["embeds"])) + len(str(d["embeds"])) > 5000:
                         break # make sure this will not exceed character limit
@@ -109,12 +109,12 @@ async def ProcessDiscordMessage(app): # thread
                         settingsok = True
                         d = t[0][0].split(",")
                         for dd in d:
-                            if dd in settings.keys():
+                            if dd in settings:
                                 settings[dd] = True
                     settings["discord"] = False
 
                     res = ""
-                    for tt in settings.keys():
+                    for tt in settings:
                         if settings[tt]:
                             res += tt + ","
                     res = res[:-1]
@@ -178,16 +178,16 @@ async def CheckNotificationEnabled(request, notification_type, uid):
     if len(t) != 0:
         d = t[0][0].split(",")
         for dd in d:
-            if dd in settings.keys():
+            if dd in settings:
                 settings[dd] = True
 
-    if notification_type in settings.keys() and not settings[notification_type]:
+    if notification_type in settings and not settings[notification_type]:
         return False
     return True
 
 async def notification(request, notification_type, uid, content, no_drivershub_notification = False, \
         no_discord_notification = False, discord_embed = {}, force = False):
-    if uid is None or int(uid) < 0 or notification_type not in copy.deepcopy(NOTIFICATION_SETTINGS).keys():
+    if uid is None or int(uid) < 0 or notification_type not in NOTIFICATION_SETTINGS:
         return
 
     dhrid = request.state.dhrid
@@ -199,7 +199,7 @@ async def notification(request, notification_type, uid, content, no_drivershub_n
     if len(t) != 0:
         d = t[0][0].split(",")
         for dd in d:
-            if dd in settings.keys():
+            if dd in settings:
                 settings[dd] = True
 
     if not force and not settings[notification_type]:
@@ -211,7 +211,7 @@ async def notification(request, notification_type, uid, content, no_drivershub_n
 
     if settings["discord"] and not no_discord_notification:
         if discord_embed != {}:
-            await SendDiscordNotification(request, uid, {"embeds": [{"title": discord_embed["title"], "url": discord_embed["url"] if "url" in discord_embed.keys() else "", "description": discord_embed["description"], "fields": discord_embed["fields"], "footer": {"text": app.config.name, "icon_url": app.config.logo_url} if "footer" not in discord_embed.keys() else discord_embed["footer"], "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
+            await SendDiscordNotification(request, uid, {"embeds": [{"title": discord_embed["title"], "url": discord_embed["url"] if "url" in discord_embed else "", "description": discord_embed["description"], "fields": discord_embed["fields"], "footer": {"text": app.config.name, "icon_url": app.config.logo_url} if "footer" not in discord_embed else discord_embed["footer"], "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
         else:
             await SendDiscordNotification(request, uid, {"embeds": [{"title": ml.tr(request, "notification", force_lang = await GetUserLanguage(request, uid)),
                 "description": content, "footer": {"text": app.config.name, "icon_url": app.config.logo_url}, \
@@ -219,7 +219,7 @@ async def notification(request, notification_type, uid, content, no_drivershub_n
 
 async def notification_to_everyone(request, notification_type, content, no_drivershub_notification = False, \
         no_discord_notification = False, discord_embed = {}, only_to_members = False):
-    if notification_type not in copy.deepcopy(NOTIFICATION_SETTINGS).keys():
+    if notification_type not in NOTIFICATION_SETTINGS:
         return
 
     dhrid = request.state.dhrid
@@ -267,7 +267,7 @@ async def notification_to_everyone(request, notification_type, content, no_drive
     for tt in t:
         userlang[tt[0]] = tt[1]
     for uid in priority_dc_uid + priority_dh_uid + regular_dc_uid + regular_dh_uid:
-        if uid not in userlang.keys():
+        if uid not in userlang:
             userlang[uid] = app.config.language
 
     if not no_drivershub_notification:
@@ -282,16 +282,16 @@ async def notification_to_everyone(request, notification_type, content, no_drive
         for uid in priority_dc_uid + regular_dc_uid:
             if discord_embed != {}:
                 fields = []
-                if "fields" in discord_embed.keys():
+                if "fields" in discord_embed:
                     for field in discord_embed["fields"]:
                         fields.append({"name": ml.hspl(request, field["name"], force_lang=userlang[uid]), "value": ml.hspl(request, field["value"], force_lang=userlang[uid]), "inline": field["inline"]})
                 footer = {"text": ml.hspl(request, discord_embed["footer"]["text"], force_lang=userlang[uid]), "icon_url": discord_embed["footer"]["icon_url"]}
-                data = {"embeds": [{"title": ml.hspl(request, discord_embed["title"], force_lang=userlang[uid]), "url": discord_embed["url"] if "url" in discord_embed.keys() else "", "description": ml.hspl(request, discord_embed["description"], force_lang=userlang[uid]), "fields": fields, "footer": {"text": app.config.name, "icon_url": app.config.logo_url} if "footer" not in discord_embed.keys() else footer, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}
+                data = {"embeds": [{"title": ml.hspl(request, discord_embed["title"], force_lang=userlang[uid]), "url": discord_embed["url"] if "url" in discord_embed else "", "description": ml.hspl(request, discord_embed["description"], force_lang=userlang[uid]), "fields": fields, "footer": {"text": app.config.name, "icon_url": app.config.logo_url} if "footer" not in discord_embed else footer, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}
             else:
                 data = {"embeds": [{"title": ml.tr(request, "notification", force_lang = await GetUserLanguage(request, uid)),
                     "description": content, "footer": {"text": app.config.name, "icon_url": app.config.logo_url}, \
                     "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}
-            await SendDiscordNotification(request, uid, data, channelid = channelids[uid] if uid in channelids.keys() else False)
+            await SendDiscordNotification(request, uid, data, channelid = channelids[uid] if uid in channelids else False)
 
 async def AuditLog(request, uid, category, text, discord_message_only = False, no_retry = False):
     try:
@@ -354,7 +354,7 @@ async def AutoMessage(app, meta, setvar):
         embeds = []
         for embed in meta.embeds:
             data = copy.deepcopy(embed)
-            if "timestamp" in data.keys():
+            if "timestamp" in data:
                 if type(data["timestamp"]) == bool:
                     data["timestamp"] = datetime.now(timezone.utc).isoformat()
                 elif isint(data["timestamp"]):
@@ -362,7 +362,7 @@ async def AutoMessage(app, meta, setvar):
                 else:
                     del data["timestamp"]
 
-            if "color" not in data.keys() or not isint(data["color"]):
+            if "color" not in data or not isint(data["color"]):
                 data["color"] = int(app.config.hex_color, 16)
 
             res = {}

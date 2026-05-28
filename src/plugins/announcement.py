@@ -33,7 +33,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /announcements/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -120,7 +120,7 @@ async def get_announcement(request: Request, response: Response, announcementid:
     rl = await ratelimit(request, 'GET /announcements', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -151,7 +151,7 @@ async def post_announcement(request: Request, response: Response, authorization:
     rl = await ratelimit(request, 'POST /announcements', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -176,12 +176,12 @@ async def post_announcement(request: Request, response: Response, authorization:
         if abs(announcement_type) > 2147483647:
             response.status_code = 400
             return {"error": ml.tr(request, "value_too_large", var = {"item": "type", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "is_private" not in data.keys():
+        if "is_private" not in data:
             data["is_private"] = False
         is_private = int(bool(data["is_private"]))
-        if "orderid" not in data.keys():
+        if "orderid" not in data:
             data["orderid"] = 0
-        if "is_pinned" not in data.keys():
+        if "is_pinned" not in data:
             data["is_pinned"] = False
         orderid = int(data["orderid"])
         if abs(orderid) > 2147483647:
@@ -237,7 +237,7 @@ async def patch_announcement(request: Request, response: Response, announcementi
     rl = await ratelimit(request, 'PATCH /announcements', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -274,29 +274,29 @@ async def patch_announcement(request: Request, response: Response, announcementi
 
     data = await request.json()
     try:
-        if "title" in data.keys():
+        if "title" in data:
             title = data["title"]
             if len(data["title"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "title", "limit": "200"}, force_lang = au["language"])}
-        if "content" in data.keys():
+        if "content" in data:
             content = data["content"]
             if len(data["content"]) > 2000:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "content", "limit": "2,000"}, force_lang = au["language"])}
-        if "type" in data.keys():
+        if "type" in data:
             announcement_type = int(data["type"])
             if abs(announcement_type) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "type", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "is_private" in data.keys():
+        if "is_private" in data:
             is_private = int(bool(data["is_private"]))
-        if "orderid" in data.keys():
+        if "orderid" in data:
             orderid = int(data["orderid"])
             if abs(orderid) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "orderid", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "is_pinned" in data.keys():
+        if "is_pinned" in data:
             is_pinned = int(bool(data["is_pinned"]))
     except:
         response.status_code = 400
@@ -331,7 +331,7 @@ async def delete_announcement(request: Request, response: Response, announcement
     rl = await ratelimit(request, 'DELETE /announcements', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

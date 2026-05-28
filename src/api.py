@@ -69,7 +69,7 @@ async def error422Handler(request: Request, exc: RequestValidationError): # pyri
 # redis session_errs (list)
 async def tracebackHandler(request: Request, exc: Exception, err: str):
     try:
-        if "mocked" in request.scope.keys():
+        if "mocked" in request.scope:
             request = Request(scope={"type":"http", "app": request.app, "client": Address(host='127.0.0.1', port=80), "url": URL('http://127.0.0.1:80'), "path": "/", "headers": []})
 
         app = request.app
@@ -197,7 +197,7 @@ class HubMiddleware(BaseHTTPMiddleware):
                 await tracebackHandler(request, exc, err)
 
         if request.method != "GET" and real_path.split("/")[1] not in ["tracksim", "trucky", "custom-tracker", "unitracker"]:
-            if "content-type" in request.headers.keys():
+            if "content-type" in request.headers:
                 if request.headers["content-type"] != "application/json":
                     return JSONResponse({"error": "Content-Type must be application/json"}, status_code=400)
         if request.client is None:

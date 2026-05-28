@@ -140,7 +140,7 @@ async def EventNotification(app):
 
                     for vt in vote:
                         uid = (await GetUserInfo(request, userid = vt, ignore_activity = True, is_internal_function = True))["uid"]
-                        if uid in tonotify.keys():
+                        if uid in tonotify:
                             channelid = tonotify[uid]
                             language = GetUserLanguage(request, uid)
                             QueueDiscordMessage(app, channelid, {"embeds": [{"title": title, "description": ml.tr(request, "event_notification_description", force_lang = language), "url": validateUrl(link),
@@ -185,7 +185,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     rl = await ratelimit(request, 'GET /events/list', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -323,7 +323,7 @@ async def get_event(request: Request, response: Response, eventid: int, authoriz
     rl = await ratelimit(request, 'GET /events', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -373,7 +373,7 @@ async def put_vote(request: Request, response: Response, eventid: int, authoriza
     rl = await ratelimit(request, 'PUT /events/vote', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -407,7 +407,7 @@ async def delete_vote(request: Request, response: Response, eventid: int, author
     rl = await ratelimit(request, 'DELETE /events/vote', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -441,7 +441,7 @@ async def post_event(request: Request, response: Response, authorization: str | 
     rl = await ratelimit(request, 'POST /events', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -494,12 +494,12 @@ async def post_event(request: Request, response: Response, authorization: str | 
         if abs(departure_timestamp) > 9223372036854775807:
             response.status_code = 400
             return {"error": ml.tr(request, "value_too_large", var = {"item": "departure_timestamp", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
-        if "is_private" not in data.keys():
+        if "is_private" not in data:
             data["is_private"] = False
         is_private = int(bool(data["is_private"]))
-        if "orderid" not in data.keys():
+        if "orderid" not in data:
             data["orderid"] = 0
-        if "is_pinned" not in data.keys():
+        if "is_pinned" not in data:
             data["is_pinned"] = False
         orderid = int(data["orderid"])
         if abs(orderid) > 2147483647:
@@ -537,7 +537,7 @@ async def patch_event(request: Request, response: Response, eventid: int, author
     rl = await ratelimit(request, 'PATCH /events', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -559,54 +559,54 @@ async def patch_event(request: Request, response: Response, eventid: int, author
 
     data = await request.json()
     try:
-        if "title" in data.keys():
+        if "title" in data:
             title = data["title"]
             if len(data["title"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "title", "limit": "200"}, force_lang = au["language"])}
-        if "description" in data.keys():
+        if "description" in data:
             description = data["description"]
             if len(data["description"]) > 2000:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "description", "limit": "2,000"}, force_lang = au["language"])}
-        if "link" in data.keys():
+        if "link" in data:
             link = data["link"]
             if len(data["link"]) > 1000:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "departure", "limit": "1,000"}, force_lang = au["language"])}
-        if "departure" in data.keys():
+        if "departure" in data:
             departure = data["departure"]
             if len(data["departure"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "departure", "limit": "200"}, force_lang = au["language"])}
-        if "destination" in data.keys():
+        if "destination" in data:
             destination = data["destination"]
             if len(data["destination"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "destination", "limit": "200"}, force_lang = au["language"])}
-        if "distance" in data.keys():
+        if "distance" in data:
             distance = data["distance"]
             if len(data["distance"]) > 200:
                 response.status_code = 400
                 return {"error": ml.tr(request, "content_too_long", var = {"item": "distance", "limit": "200"}, force_lang = au["language"])}
-        if "meetup_timestamp" in data.keys():
+        if "meetup_timestamp" in data:
             meetup_timestamp = int(data["meetup_timestamp"])
             if abs(meetup_timestamp) > 9223372036854775807:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "meetup_timestamp", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
-        if "departure_timestamp" in data.keys():
+        if "departure_timestamp" in data:
             departure_timestamp = int(data["departure_timestamp"])
             if abs(departure_timestamp) > 9223372036854775807:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "departure_timestamp", "limit": "9,223,372,036,854,775,807"}, force_lang = au["language"])}
-        if "is_private" in data.keys():
+        if "is_private" in data:
             is_private = int(bool(data["is_private"]))
-        if "orderid" in data.keys():
+        if "orderid" in data:
             orderid = int(data["orderid"])
             if abs(orderid) > 2147483647:
                 response.status_code = 400
                 return {"error": ml.tr(request, "value_too_large", var = {"item": "orderid", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        if "is_pinned" in data.keys():
+        if "is_pinned" in data:
             is_pinned = int(bool(data["is_pinned"]))
     except:
         response.status_code = 400
@@ -624,7 +624,7 @@ async def delete_event(request: Request, response: Response, eventid: int, autho
     rl = await ratelimit(request, 'DELETE /events', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -654,7 +654,7 @@ async def patch_attendees(request: Request, response: Response, eventid: int, au
     rl = await ratelimit(request, 'PATCH /events/attendees', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

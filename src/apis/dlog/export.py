@@ -25,7 +25,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
     rl = await ratelimit(request, 'GET /dlog/export', 60, 10)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     dhrid = request.state.dhrid
@@ -69,7 +69,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
         app.redis.set("running_export", 0)
 
         response = StreamingResponse(iter([f.getvalue()]), media_type="text/csv")
-        for k in rl[1].keys():
+        for k in rl[1]:
             response.headers[k] = rl[1][k]
         response.headers["Content-Disposition"] = "attachment; filename=export.csv"
         return response
@@ -99,7 +99,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
     await app.db.execute(dhrid, f"SELECT logid, challengeid FROM challenge_record WHERE logid >= {min_logid} AND logid <= {max_logid}")
     t = await app.db.fetchall(dhrid)
     for tt in t:
-        if tt[0] not in challenge_data.keys():
+        if tt[0] not in challenge_data:
             challenge_data[tt[0]] = [tt[1]]
         else:
             challenge_data[tt[0]].append(tt[1])
@@ -142,7 +142,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
             if division_id is None:
                 division_id = ""
             else:
-                if division_id in app.division_name.keys():
+                if division_id in app.division_name:
                     division = app.division_name[division_id]
 
             challengeids = (challenge_data[logid] if logid in challenge_data else None)
@@ -152,7 +152,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
                 challengenames = []
             else:
                 for cid in challengeids:
-                    if cid in all_challenges.keys():
+                    if cid in all_challenges:
                         challengenames.append(all_challenges[cid])
                     else:
                         challengeids.remove(cid)
@@ -186,7 +186,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
             is_delivered = dd[9]
 
             user_id = dd[1]
-            if user_id in all_users.keys():
+            if user_id in all_users:
                 username = all_users[user_id]
             else:
                 user_id = None
@@ -297,7 +297,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
                     adblue = data["adblue_used"]
 
                     if is_delivered:
-                        if "revenue" in last_event["meta"].keys():
+                        if "revenue" in last_event["meta"]:
                             revenue = float(last_event["meta"]["revenue"])
                             if tracker_type == 1:
                                 xp = float(last_event["meta"]["earned_xp"])
@@ -306,14 +306,14 @@ async def get_export(request: Request, response: Response, authorization: str | 
                             elif tracker_type == 2:
                                 xp = float(last_event["meta"]["earnedXP"])
                                 auto_load = first_event["meta"]["autoLoaded"]
-                                if "autoParked" in last_event["meta"].keys():
+                                if "autoParked" in last_event["meta"]:
                                     auto_park = last_event["meta"]["autoParked"]
-                                elif "autoPark" in last_event["meta"].keys():
+                                elif "autoPark" in last_event["meta"]:
                                     auto_park = last_event["meta"]["autoPark"]
                                 else:
                                     auto_park = False
                     else:
-                        if "penalty" in last_event["meta"].keys():
+                        if "penalty" in last_event["meta"]:
                             revenue = -float(last_event["meta"]["penalty"])
 
                     auto_load = bool(auto_load)
@@ -336,12 +336,12 @@ async def get_export(request: Request, response: Response, authorization: str | 
                     is_special = bool(data["is_special"])
                     is_late = bool(data["is_late"])
                     try:
-                        if "had_police_enabled" in data["game"].keys():
+                        if "had_police_enabled" in data["game"]:
                             if data["game"]["had_police_enabled"] is None:
                                 has_police_enabled = "NULL"
                             else:
                                 has_police_enabled = bool(data["game"]["had_police_enabled"])
-                        elif "has_police_enabled" in data["game"].keys():
+                        elif "has_police_enabled" in data["game"]:
                             if data["game"]["has_police_enabled"] is None:
                                 has_police_enabled = "NULL"
                             else:
@@ -354,7 +354,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
                     if data["multiplayer"] is not None:
                         multiplayer = data["multiplayer"]["type"]
 
-                    if "warp" in data.keys():
+                    if "warp" in data:
                         warp = data["warp"]
 
                 except Exception as exc:
@@ -377,7 +377,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
     f.seek(0)
 
     response = StreamingResponse(iter([f.getvalue()]), media_type="text/csv")
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
     response.headers["Content-Disposition"] = "attachment; filename=export.csv"
 

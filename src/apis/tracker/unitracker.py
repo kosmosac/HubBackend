@@ -74,7 +74,7 @@ def convert_format(data):
         return None
     last_event_name = data["Events"][-1]["name"]
     job_event_type_mapping = {"player.job.delivered": "job.delivered", "player.job.cancelled": "job.cancelled"}
-    if last_event_name not in job_event_type_mapping.keys():
+    if last_event_name not in job_event_type_mapping:
         return None
     job_event_type = job_event_type_mapping[last_event_name]
 

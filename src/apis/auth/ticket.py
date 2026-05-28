@@ -16,7 +16,7 @@ async def get_ticket(request: Request, response: Response, token: str | None = N
     rl = await ratelimit(request, 'GET /auth/ticket', 60, 120)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
@@ -43,7 +43,7 @@ async def post_ticket(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'POST /auth/ticket', 180, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)

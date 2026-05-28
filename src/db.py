@@ -279,7 +279,7 @@ class aiosql:
     async def release(self):
         conns = self.conns
         to_delete = []
-        for tdhrid in conns.keys():
+        for tdhrid in conns:
             (tconn, tcur, expire_time, extra_time, db_name, trace) = conns[tdhrid] # pyright: ignore[reportUnusedVariable]
             if time.time() - expire_time >= 60: # pure garbage collection
                 to_delete.append(tdhrid)
@@ -309,7 +309,7 @@ class aiosql:
         if extra_time > 10:
             raise pymysql.err.ProgrammingError("[aiosql] Connection lifetime should not exceed 10 seconds")
 
-        if dhrid in self.conns.keys():
+        if dhrid in self.conns:
             if extra_time != 0:
                 self.conns[dhrid][2] = time.time() + extra_time
                 self.conns[dhrid][3] = extra_time
@@ -376,11 +376,11 @@ class aiosql:
             except Exception as exc:
                 raise pymysql.err.OperationalError(f"[aiosql] Cannot refresh connection ({dhrid}): {str(exc)}")
         self.conns = conns
-        if dhrid in self.iowait.keys():
+        if dhrid in self.iowait:
             self.iowait[dhrid] += time.time() - st
 
     async def extend_conn(self, dhrid, seconds):
-        if dhrid not in self.conns.keys():
+        if dhrid not in self.conns:
             return
         conns = self.conns
         try:
@@ -392,7 +392,7 @@ class aiosql:
         await self.refresh_conn(dhrid)
 
     async def close_conn(self, dhrid):
-        if dhrid in self.conns.keys():
+        if dhrid in self.conns:
             try:
                 # close cursor
                 await self.conns[dhrid][1].close()
@@ -403,15 +403,15 @@ class aiosql:
             except:
                 pass
             del self.conns[dhrid]
-        if dhrid in self.iowait.keys():
+        if dhrid in self.iowait:
             del self.iowait[dhrid]
 
     async def commit(self, dhrid):
         st = time.time()
         await self.refresh_conn(dhrid)
-        if dhrid in self.conns.keys():
+        if dhrid in self.conns:
             await self.conns[dhrid][0].commit()
-            if dhrid in self.iowait.keys():
+            if dhrid in self.iowait:
                 self.iowait[dhrid] += time.time() - st
         else:
             raise pymysql.err.OperationalError(f"[aiosql] Connection does not exist in pool ({dhrid})")
@@ -436,12 +436,12 @@ class aiosql:
 
         st = time.time()
         await self.refresh_conn(dhrid)
-        if dhrid in self.conns.keys():
+        if dhrid in self.conns:
             with warnings.catch_warnings(record=True) as w:
                 await self.conns[dhrid][1].execute(sql, args)
                 if w:
                     logger.warning(f"DATABASE WARNING: {w[0].message}\nOn Execute: {sql}")
-            if dhrid in self.iowait.keys():
+            if dhrid in self.iowait:
                 self.iowait[dhrid] += time.time() - st
         else:
             raise pymysql.err.OperationalError(f"[aiosql] Connection does not exist in pool ({dhrid})")
@@ -449,9 +449,9 @@ class aiosql:
     async def fetchone(self, dhrid):
         st = time.time()
         await self.refresh_conn(dhrid)
-        if dhrid in self.conns.keys():
+        if dhrid in self.conns:
             ret = await self.conns[dhrid][1].fetchone()
-            if dhrid in self.iowait.keys():
+            if dhrid in self.iowait:
                 self.iowait[dhrid] += time.time() - st
             return ret
         else:
@@ -460,16 +460,16 @@ class aiosql:
     async def fetchall(self, dhrid):
         st = time.time()
         await self.refresh_conn(dhrid)
-        if dhrid in self.conns.keys():
+        if dhrid in self.conns:
             ret = await self.conns[dhrid][1].fetchall()
-            if dhrid in self.iowait.keys():
+            if dhrid in self.iowait:
                 self.iowait[dhrid] += time.time() - st
             return ret
         else:
             raise pymysql.err.OperationalError(f"[aiosql] Connection does not exist in pool ({dhrid})")
 
     def get_iowait(self, dhrid):
-        if dhrid in self.iowait.keys():
+        if dhrid in self.iowait:
             return self.iowait[dhrid]
         else:
             return None

@@ -54,19 +54,21 @@ def rebuild(app):
 
         truck = obj["truck"]
         if truck is not None:
-            if "unique_id" in truck.keys() and "name" in truck.keys() and \
-                    truck["brand"] is not None and "name" in truck["brand"].keys():
+            if "unique_id" in truck and "name" in truck and \
+                    truck["brand"] is not None and "name" in truck["brand"]:
                 dlog_stats[1] = [[convertQuotation(truck["unique_id"]), convertQuotation(truck["brand"]["name"]) + " " + convertQuotation(truck["name"]), 1, 0]]
-            if "license_plate_country" in truck.keys() and truck["license_plate_country"] is not None and \
-                    "unique_id" in truck["license_plate_country"].keys() and "name" in truck["license_plate_country"].keys():
+            if truck.get("license_plate_country") is not None and \
+                    "unique_id" in truck["license_plate_country"] and \
+                    "name" in truck["license_plate_country"]:
                 dlog_stats[3] = [[convertQuotation(truck["license_plate_country"]["unique_id"]), convertQuotation(truck["license_plate_country"]["name"]), 1, 0]]
 
         for trailer in obj["trailers"]:
-            if "body_type" in trailer.keys():
+            if "body_type" in trailer:
                 body_type = trailer["body_type"]
                 dlog_stats[2]  = [[convertQuotation(body_type), convertQuotation(body_type), 1, 0]]
-            if "license_plate_country" in trailer.keys() and trailer["license_plate_country"] is not None and \
-                    "unique_id" in trailer["license_plate_country"].keys() and "name" in trailer["license_plate_country"].keys():
+            if trailer.get("license_plate_country") is not None and \
+                    "unique_id" in trailer["license_plate_country"] and \
+                    "name" in trailer["license_plate_country"]:
                 item = [convertQuotation(trailer["license_plate_country"]["unique_id"]), convertQuotation(trailer["license_plate_country"]["name"]), 1, 0]
                 duplicate = False
                 for i in range(len(dlog_stats[3])):
@@ -78,23 +80,23 @@ def rebuild(app):
                     dlog_stats[3].append(item)
 
         cargo = obj["cargo"]
-        if cargo is not None and "unique_id" in cargo.keys() and "name" in cargo.keys():
+        if cargo is not None and "unique_id" in cargo and "name" in cargo:
             dlog_stats[4] = [[convertQuotation(cargo["unique_id"]), convertQuotation(cargo["name"]), 1, 0]]
 
-        if "market" in obj.keys():
+        if "market" in obj:
             dlog_stats[5] = [[convertQuotation(obj["market"]), convertQuotation(obj["market"]), 1, 0]]
 
         source_city = obj["source_city"]
-        if source_city is not None and "unique_id" in source_city.keys() and "name" in source_city.keys():
+        if source_city is not None and "unique_id" in source_city and "name" in source_city:
             dlog_stats[6] = [[convertQuotation(source_city["unique_id"]), convertQuotation(source_city["name"]), 1, 0]]
         source_company = obj["source_company"]
-        if source_company is not None and "unique_id" in source_company.keys() and "name" in source_company.keys():
+        if source_company is not None and "unique_id" in source_company and "name" in source_company:
             dlog_stats[7] = [[convertQuotation(source_company["unique_id"]), convertQuotation(source_company["name"]), 1, 0]]
         destination_city = obj["destination_city"]
-        if destination_city is not None and "unique_id" in destination_city.keys() and "name" in destination_city.keys():
+        if destination_city is not None and "unique_id" in destination_city and "name" in destination_city:
             dlog_stats[8] = [[convertQuotation(destination_city["unique_id"]), convertQuotation(destination_city["name"]), 1, 0]]
         destination_company = obj["destination_company"]
-        if destination_company is not None and "unique_id" in destination_company.keys() and "name" in destination_company.keys():
+        if destination_company is not None and "unique_id" in destination_company and "name" in destination_company:
             dlog_stats[9] = [[convertQuotation(destination_company["unique_id"]), convertQuotation(destination_company["name"]), 1, 0]]
 
         mode = ("single_player", "Single Player")
@@ -168,9 +170,9 @@ def rebuild(app):
                     dlog_stats[mapping[etype]].append(item)
 
         for stat_userid in [userid, -1]:
-            for itype in dlog_stats.keys():
+            for itype in dlog_stats:
                 for dd in dlog_stats[itype]:
-                    if (itype, stat_userid, dd[0]) not in memtable.keys():
+                    if (itype, stat_userid, dd[0]) not in memtable:
                         memtable[(itype, stat_userid, dd[0])] = [dd[1], dd[2], dd[3]]
                     else:
                         memtable[(itype, stat_userid, dd[0])][0] = dd[1]
@@ -181,7 +183,7 @@ def rebuild(app):
     logger.info(f"[{app.config.abbr}] Rebuilding dlog stats: Updating database...")
 
     cur.execute("DELETE FROM dlog_stats")
-    for (item_type, stat_userid, item_key) in memtable.keys():
+    for (item_type, stat_userid, item_key) in memtable:
         if item_key == "None":
             continue
         [item_name, count, sum] = memtable[(item_type, stat_userid, item_key)]
@@ -204,7 +206,7 @@ async def get_summary(request: Request, response: Response, authorization: str |
     rl = await ratelimit(request, 'GET /dlog/statistics/summary', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -418,7 +420,7 @@ async def get_chart(request: Request, response: Response, authorization: str | N
     rl = await ratelimit(request, 'GET /dlog/statistics/chart', 60, 30)
     if rl[0]:
         return rl[1]
-    for k in rl[1].keys():
+    for k in rl[1]:
         response.headers[k] = rl[1][k]
 
     await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -570,7 +572,7 @@ async def get_details(request: Request, response: Response, authorization: str |
         rl = await ratelimit(request, 'GET /dlog/statistics/details', 60, 30)
         if rl[0]:
             return rl[1]
-        for k in rl[1].keys():
+        for k in rl[1]:
             response.headers[k] = rl[1][k]
 
         await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -594,7 +596,7 @@ async def get_details(request: Request, response: Response, authorization: str |
         await app.db.execute(dhrid, f"SELECT item_type, item_key, item_name, count, sum FROM dlog_stats WHERE {quser} ORDER BY item_type ASC, count DESC, sum DESC")
         t = await app.db.fetchall(dhrid)
         for tt in t:
-            if K[tt[0]] not in ret.keys():
+            if K[tt[0]] not in ret:
                 ret[K[tt[0]]] = []
             if tt[0] in [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 15, 16, 17]:
                 ret[K[tt[0]]].append({"unique_id": tt[1], "name": tt[2], "count": tt[3]})
@@ -612,7 +614,7 @@ async def get_details(request: Request, response: Response, authorization: str |
         rl = await ratelimit(request, 'GET /dlog/statistics/details/time-range', 10, 3)
         if rl[0]:
             return rl[1]
-        for k in rl[1].keys():
+        for k in rl[1]:
             response.headers[k] = rl[1][k]
 
         await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
@@ -663,19 +665,21 @@ async def get_details(request: Request, response: Response, authorization: str |
 
                     truck = obj["truck"]
                     if truck is not None:
-                        if "unique_id" in truck.keys() and "name" in truck.keys() and \
-                                truck["brand"] is not None and "name" in truck["brand"].keys():
+                        if "unique_id" in truck and "name" in truck and \
+                                truck["brand"] is not None and "name" in truck["brand"]:
                             dlog_stats[1] = [[convertQuotation(truck["unique_id"]), convertQuotation(truck["brand"]["name"]) + " " + convertQuotation(truck["name"]), 1, 0]]
-                        if "license_plate_country" in truck.keys() and truck["license_plate_country"] is not None and \
-                                "unique_id" in truck["license_plate_country"].keys() and "name" in truck["license_plate_country"].keys():
+                        if truck.get("license_plate_country") is not None and \
+                                "unique_id" in truck["license_plate_country"] and \
+                                "name" in truck["license_plate_country"]:
                             dlog_stats[3] = [[convertQuotation(truck["license_plate_country"]["unique_id"]), convertQuotation(truck["license_plate_country"]["name"]), 1, 0]]
 
                     for trailer in obj["trailers"]:
-                        if "body_type" in trailer.keys():
+                        if "body_type" in trailer:
                             body_type = trailer["body_type"]
                             dlog_stats[2]  = [[convertQuotation(body_type), convertQuotation(body_type), 1, 0]]
-                        if "license_plate_country" in trailer.keys() and trailer["license_plate_country"] is not None and \
-                                "unique_id" in trailer["license_plate_country"].keys() and "name" in trailer["license_plate_country"].keys():
+                        if trailer.get("license_plate_country") is not None and \
+                                "unique_id" in trailer["license_plate_country"] and \
+                                "name" in trailer["license_plate_country"]:
                             item = [convertQuotation(trailer["license_plate_country"]["unique_id"]), convertQuotation(trailer["license_plate_country"]["name"]), 1, 0]
                             duplicate = False
                             for i in range(len(dlog_stats[3])):
@@ -687,23 +691,23 @@ async def get_details(request: Request, response: Response, authorization: str |
                                 dlog_stats[3].append(item)
 
                     cargo = obj["cargo"]
-                    if cargo is not None and "unique_id" in cargo.keys() and "name" in cargo.keys():
+                    if cargo is not None and "unique_id" in cargo and "name" in cargo:
                         dlog_stats[4] = [[convertQuotation(cargo["unique_id"]), convertQuotation(cargo["name"]), 1, 0]]
 
-                    if "market" in obj.keys():
+                    if "market" in obj:
                         dlog_stats[5] = [[convertQuotation(obj["market"]), convertQuotation(obj["market"]), 1, 0]]
 
                     source_city = obj["source_city"]
-                    if source_city is not None and "unique_id" in source_city.keys() and "name" in source_city.keys():
+                    if source_city is not None and "unique_id" in source_city and "name" in source_city:
                         dlog_stats[6] = [[convertQuotation(source_city["unique_id"]), convertQuotation(source_city["name"]), 1, 0]]
                     source_company = obj["source_company"]
-                    if source_company is not None and "unique_id" in source_company.keys() and "name" in source_company.keys():
+                    if source_company is not None and "unique_id" in source_company and "name" in source_company:
                         dlog_stats[7] = [[convertQuotation(source_company["unique_id"]), convertQuotation(source_company["name"]), 1, 0]]
                     destination_city = obj["destination_city"]
-                    if destination_city is not None and "unique_id" in destination_city.keys() and "name" in destination_city.keys():
+                    if destination_city is not None and "unique_id" in destination_city and "name" in destination_city:
                         dlog_stats[8] = [[convertQuotation(destination_city["unique_id"]), convertQuotation(destination_city["name"]), 1, 0]]
                     destination_company = obj["destination_company"]
-                    if destination_company is not None and "unique_id" in destination_company.keys() and "name" in destination_company.keys():
+                    if destination_company is not None and "unique_id" in destination_company and "name" in destination_company:
                         dlog_stats[9] = [[convertQuotation(destination_company["unique_id"]), convertQuotation(destination_company["name"]), 1, 0]]
 
                     mode = ("single_player", "Single Player")
@@ -777,18 +781,18 @@ async def get_details(request: Request, response: Response, authorization: str |
                                 dlog_stats[mapping[etype]].append(item)
 
                     if query_userid is not None:
-                        for itype in dlog_stats.keys():
+                        for itype in dlog_stats:
                             for dd in dlog_stats[itype]:
-                                if (itype, userid, dd[0]) not in memtable.keys():
+                                if (itype, userid, dd[0]) not in memtable:
                                     memtable[(itype, userid, dd[0])] = [dd[1], dd[2], dd[3]]
                                 else:
                                     memtable[(itype, userid, dd[0])][0] = dd[1]
                                     memtable[(itype, userid, dd[0])][1] += dd[2]
                                     memtable[(itype, userid, dd[0])][2] += dd[3]
                     else:
-                        for itype in dlog_stats.keys():
+                        for itype in dlog_stats:
                             for dd in dlog_stats[itype]:
-                                if (itype, -1, dd[0]) not in memtable.keys():
+                                if (itype, -1, dd[0]) not in memtable:
                                     memtable[(itype, -1, dd[0])] = [dd[1], dd[2], dd[3]]
                                 else:
                                     memtable[(itype, -1, dd[0])][0] = dd[1]
@@ -796,7 +800,7 @@ async def get_details(request: Request, response: Response, authorization: str |
                                     memtable[(itype, -1, dd[0])][2] += dd[3]
 
                 t = []
-                for (item_type, stat_userid, item_key) in memtable.keys():
+                for (item_type, stat_userid, item_key) in memtable:
                     if item_key == "None":
                         continue
                     [item_name, count, sum] = memtable[(item_type, stat_userid, item_key)]
