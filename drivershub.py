@@ -42,6 +42,7 @@ parser = argparse.ArgumentParser(prog='drivershub', description=description, for
 parser.add_argument("--config", help = "path to single config file")
 parser.add_argument("--configs", help = "path to multiple config files", nargs="*")
 parser.add_argument("--config-directory", help = "path to a directory containing multiple config files")
+parser.add_argument("--only-validate-config", help = "validate all config files and do not launch server", action='store_true')
 parser.add_argument("--master-host", help = "master server host")
 parser.add_argument("--master-port", help = "master server port", type=int)
 parser.add_argument("--master-workers", help = "master server workers", type=int)
@@ -121,7 +122,7 @@ if config_paths is not None:
     os.environ["CONFIG_PATHS"] = b64e(json.dumps(config_paths))
     os.environ["OPENAPI_PATH"] = openapi_path
 
-if args.use_master_db_pool is True:
+if args.use_master_db_pool is True and not args.only_validate_config:
     if not all([os.environ.get("MASTER_DB_HOST"), os.environ.get("MASTER_DB_USER"), os.environ.get("MASTER_DB_PASSWORD"), os.environ.get("MASTER_DB_POOLSIZE")]):
         logger.error("Environment variables 'MASTER_DB_HOST', 'MASTER_DB_USER, 'MASTER_DB_PASSWORD', 'MASTER_DB_POOLSIZE' must be provided when using master database pool, quited.")
         os._exit(42)
@@ -158,6 +159,10 @@ if __name__ == "__main__":
         except:
             logger.warning("No valid config is loaded, quited.")
             os._exit(42)
+
+    if args.only_validate_config:
+        logger.info("All config files are valid!")
+        os._exit(0)
 
     # for single hub, master config can override hub config
     # if master config is not provided, then use hub config
