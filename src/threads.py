@@ -2,7 +2,6 @@
 # Author: @CharlesWithC
 
 import asyncio
-import copy
 import json
 import os
 import time
@@ -11,9 +10,10 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import Request
+from pydantic import ValidationError
 
 import src.static as static
-from src.config import validateConfig
+from src.config import load_config
 from src.functions.dataop import *
 from src.functions.discord import DiscordAuth
 from src.functions.general import *
@@ -25,6 +25,8 @@ from src.logger import logger
 async def DetectConfigChanges(app):
     # NOTE Why? When running in multiple workers, app is not synced between workers, hence config cannot be synced
     await asyncio.sleep(5)
+    # config modified at this timestamp is invalid, thus ignore it
+    ignore_modify = -1
     while 1:
         try:
             if not os.path.exists(app.config_path):
@@ -35,16 +37,17 @@ async def DetectConfigChanges(app):
                     return
                 continue
 
-            if app.config_last_modified != os.path.getmtime(app.config_path):
-                # modified
-                config_txt = open(app.config_path, "r", encoding="utf-8").read()
-                config_dict = validateConfig(json.loads(config_txt))
-                config = Dict2Obj(config_dict)
-                app.config = config
-                app.config_dict = config_dict
-                app.backup_config = copy.deepcopy(config_dict)
-                app.config_last_modified = os.path.getmtime(app.config_path)
-                logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
+            last_modified = os.path.getmtime(app.config_path)
+            if app.config_last_modified != last_modified and ignore_modify != last_modified:
+                try:
+                    app.config = load_config(app.config_path)
+                except ValidationError as e:
+                    logger.warning(f"[{app.config.abbr}] [PID: {os.getpid()}] Detected modified config, but it is invalid: {str(e)}")
+                    ignore_modify = last_modified
+                    continue
+
+                app.config_last_modified = last_modified
+                logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Detected modified config and successfully reloaded config.")
                 app = static.load(app)
 
         except:

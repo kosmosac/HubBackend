@@ -4,7 +4,6 @@
 import copy
 import functools
 import importlib.util
-import json
 import os
 import time
 
@@ -20,7 +19,7 @@ import src.apis as apis
 import src.db as db
 import src.plugins as plugins
 import src.static as static
-from src.config import DHConfig
+from src.config import DHConfig, load_config
 from src.logger import logger
 from src.static import abspath, version
 
@@ -72,12 +71,20 @@ class PrefixedRedis:
     def __getattr__(self, name):
         return getattr(self._wrap_client(self.redis), name)
 
-def initApp(app, first_init = False, args = {}):
+class DHApp(FastAPI):
+    config: DHConfig = None
+    config_path: str = None
+    config_last_modified: float = None
+
+    redis: PrefixedRedis = None
+    redis_bin: PrefixedRedis = None
+
+def initApp(app: DHApp, first_init = False, args = {}):
     if not first_init:
         return app
 
     logger.info(f"[{app.config.abbr}] Name: {app.config.name} | Prefix: {app.config.prefix}")
-    if app.config.openapi:
+    if app.config.swagger_ui:
         logger.info(f"[{app.config.abbr}] OpenAPI: Enabled")
     else:
         logger.info(f"[{app.config.abbr}] OpenAPI: Disabled")
@@ -169,41 +176,28 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
         return None
 
     try:
-        config_txt = open(config_path, "r", encoding="utf-8").read()
-    except:
-        if dry_run:
-            logger.error(f"Unable to read config file '{config_path}'.")
-        return None
-    try:
-        config_json = json.loads(config_txt)
-    except:
-        if dry_run:
-            logger.error(f"Unable to parse config file '{config_path}' as JSON.")
-        return None
-    try:
-        config = DHConfig.model_validate(config_json)
+        config = load_config(config_path)
     except ValidationError as e:
         if dry_run:
             logger.error(f"Unable to parse config file '{config_path}': {e}")
         return None
 
-    if config.openapi and static.OPENAPI is not None:
-        app = FastAPI(title="Drivers Hub", version=version, openapi_url="/doc/openapi.json", docs_url="/doc", redoc_url=None)
-        def openapi():
-            data = static.OPENAPI
-            data["servers"] = [{"url": f"https://{config.domain}{config.prefix}", "description": config.name}]
+    openapi_config = copy.deepcopy(static.OPENAPI)
+    if config.swagger_ui and openapi_config is not None:
+        app = DHApp(title="Drivers Hub", version=version, openapi_url="/doc/openapi.json", docs_url="/doc", redoc_url=None)
+        def openapi() -> dict[str, object]:
+            data = openapi_config
+            data["servers"] = [{"url": f"https://{config.hostname_frontend}{config.prefix}", "description": config.org_name}]
             data["info"]["version"] = version
-            return static.OPENAPI
+            return data
         app.openapi = openapi
     else:
-        app = FastAPI(title="Drivers Hub", version=version)
+        app = DHApp(title="Drivers Hub", version=version)
 
     # TODO: Properly define an `app` class that extends FastAPI
     app.config = config
     # TODO: REMOVE USE OF app.config_dict
     # app.config_dict = config_dict
-    # TODO: MIGRATE USE OF app.backup_config to DHConfig
-    app.backup_config = copy.deepcopy(config)
     app.config_path = config_path
     app.config_last_modified = os.path.getmtime(app.config_path)
     app.start_time = int(time.time())

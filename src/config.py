@@ -3,13 +3,15 @@
 #
 # See /docs/config.jsonc for configuration instructions.
 
+import json
 import re
 from enum import Enum
 from typing import Annotated
 
 from pydantic import BaseModel, Field, HttpUrl, IPvAnyAddress, StringConstraints
 
-from src.static import LANGUAGES, ALL_PLUGINS, TRACKER
+from src.multilang import LANGUAGES
+from src.static import ALL_PLUGINS, TRACKER
 
 '''
 config.rank_types[].details[].bonus format
@@ -343,3 +345,16 @@ class DHConfig(BaseModel):
     plugin_economy: PluginEconomy
     plugin_event: PluginEvent
     plugin_poll: PluginPoll
+
+def load_config(config_path: str) -> DHConfig:
+    config_dict = json.loads(open(config_path, "r", encoding="utf-8").read())
+    return DHConfig.model_validate(config_dict)
+
+def validate_config(config_dict: dict) -> DHConfig:
+    return DHConfig.model_validate(config_dict)
+
+def dump_config(config: DHConfig) -> dict:
+    return config.model_dump()
+
+def dump_config_json(config: DHConfig) -> str:
+    return config.model_dump_json(indent=4, ensure_ascii=False)

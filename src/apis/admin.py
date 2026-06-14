@@ -1,7 +1,6 @@
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
-import copy
 import json
 import math
 import os
@@ -10,14 +9,15 @@ import time
 import traceback
 
 from fastapi import Header, Request, Response
+from pydantic import ValidationError
 
 import src.multilang as ml
 import src.static as static
 from src.api import tracebackHandler
+from src.app import DHApp
+from src.config import load_config, validate_config, dump_config_json
 from src.functions import *
 from src.logger import logger
-
-config_whitelist = ['name', 'language', 'distance_unit', 'privacy', 'security_level', 'hex_color', 'logo_url', 'banner_background_url', 'banner_info_first_row', 'banner_background_opacity', 'sync_discord_email', 'must_join_guild', 'use_server_nickname', 'allow_custom_profile', 'use_custom_activity', 'avatar_domain_whitelist', 'required_connections', 'register_methods', 'trackers', 'delivery_rules','hook_delivery_log', 'delivery_webhook_image_urls', 'discord_guild_id', 'discord_client_id', 'discord_client_secret', 'discord_bot_token', 'steam_api_key', 'discord_guild_message_replace_rules', 'smtp_host', 'smtp_port', 'smtp_email', 'smtp_password', 'email_template', 'perms', 'roles', 'hook_audit_log', 'member_accept', 'member_leave', 'driver_role_add', 'driver_role_remove', 'rank_up', 'rank_types', 'announcement_types', 'announcement_forwarding', 'application_types', 'challenge_forwarding', 'challenge_completed_forwarding', 'divisions', 'downloads_forwarding', 'economy', 'event_forwarding', 'event_upcoming_forwarding', 'poll_forwarding']
 
 public_config_whitelist = ['name', 'language', 'distance_unit', 'privacy', 'hex_color', 'logo_url', 'banner_background_url', 'banner_info_first_row', 'plugins', 'sync_discord_email', 'must_join_guild', 'use_server_nickname', 'allow_custom_profile', 'use_custom_activity', 'discord_guild_id', 'discord_client_id', 'avatar_domain_whitelist', 'trackers', 'required_connections', 'register_methods']
 
@@ -32,7 +32,7 @@ class Dict2Obj(object):
 
 async def post_discord_role_connection_enable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Enable Discord Role Connection"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /discord/role-connection/enable', 60, 5)
     if rl[0]:
@@ -61,7 +61,7 @@ async def post_discord_role_connection_enable(request: Request, response: Respon
 
 async def post_discord_role_connection_disable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Disable Discord Role Connection"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /discord/role-connection/disable', 60, 5)
     if rl[0]:
@@ -90,7 +90,7 @@ async def post_discord_role_connection_disable(request: Request, response: Respo
 
 async def get_config(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns saved config (config) and loaded config (backup)"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /config', 60, 120)
     if rl[0]:
@@ -98,7 +98,7 @@ async def get_config(request: Request, response: Response, authorization: str | 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     permOk = False
     if authorization is not None:
@@ -110,76 +110,35 @@ async def get_config(request: Request, response: Response, authorization: str | 
         permOk = checkPerm(app, au["roles"], ["administrator", "update_config"])
 
     if not permOk:
-        t = copy.deepcopy(app.backup_config)
-        ttconfig = {}
+        cfg = app.config.model_dump_json()
 
-        for tt in t:
-            if tt in public_config_whitelist:
-                if tt == "trackers":
-                    ttconfig[tt] = [{"type": tracker["type"], "company_id": tracker["company_id"]} for tracker in t[tt]]
-                else:
-                    ttconfig[tt] = t[tt]
+        for key in cfg:
+            if key not in public_config_whitelist:
+                del cfg[key]
+            if key == "trackers":
+                cfg[key] = [{"type": tracker["type"], "company_id": tracker["company_id"]} for tracker in cfg[key]]
 
-        return {"config": ttconfig}
+        return {"config": cfg}
 
-    # current config
+    # possibly modified config that is saved but not reloaded
     last_modified = 0
     try:
         if os.path.exists(app.config_path + ".saved"):
-            orgcfg = validateConfig(json.loads(open(app.config_path + ".saved", "r", encoding="utf-8").read()))
+            modcfg = load_config(app.config_path + ".saved")
             last_modified = os.path.getmtime(app.config_path + ".saved")
         else:
-            orgcfg = validateConfig(json.loads(open(app.config_path, "r", encoding="utf-8").read()))
+            modcfg = load_config(app.config_path, "r", encoding="utf-8"))
             last_modified = os.path.getmtime(app.config_path)
-        f = copy.deepcopy(orgcfg)
-        ffconfig = {}
-
-        # process whitelist
-        for tt in f:
-            if tt in config_whitelist:
-                ffconfig[tt] = f[tt]
-
-        # remove sensitive data
-        for tt in config_protected:
-            ffconfig[tt] = ""
-
-        # remove disabled plugins
-        for t in config_plugins:
-            if t not in app.config.plugins:
-                for tt in config_plugins[t]:
-                    if tt in ffconfig:
-                        del ffconfig[tt]
     except Exception as exc:
-        ffconfig = {}
         await tracebackHandler(request, exc, traceback.format_exc())
 
-    # old config
-    t = copy.deepcopy(app.backup_config)
-    ttconfig = {}
-
-    # process whitelist
-    for tt in t:
-        if tt in config_whitelist:
-            ttconfig[tt] = t[tt]
-
-    # remove sensitive data
-    for tt in config_protected:
-        ttconfig[tt] = ""
-
-    # remove disabled plugins
-    for t in config_plugins:
-        if t not in app.config.plugins:
-            for tt in config_plugins[t]:
-                if tt in ffconfig:
-                    del ttconfig[tt]
-
-    return {"config": ffconfig, "backup": ttconfig, "config_last_modified": int(last_modified), "backup_last_modified": int(app.config_last_modified)}
+    return {"pending": modcfg.model_dump_json(), "current": app.config.model_dump_json(), "pending_last_modified": int(last_modified), "current_last_modified": int(app.config_last_modified)}
 
 def restart(app):
     time.sleep(3)
     os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null") # pyright: ignore[reportDeprecated]
 
-async def patch_config(request: Request, response: Response, authorization: str | None = Header(None), unsafe: bool | None = False):
+async def patch_config(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the config, only those specified in `config` will be updated
 
     JSON: `{"config": {}}`"""
@@ -202,7 +161,8 @@ async def patch_config(request: Request, response: Response, authorization: str 
 
     data = await request.json()
     try:
-        new_config = data["config"]
+        # newcfg may not contain all keys; thus patch modcfg based on newcfg
+        newcfg = data["config"]
         if type(data["config"]) != dict:
             response.status_code = 400
             return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
@@ -211,98 +171,33 @@ async def patch_config(request: Request, response: Response, authorization: str 
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
     if os.path.exists(app.config_path + ".saved"):
-        ttconfig = validateConfig(json.loads(open(app.config_path + ".saved", "r", encoding="utf-8").read()))
+        modcfg = load_config(app.config_path + ".saved")
     else:
-        ttconfig = validateConfig(json.loads(open(app.config_path, "r", encoding="utf-8").read()))
+        modcfg = load_config(app.config_path)
 
-    for tt in new_config:
-        if tt in config_whitelist:
-            if tt == "trackers":
-                idx = 0
-                for tracker in new_config[tt]:
-                    if "type" not in tracker or tracker["type"] not in ["tracksim", "trucky", "custom", "unitracker"]:
-                        response.status_code = 400
-                        return {"error": ml.tr(request, "config_invalid_tracker", force_lang = au["language"])}
-                    idx += 1
+    for tt in newcfg:
+        if tt == "user_perms":
+            newperms = newcfg[tt]
+            if 'administrator' not in newperms:
+                response.status_code = 400
+                return {"error": ml.tr(request, "config_invalid_permission_admin_not_found", force_lang = au["language"])}
+            perm_roles = intify(newperms["administrator"])
+            ok = False
+            for role in userroles:
+                if role in perm_roles:
+                    ok = True
+            if not ok:
+                response.status_code = 400
+                return {"error": ml.tr(request, "config_invalid_permission_admin_protection", force_lang = au["language"])}
 
-            if not unsafe and tt in config_protected:
-                if str(new_config[tt]).strip() == "":
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_value_is_empty", var = {"item": tt}, force_lang = au["language"])}
+        modcfg[tt] = newcfg[tt]
 
-            if tt == "distance_unit":
-                if new_config[tt] not in ['metric', 'imperial']:
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_invalid_distance_unit", force_lang = au["language"])}
-
-            if tt == "economy":
-                if "garages" in new_config[tt]:
-                    garages = new_config[tt]["garages"]
-                    for garage in garages:
-                        if "base_slots" in garage and isint(garage["base_slots"]):
-                            if int(garage["base_slots"]) > 10:
-                                response.status_code = 400
-                                return {"error": ml.tr(request, "value_too_large", var = {"item": "economy.garages.base_slots", "limit": "10"}, force_lang = au["language"])}
-
-            if tt in ["privacy", "must_join_guild", "use_server_nickname", "sync_discord_email", "allow_custom_profile", "use_custom_activity"]:
-                if type(new_config[tt]) != bool:
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_invalid_datatype_boolean", var = {"item": tt}, force_lang = au["language"])}
-
-            if tt in ["smtp_port", "security_level"]:
-                try:
-                    new_config[tt] = int(new_config[tt])
-                except:
-                    if unsafe and new_config[tt] == "":
-                        new_config[tt] = 0
-                    else:
-                        response.status_code = 400
-                        return {"error": ml.tr(request, "config_invalid_datatype_integer", var = {"item": tt}, force_lang = au["language"])}
-
-            if tt == "hex_color":
-                new_config[tt] = new_config[tt][-6:]
-                hex_color = new_config[tt]
-                try:
-                    # validate color
-                    tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-                    int(hex_color, 16)
-                except:
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_invalid_hex_color", force_lang = au["language"])}
-
-            if tt == "delivery_webhook_image_urls":
-                p = []
-                for o in new_config[tt]:
-                    if isurl(o):
-                        p.append(o)
-                new_config[tt] = p
-
-            if tt == "logo_url":
-                if new_config[tt] != "" and not isurl(new_config[tt]):
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_invalid_data_url", var = {"item": tt}, force_lang = au["language"])}
-
-            if tt == "perms":
-                newperms = new_config[tt]
-                if 'administrator' not in newperms:
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_invalid_permission_admin_not_found", force_lang = au["language"])}
-                perm_roles = intify(newperms["administrator"])
-                ok = False
-                for role in userroles:
-                    if role in perm_roles:
-                        ok = True
-                if not ok:
-                    response.status_code = 400
-                    return {"error": ml.tr(request, "config_invalid_permission_admin_protection", force_lang = au["language"])}
-
-            if type(new_config[tt]) != dict and type(new_config[tt]) != list and type(new_config[tt]) != bool:
-                ttconfig[tt] = copy.deepcopy(str(new_config[tt]))
-            else:
-                ttconfig[tt] = copy.deepcopy(new_config[tt])
-
-    ttconfig = validateConfig(ttconfig)
-    out = json.dumps(ttconfig, indent=4, ensure_ascii=False)
+    try:
+        modcfg = validate_config(modcfg)
+    except ValidationError as e:
+        response.status_code = 400
+        return {"error": str(e)}
+    out = dump_config_json(modcfg)
     if len(out) > 512000:
         response.status_code = 400
         return {"error": ml.tr(request, "content_too_long", var = {"item": "config", "limit": "512,000"}, force_lang = au["language"])}
@@ -354,17 +249,18 @@ async def post_config_reload(request: Request, response: Response, authorization
         response.status_code = 428
         return {"error": ml.tr(request, "no_config_reload_available", force_lang = au["language"])}
 
-    config_txt = open(app.config_path + ".saved", "r", encoding="utf-8").read()
-    config_dict = validateConfig(json.loads(config_txt))
-    config = Dict2Obj(config_dict)
-    app.config = config
-    app.config_dict = config_dict
-    app.backup_config = copy.deepcopy(config_dict)
+    try:
+        config = load_config(app.config_path + ".saved")
+    except ValidationError as e:
+        response.status_code = 400
+        return {"error": str(e)}
 
     os.replace(app.config_path + ".saved", app.config_path)
+    app.config = config
     app.config_last_modified = os.path.getmtime(app.config_path)
     logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
 
+    # TODO: This method should belong to app.py
     app = static.load(app)
 
     try:
@@ -415,17 +311,18 @@ async def post_restart(request: Request, response: Response, authorization: str 
         return {"error": ml.tr(request, "invalid_otp", force_lang = au["language"])}
 
     if os.path.exists(app.config_path + ".saved"):
-        config_txt = open(app.config_path + ".saved", "r", encoding="utf-8").read()
-        config_dict = validateConfig(json.loads(config_txt))
-        config = Dict2Obj(config_dict)
-        app.config = config
-        app.config_dict = config_dict
-        app.backup_config = copy.deepcopy(config_dict)
-        os.replace(app.config_path + ".saved", app.config_path)
-        app.config_last_modified = os.path.getmtime(app.config_path)
+        try:
+            config = load_config(app.config_path + ".saved")
+        except ValidationError as e:
+            response.status_code = 400
+            return {"error": str(e)}
 
+        os.replace(app.config_path + ".saved", app.config_path)
+        app.config = config
+        app.config_last_modified = os.path.getmtime(app.config_path)
         logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
 
+        # TODO: This method should belong to app.py
         app = static.load(app)
 
     try:

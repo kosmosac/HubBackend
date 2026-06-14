@@ -20,7 +20,6 @@
     "reportMissingTypeStubs": "none",
     "reportCallInDefaultInitializer": "none",
     "reportOptionalMemberAccess": "none",
-    "reportAttributeAccessIssue": "none",
     "reportOptionalSubscript": "none",
     "reportArgumentType": "none",
     "reportGeneralTypeIssues": "none",
