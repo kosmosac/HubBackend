@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.13.0: Make it typed!
+
+1. Added pydantic-based config class and built-in default values and validation logic
+2. Added support to disabling captcha by using `captcha.provider=None`
+3. Modified config structure for better clarity
+
+This update implies that the drivers hub configuration is now strongly typed, and will be formally verified when loaded or updated.
+
 ## v2.12.1
 
 1. Improved Discord API response handling
@@ -2020,4 +2028,4 @@ Fixed bugs of config editing
 
 ## v1.7.2
   
-Initial release after combing all hubs into one code  
+Initial release after combing all hubs into one code

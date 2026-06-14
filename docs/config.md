@@ -9,7 +9,7 @@ See [/docs/config.jsonc](./config.jsonc) for a sample configuration with detaile
 - `min_distance`/`max_distance`: int
 - `probability`: float = 0~1
 - `type`: str = `fixed_value`/`fixed_percentage`/`random_value`/`random_percentage`
-- `val`: int/float when `type` is `fixed_*`
+- `value`: int/float when `type` is `fixed_*`
 - `min`/`max`: int/float when `type` is `random_*`
 
 `config.rank_types[].details[].daily_bonus` format
@@ -33,4 +33,4 @@ Challenge completed / point updated: `{mention}, {name}, {userid}, {uid}, {avata
 New downloadable item: `{mention}, {name}, {userid}, {uid}, {avatar}, {id}, {title}, {description}, {link}`  
 New event: `{mention}, {name}, {userid}, {uid}, {avatar}, {id}, {title}, {description}, {link}, {departure}, {destination}, {distance}, {meetup_timestamp}, {departure_timestamp}`  
 Upcoming event: `{mention}, {name}, {userid}, {uid}, {avatar}, {id}, {title}, {description}, {link}, {departure}, {destination}, {distance}, {meetup_timestamp}, {departure_timestamp}`  
-New poll: `{mention}, {name}, {userid}, {uid}, {avatar}, {id}, {title}, {description}`  
+New poll: `{mention}, {name}, {userid}, {uid}, {avatar}, {id}, {title}, {description}`

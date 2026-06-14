@@ -32,14 +32,16 @@ async def post_password(request: Request, response: Response):
         return {"error": ml.tr(request, "bad_json")}
 
     try:
+        r = None
         if app.config.captcha.provider == "cloudflare":
             r = await arequests.post(app, "https://challenges.cloudflare.com/turnstile/v0/siteverify", data = {"secret": app.config.captcha.secret, "response": captcha_response, "remoteip": request.client.host}, dhrid = dhrid)
         elif app.config.captcha.provider == "hcaptcha":
             r = await arequests.post(app, "https://hcaptcha.com/siteverify", data = {"secret": app.config.captcha.secret, "response": captcha_response, "remoteip": request.client.host}, dhrid = dhrid)
-        d = r.json()
-        if not d["success"]:
-            response.status_code = 403
-            return {"error": ml.tr(request, "invalid_captcha")}
+        if r:
+            d = r.json()
+            if not d["success"]:
+                response.status_code = 403
+                return {"error": ml.tr(request, "invalid_captcha")}
     except:
         response.status_code = 503
         return {"error": ml.tr(request, "captcha_api_inaccessible")}
@@ -142,14 +144,16 @@ async def post_register(request: Request, response: Response):
         return {"error": ml.tr(request, "bad_json")}
 
     try:
+        r = None
         if app.config.captcha.provider == "cloudflare":
             r = await arequests.post(app, "https://challenges.cloudflare.com/turnstile/v0/siteverify", data = {"secret": app.config.captcha.secret, "response": captcha_response, "remoteip": request.client.host}, dhrid = dhrid)
         elif app.config.captcha.provider == "hcaptcha":
             r = await arequests.post(app, "https://hcaptcha.com/siteverify", data = {"secret": app.config.captcha.secret, "response": captcha_response, "remoteip": request.client.host}, dhrid = dhrid)
-        d = r.json()
-        if not d["success"]:
-            response.status_code = 403
-            return {"error": ml.tr(request, "invalid_captcha")}
+        if r:
+            d = r.json()
+            if not d["success"]:
+                response.status_code = 403
+                return {"error": ml.tr(request, "invalid_captcha")}
     except:
         response.status_code = 503
         return {"error": ml.tr(request, "captcha_api_inaccessible")}
@@ -273,14 +277,16 @@ async def post_reset(request: Request, response: Response):
         return {"error": ml.tr(request, "bad_json")}
 
     try:
+        r = None
         if app.config.captcha.provider == "cloudflare":
             r = await arequests.post(app, "https://challenges.cloudflare.com/turnstile/v0/siteverify", data = {"secret": app.config.captcha.secret, "response": captcha_response, "remoteip": request.client.host}, dhrid = dhrid)
         elif app.config.captcha.provider == "hcaptcha":
             r = await arequests.post(app, "https://hcaptcha.com/siteverify", data = {"secret": app.config.captcha.secret, "response": captcha_response, "remoteip": request.client.host}, dhrid = dhrid)
-        d = r.json()
-        if not d["success"]:
-            response.status_code = 403
-            return {"error": ml.tr(request, "invalid_captcha")}
+        if r:
+            d = r.json()
+            if not d["success"]:
+                response.status_code = 403
+                return {"error": ml.tr(request, "invalid_captcha")}
     except:
         response.status_code = 503
         return {"error": ml.tr(request, "captcha_api_inaccessible")}

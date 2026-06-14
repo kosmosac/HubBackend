@@ -12,6 +12,7 @@ import redis
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import src.api as api
@@ -19,10 +20,10 @@ import src.apis as apis
 import src.db as db
 import src.plugins as plugins
 import src.static as static
-from src.config import validateConfig
-from src.functions import Dict2Obj
+from src.config import DHConfig
 from src.logger import logger
-from src.static import version, abspath
+from src.static import abspath, version
+
 
 class PrefixedRedis:
     NO_KEY_METHODS = {"ping","info","time","client_list","client_setname","config_get","config_set","script_load","script_exists","pubsub","close","connection_pool"}
@@ -179,12 +180,12 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
         if dry_run:
             logger.error(f"Unable to parse config file '{config_path}' as JSON.")
         return None
-    if "abbr" not in config_json or "name" not in config_json:
+    try:
+        config = DHConfig.model_validate(config_json)
+    except ValidationError as e:
         if dry_run:
-            logger.error(f"Invalid config file '{config_path}'.")
+            logger.error(f"Unable to parse config file '{config_path}': {e}")
         return None
-    config_dict = validateConfig(config_json)
-    config = Dict2Obj(config_dict)
 
     if config.openapi and static.OPENAPI is not None:
         app = FastAPI(title="Drivers Hub", version=version, openapi_url="/doc/openapi.json", docs_url="/doc", redoc_url=None)
@@ -197,9 +198,12 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
     else:
         app = FastAPI(title="Drivers Hub", version=version)
 
+    # TODO: Properly define an `app` class that extends FastAPI
     app.config = config
-    app.config_dict = config_dict
-    app.backup_config = copy.deepcopy(config_dict)
+    # TODO: REMOVE USE OF app.config_dict
+    # app.config_dict = config_dict
+    # TODO: MIGRATE USE OF app.backup_config to DHConfig
+    app.backup_config = copy.deepcopy(config)
     app.config_path = config_path
     app.config_last_modified = os.path.getmtime(app.config_path)
     app.start_time = int(time.time())

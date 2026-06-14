@@ -10,7 +10,7 @@ from fastapi import Request
 
 import src.multilang as ml
 from src.functions.arequests import arequests
-from src.functions.general import RateLimitException, DisableDiscordIntegration
+from src.functions.general import RateLimitException, DisableDiscordIntegration, validateUrl
 
 def parse_discord_response(resp):
     content_type = resp.headers.get('Content-Type', '')
@@ -152,6 +152,10 @@ class opqueue:
 
                 # max retry = 5
                 if retry_count == 5:
+                    continue
+
+                # invalid url
+                if not validateUrl(url):
                     continue
 
                 run_method = METHOD_MAP[method]
