@@ -19,7 +19,10 @@ import src.apis as apis
 import src.db as db
 import src.plugins as plugins
 import src.static as static
-from src.config import DHConfig, load_config
+from src.config import DHConfig, UserRole, UserRank, RankPointType, \
+                       PluginDivision, PluginEconomy, load_config
+from src.db import aiosql
+from src.functions.discord import opqueue
 from src.logger import logger
 from src.static import abspath, version
 
@@ -75,23 +78,48 @@ class DHApp(FastAPI):
     config: DHConfig = None
     config_path: str = None
     config_last_modified: float = None
+    loaded_external_plugins: list[str] = []
+    external_middleware: dict[str, list] = {}
+    banner_service_url: str = None
+
+    db: aiosql | None = None
+    use_master_db: bool = False
 
     redis: PrefixedRedis = None
     redis_bin: PrefixedRedis = None
+
+    start_time: int = None
+    multi_mode: bool = False
+    enable_performance_header: bool = False
+    memory_threshold: int = 0
+
+    discord_op: opqueue = opqueue()
+
+    # application-level config
+    roles: dict[int, UserRole] = {}
+    default_rank_type_point_types: list[RankPointType] = []
+    rank_type_point_types: dict[int, list[RankPointType]] = {}
+    ranks: dict[int, dict[int, UserRank.RankDetail]] = {}
+
+    divisions: dict[int, PluginDivision.DivisionType] = {}
+    division_role_ids: list[int] = []
+    trucks: dict[str, PluginEconomy.EconomyTruck] = {}
+    garages: dict[str, PluginEconomy.EconomyGarage] = {}
+    merch: dict[str, PluginEconomy.EconomyMerch] = {}
 
 def initApp(app: DHApp, first_init = False, args = {}):
     if not first_init:
         return app
 
-    logger.info(f"[{app.config.abbr}] Name: {app.config.name} | Prefix: {app.config.prefix}")
+    logger.info(f"[{app.config.unique_id}] Name: {app.config.org_name} | Prefix: {app.config.prefix}")
     if app.config.swagger_ui:
-        logger.info(f"[{app.config.abbr}] OpenAPI: Enabled")
+        logger.info(f"[{app.config.unique_id}] OpenAPI: Enabled")
     else:
-        logger.info(f"[{app.config.abbr}] OpenAPI: Disabled")
+        logger.info(f"[{app.config.unique_id}] OpenAPI: Disabled")
     if len(app.config.plugins) != 0:
-        logger.info(f"[{app.config.abbr}] Plugins: {', '.join(sorted(app.config.plugins))}")
+        logger.info(f"[{app.config.unique_id}] Plugins: {', '.join(sorted(app.config.plugins))}")
     else:
-        logger.info(f"[{app.config.abbr}] Plugins: /")
+        logger.info(f"[{app.config.unique_id}] Plugins: /")
     if len(app.config.external_plugins) != 0:
         extp = []
         for plugin_name in app.config.external_plugins:
@@ -99,23 +127,23 @@ def initApp(app: DHApp, first_init = False, args = {}):
                 extp.append(f"{plugin_name} (loaded)")
             else:
                 extp.append(f"{plugin_name} (not loaded)")
-        logger.info(f"[{app.config.abbr}] External Plugins: {', '.join(sorted(extp))}")
+        logger.info(f"[{app.config.unique_id}] External Plugins: {', '.join(sorted(extp))}")
     else:
-        logger.info(f"[{app.config.abbr}] External Plugins: /")
+        logger.info(f"[{app.config.unique_id}] External Plugins: /")
 
     if args["ignore_external_plugins"]:
-        logger.warning(f"[{app.config.abbr}] Ignoring external plugins")
+        logger.warning(f"[{app.config.unique_id}] Ignoring external plugins")
 
     if app.use_master_db:
-        logger.warning(f"[{app.config.abbr}] Using master database pool")
+        logger.warning(f"[{app.config.unique_id}] Using master database pool")
 
     if app.enable_performance_header:
-        logger.warning(f"[{app.config.abbr}] Performance header enabled")
+        logger.warning(f"[{app.config.unique_id}] Performance header enabled")
     if app.memory_threshold != 0:
-        logger.warning(f"[{app.config.abbr}] Memory threshold: {app.memory_threshold}MB (New requests will be put on hold when the threshold is reached)")
+        logger.warning(f"[{app.config.unique_id}] Memory threshold: {app.memory_threshold}MB (New requests will be put on hold when the threshold is reached)")
 
-    if app.config.db_pool_size < 5 and not app.use_master_db:
-        logger.warning(f"[{app.config.abbr}] Database pool size is smaller than 5, database error rate may increase")
+    if app.config.database_connection_pool < 5 and not app.use_master_db:
+        logger.warning(f"[{app.config.unique_id}] Database pool size is smaller than 5, database error rate may increase")
 
     if "disable_upgrader" not in args or not args["disable_upgrader"]:
         import src.upgrades.manager as manager
@@ -132,25 +160,25 @@ def initApp(app: DHApp, first_init = False, args = {}):
         if args.get("force_upgrade_from") is not None:
             pre_version = args["force_upgrade_from"]
             if pre_version not in manager.VERSION_CHAIN:
-                logger.warning(f"[{app.config.abbr}] Force upgrade version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
+                logger.warning(f"[{app.config.unique_id}] Force upgrade version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
                 return None
         if pre_version != cur_version:
             if pre_version not in manager.VERSION_CHAIN:
-                logger.warning(f"[{app.config.abbr}] Previous version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
+                logger.warning(f"[{app.config.unique_id}] Previous version ({t[0][0]}) is not recognized. Aborted launch to prevent incompatability.")
                 return None
             pre_idx = manager.VERSION_CHAIN.index(pre_version)
             if cur_version not in manager.VERSION_CHAIN:
-                logger.warning(f"[{app.config.abbr}] Current version ({version}) is not recognized. Aborted launch to prevent incompatability.")
+                logger.warning(f"[{app.config.unique_id}] Current version ({version}) is not recognized. Aborted launch to prevent incompatability.")
                 return None
             cur_idx = manager.VERSION_CHAIN.index(cur_version)
             for idx in range(pre_idx + 1, cur_idx + 1):
                 v = manager.VERSION_CHAIN[idx]
                 if v in manager.UPGRADER:
-                    logger.info(f"[{app.config.abbr}] Updating data to be compatible with {v.replace('_', '.')}...")
+                    logger.info(f"[{app.config.unique_id}] Updating data to be compatible with {v.replace('_', '.')}...")
                     manager.UPGRADER[v].run(app)
         manager.unload()
     else:
-        logger.warning(f"[{app.config.abbr}] Upgrader disabled")
+        logger.warning(f"[{app.config.unique_id}] Upgrader disabled")
 
     conn = db.genconn(app.config)
     cur = conn.cursor()
@@ -209,13 +237,13 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
         app.db = master_db
     else:
         # create individual database pool
-        app.db = db.aiosql(host = app.config.db_host, user = app.config.db_user, passwd = app.config.db_password, db_name = app.config.db_name, db_pool_size = app.config.db_pool_size)
+        app.db = db.aiosql(host = app.config.database_host, username = app.config.database_username, password = app.config.database_password, schema = app.config.database_schema, pool_size = app.config.database_connection_pool)
     app.enable_performance_header = "enable_performance_header" in args and args["enable_performance_header"]
     app.memory_threshold = args["memory_threshold"] if "memory_threshold" in args else 0
     app.banner_service_url = args["banner_service_url"]
 
-    app.redis = PrefixedRedis(redis.Redis(app.config.redis_host, app.config.redis_port, app.config.redis_db, app.config.redis_password, decode_responses = True), app.config.abbr)
-    app.redis_bin = PrefixedRedis(redis.Redis(app.config.redis_host, app.config.redis_port, app.config.redis_db, app.config.redis_password, decode_responses = False), app.config.abbr)
+    app.redis = PrefixedRedis(redis.Redis(app.config.redis_host, app.config.redis_port, app.config.redis_database, app.config.redis_password, decode_responses = True), app.config.unique_id)
+    app.redis_bin = PrefixedRedis(redis.Redis(app.config.redis_host, app.config.redis_port, app.config.redis_database, app.config.redis_password, decode_responses = False), app.config.unique_id)
     # auth:{authorization_key} | uinfo:{uid} | ulang:{uid} | utz:{uid} (timezone)
     # uprivacy:{uid} | unote:{from_uid}/{to_uid} | uactivity:{uid}
     # ratelimit:{identifier}(:{route}) => this is a set
@@ -244,27 +272,28 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
             spec.loader.exec_module(external_plugin)
         else:
             if dry_run:
-                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': File not found.")
+                logger.warning(f"[{app.config.unique_id}] [External Plugin] Unable to load external plugin '{plugin_name}': File not found.")
             continue
 
         # init external plugin
         try:
-            res = external_plugin.init(app.config_dict, dry_run)
+            # TODO: Update external plugin example and core external plugins on use of class-based config
+            res = external_plugin.init(app.config, dry_run)
             if res is False:
                 if dry_run:
-                    logger.warning(f"[{app.config.abbr}] [External Plugin] '{plugin_name}' is not loaded: 'init' function did not return True.")
+                    logger.warning(f"[{app.config.unique_id}] [External Plugin] '{plugin_name}' is not loaded: 'init' function did not return True.")
                 continue
             routes = res[1]
             states = res[2]
             middlewares = res[3]
         except Exception as exc:
             if dry_run:
-                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
+                logger.warning(f"[{app.config.unique_id}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
             continue
 
         # test routes and state
         try:
-            test_app = FastAPI()
+            test_app = DHApp()
             test_app.external_middleware = {"startup": [], "request": [], "response_ok": [], "response_fail": [], "error_handler": [], "discord_request": []}
             for route in routes:
                 test_app.add_api_route(path=route.path, endpoint=route.endpoint, methods=route.methods, response_class=route.response_class)
@@ -282,7 +311,7 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
                                 test_app.external_middleware[middleware_type].append(mdw)
         except Exception as exc:
             if dry_run:
-                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
+                logger.warning(f"[{app.config.unique_id}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
             continue
 
         # load routes and state
@@ -304,7 +333,7 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
                                 app.external_middleware[middleware_type].append(mdw)
         except Exception as exc:
             if dry_run:
-                logger.warning(f"[{app.config.abbr}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
+                logger.warning(f"[{app.config.unique_id}] [External Plugin] Unable to load external plugin '{plugin_name}': {exc}")
             continue
 
         app.loaded_external_plugins.append(plugin_name)
@@ -361,12 +390,12 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
     app.state.statistics_details_last_work = -1 # be local since it's not THAT cpu intensive like dlog export
 
     try:
-        if os.path.exists(f"/tmp/hub/logo/{app.config.abbr}.png"):
-            os.remove(f"/tmp/hub/logo/{app.config.abbr}.png")
-        if os.path.exists(f"/tmp/hub/logo/{app.config.abbr}_bg.png"):
-            os.remove(f"/tmp/hub/logo/{app.config.abbr}_bg.png")
-        if os.path.exists(f"/tmp/hub/template/{app.config.abbr}.png"):
-            os.remove(f"/tmp/hub/template/{app.config.abbr}.png")
+        if os.path.exists(f"/tmp/hub/logo/{app.config.unique_id}.png"):
+            os.remove(f"/tmp/hub/logo/{app.config.unique_id}.png")
+        if os.path.exists(f"/tmp/hub/logo/{app.config.unique_id}_bg.png"):
+            os.remove(f"/tmp/hub/logo/{app.config.unique_id}_bg.png")
+        if os.path.exists(f"/tmp/hub/template/{app.config.unique_id}.png"):
+            os.remove(f"/tmp/hub/template/{app.config.unique_id}.png")
     except:
         pass
 
@@ -376,11 +405,11 @@ def createApp(config_path, multi_mode = False, dry_run = False, args = {}, maste
         if dry_run:
             import traceback
             traceback.print_exc()
-            logger.error(f"[{app.config.abbr}] Error initializing app: {exc}")
+            logger.error(f"[{app.config.unique_id}] Error initializing app: {exc}")
         return None
 
     if dry_run and "rebuild_dlog_stats" in args and args["rebuild_dlog_stats"]:
-        logger.warning(f"[{app.config.abbr}] Rebuilding dlog stats, this might take some time...")
+        logger.warning(f"[{app.config.unique_id}] Rebuilding dlog stats, this might take some time...")
         apis.dlog.statistics.rebuild(app)
 
     return app

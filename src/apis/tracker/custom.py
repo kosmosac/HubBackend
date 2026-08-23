@@ -76,7 +76,7 @@ async def FetchRoute(app, gameid, userid, logid, route):
         cnt += 1
 
     dhrid = genrid()
-    await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.database_schema)
 
     for _ in range(3):
         try:
@@ -92,29 +92,29 @@ async def FetchRoute(app, gameid, userid, logid, route):
         except:
             await app.db.close_conn(dhrid)
             dhrid = genrid()
-            await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.database_schema)
             continue
 
     return True
 
 async def post_update(response: Response, request: Request):
-    app = request.app
+    app: DHApp = request.app
     if "custom" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
     dhrid = request.state.dhrid
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     webhook_signature = request.headers.get('signature')
 
     ip_ok = False
     needs_validate = False
-    for tracker in app.config.trackers:
-        if tracker["type"] != "custom":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "custom":
             continue
-        if type(tracker["ip_whitelist"]) == list and len(tracker["ip_whitelist"]) > 0:
+        if type(tracker.ip_whitelist) == list and len(tracker.ip_whitelist) > 0:
             needs_validate = True
-            if request.client.host in tracker["ip_whitelist"]:
+            if request.client.host in tracker.ip_whitelist:
                 ip_ok = True
     if needs_validate and not ip_ok:
         response.status_code = 403
@@ -122,7 +122,7 @@ async def post_update(response: Response, request: Request):
         return {"error": "Validation failed."}
 
     if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
-        d = await request.form()
+        d: dict = dict(await request.form())
     elif request.headers.get("Content-Type") == "application/json":
         d = await request.json()
     else:
@@ -130,12 +130,12 @@ async def post_update(response: Response, request: Request):
         return {"error": "Unsupported content type."}
     sig_ok = False
     needs_validate = False # if at least one tracker has webhook secret, then true (only false when all doesn't have webhook secret)
-    for tracker in app.config.trackers:
-        if tracker["type"] != "custom":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "custom":
             continue
-        if tracker["webhook_secret"] is not None and tracker["webhook_secret"] != "":
+        if tracker.webhook_secret is not None and tracker.webhook_secret != "":
             needs_validate = True
-            sig = hmac.new(tracker["webhook_secret"].encode(), msg=json.dumps(d).encode(), digestmod=hashlib.sha256).hexdigest()
+            sig = hmac.new(tracker.webhook_secret.encode(), msg=json.dumps(d).encode(), digestmod=hashlib.sha256).hexdigest()
             if webhook_signature is not None and hmac.compare_digest(sig, webhook_signature):
                 sig_ok = True
     if needs_validate and not sig_ok:

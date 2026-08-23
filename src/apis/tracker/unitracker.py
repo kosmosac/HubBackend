@@ -48,7 +48,7 @@ async def FetchRoute(app, gameid, userid, logid, route):
         cnt += 1
 
     dhrid = genrid()
-    await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.database_schema)
 
     for _ in range(3):
         try:
@@ -64,7 +64,7 @@ async def FetchRoute(app, gameid, userid, logid, route):
         except:
             await app.db.close_conn(dhrid)
             dhrid = genrid()
-            await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.database_schema)
             continue
 
     return True
@@ -234,24 +234,24 @@ def convert_format(data):
     }
 
 async def post_update(response: Response, request: Request):
-    app = request.app
+    app: DHApp = request.app
     if "unitracker" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
     dhrid = request.state.dhrid
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     # NOTE: at the time of the release, unitracker does not support webhook signing
     # webhook_signature = request.headers.get('unitracker-signature')
 
     ip_ok = False
     needs_validate = False
-    for tracker in app.config.trackers:
-        if tracker["type"] != "unitracker":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "unitracker":
             continue
-        if type(tracker["ip_whitelist"]) == list and len(tracker["ip_whitelist"]) > 0:
+        if type(tracker.ip_whitelist) == list and len(tracker.ip_whitelist) > 0:
             needs_validate = True
-            if request.client.host in tracker["ip_whitelist"]:
+            if request.client.host in tracker.ip_whitelist:
                 ip_ok = True
     if needs_validate and not ip_ok:
         response.status_code = 403
@@ -259,7 +259,7 @@ async def post_update(response: Response, request: Request):
         return {"error": "Validation failed."}
 
     if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
-        d = await request.form()
+        d: dict = dict(await request.form())
     elif request.headers.get("Content-Type") == "application/json":
         d = await request.json()
     else:

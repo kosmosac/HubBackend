@@ -10,14 +10,14 @@ from datetime import datetime, timezone
 from fastapi import Header, Request, Response, Query
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
-
 
 # Basic Info
 async def get_types(request: Request):
-    app = request.app
-    ret = copy.deepcopy(app.config.application_types)
-    to_remove = ["webhook_url", "channel_id", "discord_role_change", "message"]
+    app: DHApp = request.app
+    ret = [x.model_dump() for x in app.config.plugin_application.types]
+    to_remove = ["discord_role_change", "forwards"]
     for i in range(len(ret)):
         for k in to_remove:
             if k in ret[i]:
@@ -32,7 +32,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         submitted_by: int | None = None, responded_by: int | None = None, \
         application_type: int | None = Query(None, alias='type'), \
         all_user: bool | None = False, status: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /applications/list', 60, 120)
     if rl[0]:
@@ -40,7 +40,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     order = order.lower()
     if order not in ["asc", "desc"]:
@@ -114,11 +114,11 @@ async def get_list(request: Request, response: Response, authorization: str | No
         limit = ""
         if not checkPerm(app, roles, "administrator"):
             allowed_application_types = []
-            for tt in app.config.application_types:
-                allowed_roles = tt["staff_role_ids"]
+            for tt in app.config.plugin_application.types:
+                allowed_roles = tt.staff_role_ids
                 for role in allowed_roles:
                     if role in roles:
-                        allowed_application_types.append(tt["id"])
+                        allowed_application_types.append(tt.id)
                         break
 
             if len(allowed_application_types) == 0:
@@ -176,7 +176,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_application(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /applications', 60, 120)
     if rl[0]:
@@ -184,7 +184,7 @@ async def get_application(request: Request, response: Response, applicationid: i
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -204,9 +204,9 @@ async def get_application(request: Request, response: Response, applicationid: i
 
     if not checkPerm(app, roles, "administrator") and uid != t[0][2]:
         ok = False
-        for tt in app.config.application_types:
-            if tt["id"] == application_type:
-                allowed_roles = tt["staff_role_ids"]
+        for tt in app.config.plugin_application.types:
+            if tt.id == application_type:
+                allowed_roles = tt.staff_role_ids
                 for role in allowed_roles:
                     if role in roles:
                         ok = True
@@ -218,7 +218,7 @@ async def get_application(request: Request, response: Response, applicationid: i
     return {"applicationid": t[0][0], "type": t[0][1], "status": t[0][4], "submit_timestamp": t[0][5], "respond_timestamp": t[0][7], "creator": await GetUserInfo(request, uid = t[0][2]), "last_respond_staff": await GetUserInfo(request, userid = t[0][6]), "application": json.loads(decompress(t[0][3]))}
 
 async def post_application(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /applications', 180, 10)
     if rl[0]:
@@ -226,7 +226,7 @@ async def post_application(request: Request, response: Response, authorization: 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -258,11 +258,13 @@ async def post_application(request: Request, response: Response, authorization: 
     hook_url = ""
     hook_key = ""
     meta = ""
-    for o in app.config.application_types:
-        if application_type == o["id"]:
-            application_type_text = o["name"]
-            discord_role_change = o["discord_role_change"]
-            discord_message_content = o["message"]
+    for o in app.config.plugin_application.types:
+        assert False, "`application.py` requires update to support multiple discord forwards (TODO)"
+
+        if application_type == o.id:
+            application_type_text = o.name
+            discord_role_change = o.discord_role_changes
+            discord_message_content = o.forwards.content
             if o["channel_id"] != "":
                 hook_url = f"https://discord.com/api/v10/channels/{o['channel_id']}/messages"
                 hook_key = o["channel_id"]
@@ -327,7 +329,7 @@ async def post_application(request: Request, response: Response, authorization: 
     if (t[0][2] is None or "@" not in t[0][2]) and "email" in meta["required_connections"]:
         response.status_code = 428
         return {"error": ml.tr(request, "must_have_connection", var = {"app": "Email"}, force_lang = au["language"])}
-    if t[0][6] is None and ("discord" in meta["required_connections"] or app.config.must_join_guild):
+    if t[0][6] is None and ("discord" in meta["required_connections"] or app.config.discord_integration.must_join_guild):
         response.status_code = 428
         return {"error": ml.tr(request, "must_have_connection", var = {"app": "Discord"}, force_lang = au["language"])}
     if t[0][4] is None and "steam" in meta["required_connections"]:
@@ -338,9 +340,9 @@ async def post_application(request: Request, response: Response, authorization: 
         return {"error": ml.tr(request, "must_have_connection", var = {"app": "TruckersMP"}, force_lang = au["language"])}
     userid = t[0][5]
 
-    if discordid is not None and app.config.must_join_guild and app.config.discord_bot_token != "":
+    if discordid is not None and app.config.discord_integration.must_join_guild and app.config.discord_integration.bot_token != "":
         try:
-            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}", headers={"Authorization": f"Bot {app.config.discord_bot_token}"}, dhrid = dhrid)
+            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}", headers={"Authorization": f"Bot {app.config.discord_integration.bot_token}"}, dhrid = dhrid)
         except:
             response.status_code = 428
             return {"error": ml.tr(request, "user_in_guild_check_failed")}
@@ -356,13 +358,13 @@ async def post_application(request: Request, response: Response, authorization: 
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     applicationid = (await app.db.fetchone(dhrid))[0]
 
-    if discordid is not None and len(discord_role_change) != 0 and app.config.discord_bot_token != "":
+    if discordid is not None and len(discord_role_change) != 0 and app.config.discord_integration.bot_token != "":
         for role in discord_role_change:
             try:
                 if int(role) < 0:
-                    opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when user submits application."}, f"remove_role,{-int(role)},{discordid}")
+                    app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when user submits application."}, f"remove_role,{-int(role)},{discordid}")
                 elif int(role) > 0:
-                    opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when user submits application."}, f"add_role,{int(role)},{discordid}")
+                    app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when user submits application."}, f"add_role,{int(role)},{discordid}")
             except:
                 pass
 
@@ -386,16 +388,16 @@ async def post_application(request: Request, response: Response, authorization: 
             if len(msg) > 4000:
                 msg = f"**UID**: {uid}\n**User ID**: {userid}\n**Email**: {t[0][2]}\n**Discord**: <@{discordid}> (`{discordid}`)\n**Steam ID**: [{t[0][4]}](https://steamcommunity.com/profiles/{t[0][4]})\n**TruckersMP ID**: [{t[0][3]}](https://truckersmp.com/user/{t[0][3]})\n\n*{ml.ctr(request, 'application_message_too_long')}*"
 
-            headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+            headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
 
-            opqueue.queue(app, "post", hook_key, hook_url, json.dumps({"content": discord_message_content, "embeds": [{"title": f"New {application_type_text} Application", "description": msg, "author": author, "footer": {"text": f"Application ID: {applicationid} "}, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}), headers, "disable")
+            app.discord_op.queue(app, "post", hook_key, hook_url, json.dumps({"content": discord_message_content, "embeds": [{"title": f"New {application_type_text} Application", "description": msg, "author": author, "footer": {"text": f"Application ID: {applicationid} "}, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}), headers, "disable")
         except:
             pass
 
     return {"applicationid": applicationid}
 
 async def post_message(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /applications/message', 180, 10)
     if rl[0]:
@@ -403,7 +405,7 @@ async def post_message(request: Request, response: Response, applicationid: int,
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -417,8 +419,8 @@ async def post_message(request: Request, response: Response, applicationid: int,
 
     data = await request.json()
     try:
-        message = str(data["message"])
-        if len(data["message"]) > 2000:
+        message = str(data.message)
+        if len(data.message) > 2000:
             response.status_code = 400
             return {"error": ml.tr(request, "content_too_long", var = {"item": "message", "limit": "2,000"}, force_lang = au["language"])}
     except:
@@ -461,10 +463,12 @@ async def post_message(request: Request, response: Response, applicationid: int,
     discord_message_content = ""
     hook_url = ""
     hook_key = ""
-    for o in app.config.application_types:
-        if application_type == o["id"]:
+    for o in app.config.plugin_application.types:
+        assert False, "`application.py` requires update to support multiple discord forwards (TODO)"
+
+        if application_type == o.id:
             application_type_text = o["name"]
-            discord_message_content = o["message"]
+            discord_message_content = o.message
             if o["channel_id"] != "":
                 hook_url = f"https://discord.com/api/v10/channels/{o['channel_id']}/messages"
                 hook_key = o["channel_id"]
@@ -482,16 +486,16 @@ async def post_message(request: Request, response: Response, applicationid: int,
             if len(msg) > 4000:
                 msg = f"**UID**: {uid}\n**User ID**: {userid}\n**Email**: {t[0][2]}\n**Discord**: <@{discordid}> (`{discordid}`)\n**Steam ID**: [{t[0][4]}](https://steamcommunity.com/profiles/{t[0][4]})\n**TruckersMP ID**: [{t[0][3]}](https://truckersmp.com/user/{t[0][3]})\n\n*{ml.ctr(request, 'application_message_too_long')}*"
 
-            headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+            headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
 
-            opqueue.queue(app, "post", hook_key, hook_url, json.dumps({"content": discord_message_content, "embeds": [{"title": f"Application #{applicationid} - New Message", "description": msg, "author": author, "footer": {"text": f"Application ID: {applicationid} "}, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}), headers, "disable")
+            app.discord_op.queue(app, "post", hook_key, hook_url, json.dumps({"content": discord_message_content, "embeds": [{"title": f"Application #{applicationid} - New Message", "description": msg, "author": author, "footer": {"text": f"Application ID: {applicationid} "}, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}), headers, "disable")
         except:
             pass
 
     return Response(status_code=204)
 
 async def patch_status(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /applications/status', 60, 30)
     if rl[0]:
@@ -499,7 +503,7 @@ async def patch_status(request: Request, response: Response, applicationid: int,
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_applications"])
     if au["error"]:
@@ -514,8 +518,8 @@ async def patch_status(request: Request, response: Response, applicationid: int,
         if abs(status) > 2147483647:
             response.status_code = 400
             return {"error": ml.tr(request, "value_too_large", var = {"item": "status", "limit": "2,147,483,647"}, force_lang = au["language"])}
-        message = str(data["message"])
-        if len(data["message"]) > 2000:
+        message = str(data.message)
+        if len(data.message) > 2000:
             response.status_code = 400
             return {"error": ml.tr(request, "content_too_long", var = {"item": "message", "limit": "2,000"}, force_lang = au["language"])}
     except:
@@ -542,9 +546,9 @@ async def patch_status(request: Request, response: Response, applicationid: int,
 
     if not checkPerm(app, roles, "administrator"):
         ok = False
-        for tt in app.config.application_types:
-            if tt["id"] == application_type:
-                allowed_roles = tt["staff_role_ids"]
+        for tt in app.config.plugin_application.types:
+            if tt.id == application_type:
+                allowed_roles = tt.staff_role_ids
                 for role in allowed_roles:
                     if role in roles:
                         ok = True
@@ -573,7 +577,7 @@ async def patch_status(request: Request, response: Response, applicationid: int,
     return Response(status_code=204)
 
 async def delete_application(request: Request, response: Response, applicationid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /applications', 180, 10)
     if rl[0]:
@@ -581,7 +585,7 @@ async def delete_application(request: Request, response: Response, applicationid
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "delete_applications"])
     if au["error"]:
@@ -600,9 +604,9 @@ async def delete_application(request: Request, response: Response, applicationid
 
     if not checkPerm(app, roles, "administrator"):
         ok = False
-        for tt in app.config.application_types:
-            if tt["id"] == application_type:
-                allowed_roles = tt["staff_role_ids"]
+        for tt in app.config.plugin_application.types:
+            if tt.id == application_type:
+                allowed_roles = tt.staff_role_ids
                 for role in allowed_roles:
                     if role in roles:
                         ok = True
@@ -621,7 +625,7 @@ async def delete_application(request: Request, response: Response, applicationid
 async def get_statistics(request: Request, response: Response, authorization: str | None = Header(None), \
         ranges: int | None = 30, interval: int | None = 86400, before: int | None = None, \
         sum_up: bool | None = False, userid: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /applications/statistics', 60, 30)
@@ -630,7 +634,7 @@ async def get_statistics(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_applications"])
     if au["error"]:

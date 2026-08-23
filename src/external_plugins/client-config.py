@@ -16,14 +16,14 @@ from src.functions import *
 
 
 async def get_client_global_config(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     config = app.redis.get("client-config:meta")
     if config is not None:
         return json.loads(config)
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     await app.db.execute(dhrid, "SELECT sval FROM settings WHERE skey = 'client-config/meta'")
     t = await app.db.fetchall(dhrid)
@@ -38,7 +38,7 @@ async def get_client_global_config(request: Request, response: Response):
     return config
 
 async def get_client_assets(request: Request, response: Response, key: str):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /client/assets', 60, 60)
@@ -53,7 +53,7 @@ async def get_client_assets(request: Request, response: Response, key: str):
 
     raw = app.redis_bin.get(f"client-config:{key}")
     if not raw:
-        await app.db.new_conn(dhrid, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
         await app.db.execute(dhrid, f"SELECT aval FROM ext_assets WHERE akey = 'client-config/{key}'")
         t = await app.db.fetchall(dhrid)
@@ -67,7 +67,7 @@ async def get_client_assets(request: Request, response: Response, key: str):
     return Response(content=raw, media_type="image/png")
 
 async def patch_client_global_config(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'PATCH /client/config/global', 60, 60)
@@ -82,7 +82,7 @@ async def patch_client_global_config(request: Request, response: Response, autho
         del au["code"]
         return au
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     await app.db.execute(dhrid, "SELECT sval FROM settings WHERE skey = 'client-config/meta'")
     t = await app.db.fetchall(dhrid)
@@ -143,7 +143,7 @@ async def patch_client_global_config(request: Request, response: Response, autho
     return Response(status_code=204)
 
 async def patch_client_global_config_gallery(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'PATCH /client/config/global/gallery', 60, 60)
@@ -158,7 +158,7 @@ async def patch_client_global_config_gallery(request: Request, response: Respons
         del au["code"]
         return au
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     await app.db.execute(dhrid, "SELECT sval FROM settings WHERE skey = 'client-config/meta'")
     t = await app.db.fetchall(dhrid)
@@ -191,7 +191,7 @@ async def patch_client_global_config_gallery(request: Request, response: Respons
 
 async def get_client_user_config(request: Request):
     '''Returns user config for the whole Drivers Hub (not a single user)'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     config = app.redis.get("client-config:user")
@@ -200,7 +200,7 @@ async def get_client_user_config(request: Request):
 
     ret = {}
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
     await app.db.execute(dhrid, "SELECT uid, sval FROM settings WHERE skey = 'client-config/user'")
     t = await app.db.fetchall(dhrid)
     for tt in t:
@@ -213,7 +213,7 @@ async def get_client_user_config(request: Request):
 
 async def patch_client_user_config(request: Request, response: Response, authorization: str | None = Header(None)):
     '''Updates the config for an individual user'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'PATCH /client/config/user', 60, 60)
@@ -237,7 +237,7 @@ async def patch_client_user_config(request: Request, response: Response, authori
         if k not in whitelist:
             del data[k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
     await app.db.execute(dhrid, f"SELECT sval FROM settings WHERE skey = 'client-config/user' AND uid = {uid}")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:

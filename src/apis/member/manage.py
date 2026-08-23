@@ -13,7 +13,7 @@ from src.functions import *
 
 async def patch_roles(request: Request, response: Response, userid: int, authorization: str | None = Header(None), sync_to_discord: bool | None = True, sync_add_only: bool | None = False):
     """Updates the roles of a specific member, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /member/roles', 60, 60)
     if rl[0]:
@@ -21,7 +21,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_divisions", "update_roles"])
     if au["error"]:
@@ -32,8 +32,8 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     staff_highest_order_id = None
     for role in au["roles"]:
         if role in app.roles:
-            if staff_highest_order_id is None or app.roles[role]["order_id"] < staff_highest_order_id:
-                staff_highest_order_id = app.roles[role]["order_id"]
+            if staff_highest_order_id is None or app.roles[role].order_id < staff_highest_order_id:
+                staff_highest_order_id = app.roles[role].order_id
     if staff_highest_order_id is None:
         response.status_code = 403
         return {"error": ml.tr(request, "no_access_to_resource", force_lang = au["language"])}
@@ -75,20 +75,20 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
             response.status_code = 400
             return {"error": ml.tr(request, "role_not_found", force_lang = au["language"])}
 
-    if staff_highest_order_id != app.roles[(await getHighestActiveRole(request))]["order_id"]:
+    if staff_highest_order_id != app.roles[(await getHighestActiveRole(request))].order_id:
         # if staff doesn't have the highest role,
         # then check if the role to add is lower than staff's highest role
 
         # NOTE: Added/Removed role may be already gone in config, so we need to check if it still exists
         for add in added_roles:
             if add in app.roles:
-                if app.roles[add]["order_id"] <= staff_highest_order_id:
+                if app.roles[add].order_id <= staff_highest_order_id:
                     response.status_code = 403
                     return {"error": ml.tr(request, "add_role_higher_or_equal", force_lang = au["language"])}
 
         for remove in removed_roles:
             if remove in app.roles:
-                if app.roles[remove]["order_id"] <= staff_highest_order_id:
+                if app.roles[remove].order_id <= staff_highest_order_id:
                     response.status_code = 403
                     return {"error": ml.tr(request, "remove_role_higher_or_equal", force_lang = au["language"])}
 
@@ -99,11 +99,11 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     # not administrator, no role access, have division access
     if not checkPerm(app, au["roles"], "administrator") and not checkPerm(app, au["roles"], ["update_roles"]) and checkPerm(app, au["roles"], "manage_divisions"):
         for add in added_roles:
-            if add not in app.division_roles:
+            if add not in app.division_role_ids:
                 response.status_code = 403
                 return {"error": ml.tr(request, "no_access_to_resource", force_lang = au["language"])}
         for remove in removed_roles:
-            if remove not in app.division_roles:
+            if remove not in app.division_role_ids:
                 response.status_code = 403
                 return {"error": ml.tr(request, "no_access_to_resource", force_lang = au["language"])}
 
@@ -122,7 +122,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     await GetUserInfo(request, userid = userid, nocache = True) # force update cache
 
     def setvar(msg):
-        return msg.replace("{mention}", f"<@!{discordid}>").replace("{name}", username).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", f"<@!{au['discordid']}>").replace("{staff_name}", au["name"]).replace("{staff_userid}", str(au["userid"])).replace("{staff_uid}", str(au["uid"])).replace("{staff_avatar}", validateUrl(au["avatar"]))
+        return msg.replace("{mention}", f"<@!{discordid}>").replace("{name}", username).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", f"<@!{au['discordid']}>").replace("{staff_name}", au.name).replace("{staff_userid}", str(au["userid"])).replace("{staff_uid}", str(au["uid"])).replace("{staff_avatar}", validateUrl(au["avatar"]))
 
     tracker_app_error = ""
 
@@ -131,18 +131,17 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
 
         await UpdateRoleConnection(request, discordid)
 
-        for meta in app.config.driver_role_remove:
-            meta = Dict2Obj(meta)
+        for meta in app.config.discord_integration.driver_role_remove:
             if meta.webhook_url != "" or meta.channel_id != "":
                 await AutoMessage(app, meta, setvar)
 
-            if discordid is not None and meta.role_change != [] and app.config.discord_bot_token != "":
+            if discordid is not None and meta.role_change != [] and app.config.discord_integration.bot_token != "":
                 for role in meta.role_change:
                     try:
                         if int(role) < 0:
-                            opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is removed."}, f"remove_role,{-int(role)},{discordid}")
+                            app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is removed."}, f"remove_role,{-int(role)},{discordid}")
                         elif int(role) > 0:
-                            opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is removed."}, f"add_role,{int(role)},{discordid}")
+                            app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is removed."}, f"add_role,{int(role)},{discordid}")
                     except:
                         pass
 
@@ -151,32 +150,31 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
 
         await UpdateRoleConnection(request, discordid)
 
-        for meta in app.config.driver_role_add:
-            meta = Dict2Obj(meta)
+        for meta in app.config.discord_integration.driver_role_add:
             if meta.webhook_url != "" or meta.channel_id != "":
                 await AutoMessage(app, meta, setvar)
 
-            if discordid is not None and meta.role_change != [] and app.config.discord_bot_token != "":
+            if discordid is not None and meta.role_change != [] and app.config.discord_integration.bot_token != "":
                 for role in meta.role_change:
                     try:
                         if int(role) < 0:
-                            opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
+                            app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
                         elif int(role) > 0:
-                            opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
+                            app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
                     except:
                         pass
 
     tracker_app_error = tracker_app_error[:-1]
 
     if sync_to_discord:
-        for role in app.config.roles:
+        for role in app.config.user_roles:
             try:
-                if int(role["id"]) in added_roles:
-                    if "discord_role_id" in role and isint(role["discord_role_id"]):
-                        opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when role is added on Drivers Hub."}, f"add_role,{int(role['discord_role_id'])},{discordid}")
-                elif int(role["id"]) in removed_roles and not sync_add_only:
-                    if "discord_role_id" in role and isint(role["discord_role_id"]):
-                        opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when role is removed on Drivers Hub."}, f"remove_role,{int(role['discord_role_id'])},{discordid}")
+                if int(role.id) in added_roles:
+                    if "discord_role_id" in role and isint(role.discord_role_id):
+                        app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role.discord_role_id)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when role is added on Drivers Hub."}, f"add_role,{int(role.discord_role_id)},{discordid}")
+                elif int(role.id) in removed_roles and not sync_add_only:
+                    if "discord_role_id" in role and isint(role.discord_role_id):
+                        app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role.discord_role_id)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when role is removed on Drivers Hub."}, f"remove_role,{int(role.discord_role_id)},{discordid}")
             except:
                 pass
 
@@ -185,13 +183,13 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
     for add in added_roles:
         role_name = f"{ml.ctr(request, 'role')} #{add}\n"
         if add in app.roles:
-            role_name = app.roles[add]["name"]
+            role_name = app.roles[add].name
         upd += f"`+ {role_name}`  \n"
         audit += f"`+ {role_name}`  \n"
     for remove in removed_roles:
         role_name = f"{ml.ctr(request, 'role')} #{remove}\n"
         if remove in app.roles:
-            role_name = app.roles[remove]["name"]
+            role_name = app.roles[remove].name
         upd += f"`- {role_name}`  \n"
         audit += f"`- {role_name}`  \n"
     audit = audit[:-1]
@@ -209,7 +207,7 @@ async def patch_roles(request: Request, response: Response, userid: int, authori
 
 async def patch_points(request: Request, response: Response, userid: int, authorization: str | None = Header(None)):
     """Updates the points of a specific member, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /member/points', 60, 60)
     if rl[0]:
@@ -217,7 +215,7 @@ async def patch_points(request: Request, response: Response, userid: int, author
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "update_points"])
     if au["error"]:
@@ -281,7 +279,7 @@ async def patch_points(request: Request, response: Response, userid: int, author
 
 async def post_dismiss(request: Request, response: Response, userid: int, authorization: str | None = Header(None)):
     """Dismisses member, set userid to -1, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /member/dismiss', 60, 60)
     if rl[0]:
@@ -289,7 +287,7 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "dismiss_members"])
     if au["error"]:
@@ -300,8 +298,8 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
     staff_highest_order_id = None
     for role in au["roles"]:
         if role in app.roles:
-            if staff_highest_order_id is None or app.roles[role]["order_id"] < staff_highest_order_id:
-                staff_highest_order_id = app.roles[role]["order_id"]
+            if staff_highest_order_id is None or app.roles[role].order_id < staff_highest_order_id:
+                staff_highest_order_id = app.roles[role].order_id
 
     if not (await isSecureAuth(authorization, request)):
         response.status_code = 403
@@ -323,8 +321,8 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
     user_highest_order_id = None
     for role in roles:
         if role in app.roles:
-            if user_highest_order_id is None or app.roles[role]["order_id"] < user_highest_order_id:
-                user_highest_order_id = app.roles[role]["order_id"]
+            if user_highest_order_id is None or app.roles[role].order_id < user_highest_order_id:
+                user_highest_order_id = app.roles[role].order_id
 
     # note that the larger the order id is, the lower the role is
     if user_highest_order_id is not None and staff_highest_order_id >= user_highest_order_id or \
@@ -346,46 +344,45 @@ async def post_dismiss(request: Request, response: Response, userid: int, author
     await UpdateRoleConnection(request, discordid)
 
     def setvar(msg):
-        return msg.replace("{mention}", f"<@!{discordid}>").replace("{name}", name).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", f"<@!{au['discordid']}>").replace("{staff_name}", au["name"]).replace("{staff_userid}", str(au["userid"])).replace("{staff_uid}", str(au["uid"])).replace("{staff_avatar}", validateUrl(au["avatar"]))
+        return msg.replace("{mention}", f"<@!{discordid}>").replace("{name}", name).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", f"<@!{au['discordid']}>").replace("{staff_name}", au.name).replace("{staff_userid}", str(au["userid"])).replace("{staff_uid}", str(au["uid"])).replace("{staff_avatar}", validateUrl(au["avatar"]))
 
-    for meta in app.config.member_leave:
-        meta = Dict2Obj(meta)
+    for meta in app.config.discord_integration.member_leave:
         if meta.webhook_url != "" or meta.channel_id != "":
             await AutoMessage(app, meta, setvar)
 
-        if discordid is not None and meta.role_change != [] and app.config.discord_bot_token != "":
+        if discordid is not None and meta.role_change != [] and app.config.discord_integration.bot_token != "":
             for role in meta.role_change:
                 try:
                     if int(role) < 0:
-                        opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"remove_role,{-int(role)},{discordid}")
+                        app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"remove_role,{-int(role)},{discordid}")
                     elif int(role) > 0:
-                        opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"add_role,{int(role)},{discordid}")
+                        app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"add_role,{int(role)},{discordid}")
                 except:
                     pass
 
-    if discordid is not None and app.config.discord_bot_token != "":
-        headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}
+    if discordid is not None and app.config.discord_integration.bot_token != "":
+        headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}
         try:
-            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}", headers = headers, timeout = 3, dhrid = dhrid)
+            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}", headers = headers, timeout = 3, dhrid = dhrid)
             d = r.json()
             if "roles" in d:
                 discord_roles = d["roles"]
                 curroles = []
                 for role in discord_roles:
-                    for rank_type in app.config.rank_types:
-                        for rank in rank_type["details"]:
-                            if str(role) == str(rank["discord_role_id"]):
+                    for rank_type in app.config.user_ranks:
+                        for rank in rank_type.details:
+                            if str(role) == str(rank.discord_role_id):
                                 curroles.append(role)
                 for role in curroles:
-                    opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{role}', None, headers, f"remove_role,{role},{discordid}")
+                    app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{role}', None, headers, f"remove_role,{role},{discordid}")
         except:
             pass
 
-    for role in app.config.roles:
+    for role in app.config.user_roles:
         try:
-            if int(role["id"]) in roles:
-                if "discord_role_id" in role and isint(role["discord_role_id"]):
-                    opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role["discord_role_id"])}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"remove_role,{int(role['discord_role_id'])},{discordid}")
+            if int(role.id) in roles:
+                if "discord_role_id" in role and isint(role.discord_role_id):
+                    app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role.discord_role_id)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when member is dismissed."}, f"remove_role,{int(role.discord_role_id)},{discordid}")
         except:
             pass
 

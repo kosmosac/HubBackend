@@ -19,19 +19,20 @@ from starlette.datastructures import URL, Address
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.app import DHApp
 from src.functions import *
 from src.logger import logger
 from src.threads import *
 
 
-async def startup_event(app):
+async def startup_event(app: DHApp):
     await app.db.create_pool()
 
     loop = asyncio.get_event_loop()
 
     loop.create_task(DetectConfigChanges(app))
     loop.create_task(ProcessDiscordMessage(app))
-    loop.create_task(opqueue.run(app))
+    loop.create_task(app.discord_op.run(app))
 
     loop.create_task(ClearOutdatedData(app))
     loop.create_task(RefreshDiscordAccessToken(app))
@@ -72,7 +73,7 @@ async def tracebackHandler(request: Request, exc: Exception, err: str):
         if "mocked" in request.scope:
             request = Request(scope={"type":"http", "app": request.app, "client": Address(host='127.0.0.1', port=80), "url": URL('http://127.0.0.1:80'), "path": "/", "headers": []})
 
-        app = request.app
+        app: DHApp = request.app
 
         if type(exc) is asyncio.exceptions.TimeoutError:
             # ascynio timeout error (usually triggered by arequests)
@@ -113,7 +114,7 @@ async def tracebackHandler(request: Request, exc: Exception, err: str):
             # unable to parse json
             return JSONResponse({"error": ml.tr(request, "bad_json")}, status_code=400)
 
-        for keyword in app.config.db_error_keywords:
+        for keyword in app.config.database_error_keywords:
             if keyword in err.lower():
                 ismysqlerr = True
                 break
@@ -130,30 +131,30 @@ async def tracebackHandler(request: Request, exc: Exception, err: str):
             if app.redis.lpos("session_errs", err_hash) is None:
                 app.redis.lpush("session_errs", err_hash)
 
-            logger.error(f"[{app.config.abbr}] {err_hash} [DATABASE] [{datetime.now(timezone.utc).isoformat()}]\nRequest IP: {request.client.host}\nRequest URL: {str(request.url)}\n{err}")
+            logger.error(f"[{app.config.unique_id}] {err_hash} [DATABASE] [{datetime.now(timezone.utc).isoformat()}]\nRequest IP: {request.client.host}\nRequest URL: {str(request.url)}\n{err}")
 
-            if int(time.time()) - app.db.POOL_START_TIME >= 60 and app.db.POOL_START_TIME != 0:
+            if int(time.time()) - app.db.pool_start_time >= 60 and app.db.pool_start_time != 0:
                 app.state.dberr.append(time.time())
                 app.state.dberr[:] = [i for i in app.state.dberr if i > time.time() - 1800]
 
                 if len(app.state.dberr) % 50 == 0:
-                    opqueue.queue(app, "post", app.config.webhook_error, app.config.webhook_error, json.dumps({"embeds": [{"title": "Database Error", "description": "Detected too many database errors. It's recommended to restart service.", "fields": [{"name": "Host", "value": app.config.domain, "inline": True}, {"name": "Unique ID", "value": app.config.abbr, "inline": True}, {"name": "Version", "value": app.version, "inline": True}], "color": int(app.config.hex_color, 16), "timestamp": datetime.now(timezone.utc).isoformat()}]}), {"Content-Type": "application/json"}, None)
+                    app.discord_op.queue(app, "post", app.config.discord_integration.webhook_error, app.config.discord_integration.webhook_error, json.dumps({"embeds": [{"title": "Database Error", "description": "Detected too many database errors. It's recommended to restart service.", "fields": [{"name": "Host", "value": app.config.hostname_backend, "inline": True}, {"name": "Unique ID", "value": app.config.unique_id, "inline": True}, {"name": "Version", "value": app.version, "inline": True}], "color": int(app.config.hex_color, 16), "timestamp": datetime.now(timezone.utc).isoformat()}]}), {"Content-Type": "application/json"}, None)
 
                 if len(app.state.dberr) % 100 == 0:
                     app.state.dberr = []
 
                 if len(app.state.dberr) % 10 == 0:
-                    logger.info(f"[{app.config.abbr}] Restarting database connection pool")
+                    logger.info(f"[{app.config.unique_id}] Restarting database connection pool")
                     await app.db.restart_pool()
 
             return JSONResponse({"error": "Service Unavailable"}, status_code = 503)
 
         else:
-            logger.error(f"[{app.config.abbr}] {err_hash} [{datetime.now(timezone.utc).isoformat()}]\nRequest IP: {request.client.host}\nRequest URL: {str(request.url)}\n{err}")
+            logger.error(f"[{app.config.unique_id}] {err_hash} [{datetime.now(timezone.utc).isoformat()}]\nRequest IP: {request.client.host}\nRequest URL: {str(request.url)}\n{err}")
 
             if app.redis.lpos("session_errs", err_hash) is None:
                 app.redis.lpush("session_errs", err_hash)
-                opqueue.queue(app, "post", app.config.webhook_error, app.config.webhook_error, json.dumps({"embeds": [{"title": "Runtime Error", "description": f"```{err}```", "fields": [{"name": "Host", "value": app.config.domain, "inline": True}, {"name": "Unique ID", "value": app.config.abbr, "inline": True}, {"name": "Version", "value": app.version, "inline": True}, {"name": "Request IP", "value": f"`{request.client.host}`", "inline": False}, {"name": "Request URL", "value": str(request.url), "inline": False}], "footer": {"text": err_hash}, "color": int(app.config.hex_color, 16), "timestamp": datetime.now(timezone.utc).isoformat()}]}), {"Content-Type": "application/json"}, None)
+                app.discord_op.queue(app, "post", app.config.discord_integration.webhook_error, app.config.discord_integration.webhook_error, json.dumps({"embeds": [{"title": "Runtime Error", "description": f"```{err}```", "fields": [{"name": "Host", "value": app.config.hostname_backend, "inline": True}, {"name": "Unique ID", "value": app.config.unique_id, "inline": True}, {"name": "Version", "value": app.version, "inline": True}, {"name": "Request IP", "value": f"`{request.client.host}`", "inline": False}, {"name": "Request URL", "value": str(request.url), "inline": False}], "footer": {"text": err_hash}, "color": int(app.config.hex_color, 16), "timestamp": datetime.now(timezone.utc).isoformat()}]}), {"Content-Type": "application/json"}, None)
 
             return JSONResponse({"error": "Internal Server Error"}, status_code = 500)
     except:
@@ -164,7 +165,7 @@ async def tracebackHandler(request: Request, exc: Exception, err: str):
 class HubMiddleware(BaseHTTPMiddleware):
     @override
     async def dispatch(self, request, call_next):
-        app = request.app
+        app: DHApp = request.app
         try:
             real_path = "/" + "/".join(request.url.path.split("/")[2:])
         except:
@@ -201,7 +202,7 @@ class HubMiddleware(BaseHTTPMiddleware):
                     return JSONResponse({"error": "Content-Type must be application/json"}, status_code=400)
         if request.client is None:
             client_host = request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
-            request.client = client_host
+            setattr(request, 'client', client_host)
             if client_host is None:
                 return JSONResponse({"error": "Invalid Request"}, status_code=400)
 
@@ -260,7 +261,7 @@ class HubMiddleware(BaseHTTPMiddleware):
                 if response_counter >= 20 and avg_response_time > 0.5 and app.redis.get("avgrt:alerted") is None:
                     app.redis.set("avgrt:alerted", 1)
                     app.redis.expire("avgrt:alerted", 1800)
-                    opqueue.queue(app, "post", app.config.webhook_error, app.config.webhook_error, json.dumps({"embeds": [{"title": "Degraded Performance", "description": f"Degraded performance detected. It's recommended to restart service.\n\nAverage response time: {int(avg_response_time * 1000)}ms (last 30 minutes)", "fields": [{"name": "Host", "value": app.config.domain, "inline": True}, {"name": "Unique ID", "value": app.config.abbr, "inline": True}, {"name": "Version", "value": app.version, "inline": True}], "color": int(app.config.hex_color, 16), "timestamp": datetime.now(timezone.utc).isoformat()}]}), {"Content-Type": "application/json"}, None)
+                    app.discord_op.queue(app, "post", app.config.discord_integration.webhook_error, app.config.discord_integration.webhook_error, json.dumps({"embeds": [{"title": "Degraded Performance", "description": f"Degraded performance detected. It's recommended to restart service.\n\nAverage response time: {int(avg_response_time * 1000)}ms (last 30 minutes)", "fields": [{"name": "Host", "value": app.config.hostname_backend, "inline": True}, {"name": "Unique ID", "value": app.config.unique_id, "inline": True}, {"name": "Version", "value": app.version, "inline": True}], "color": int(app.config.hex_color, 16), "timestamp": datetime.now(timezone.utc).isoformat()}]}), {"Content-Type": "application/json"}, None)
 
             for middleware in app.external_middleware["response_ok"]:
                 try:

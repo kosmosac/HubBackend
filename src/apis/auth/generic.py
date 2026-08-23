@@ -12,7 +12,7 @@ from src.functions import *
 
 
 async def post_password(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /auth/password', 60, 3)
     if rl[0]:
@@ -20,7 +20,7 @@ async def post_password(request: Request, response: Response):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     data = await request.json()
     try:
@@ -120,7 +120,7 @@ async def post_password(request: Request, response: Response):
     return {"token": stoken, "mfa": False}
 
 async def post_register(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     if 'email' not in app.config.register_methods:
         response.status_code = 404
         return {"error": "Not Found"}
@@ -132,7 +132,7 @@ async def post_register(request: Request, response: Response):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     data = await request.json()
     try:
@@ -229,7 +229,7 @@ async def post_register(request: Request, response: Response):
     await app.db.execute(dhrid, f"INSERT INTO email_confirmation VALUES ({uid}, '{secret}', 'register/{email}', {int(time.time() + 86400)})")
     await app.db.commit(dhrid)
 
-    link = app.config.frontend_urls.email_confirm.replace("{secret}", secret)
+    link = str(app.config.frontend_urls.email_confirm).replace("{secret}", secret)
     await app.db.extend_conn(dhrid, 15)
     ok = (await sendEmail(app, username, email, "register", link))
     await app.db.extend_conn(dhrid, 2)
@@ -258,7 +258,7 @@ async def post_register(request: Request, response: Response):
     return {"token": stoken, "mfa": False}
 
 async def post_reset(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /auth/reset', 60, 10)
     if rl[0]:
@@ -266,7 +266,7 @@ async def post_reset(request: Request, response: Response):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     data = await request.json()
     try:
@@ -313,7 +313,7 @@ async def post_reset(request: Request, response: Response):
     await app.db.execute(dhrid, f"INSERT INTO email_confirmation VALUES ({uid}, '{secret}', 'reset-password/{email}', {int(time.time() + 3600)})")
     await app.db.commit(dhrid)
 
-    link = app.config.frontend_urls.email_confirm.replace("{secret}", secret)
+    link = str(app.config.frontend_urls.email_confirm).replace("{secret}", secret)
     await app.db.extend_conn(dhrid, 15)
     ok = (await sendEmail(app, username, email, "reset_password", link))
     await app.db.extend_conn(dhrid, 2)
@@ -326,7 +326,7 @@ async def post_reset(request: Request, response: Response):
     return Response(status_code=204)
 
 async def post_mfa(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /auth/mfa', 60, 3)
     if rl[0]:
@@ -334,7 +334,7 @@ async def post_mfa(request: Request, response: Response):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     data = await request.json()
     try:
@@ -419,7 +419,7 @@ async def post_mfa(request: Request, response: Response):
     return {"token": stoken}
 
 async def post_email(request: Request, response: Response, secret: str):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /auth/email', 60, 120)
     if rl[0]:
@@ -427,7 +427,7 @@ async def post_email(request: Request, response: Response, secret: str):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     secret = convertQuotation(secret)
 

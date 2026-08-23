@@ -31,7 +31,7 @@ class RateLimitException(Exception):
 
 def restart(app):
     time.sleep(3)
-    os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null") # pyright: ignore[reportDeprecated]
+    os.system(f"nohup ./launcher hub restart {app.config.unique_id} > /dev/null") # pyright: ignore[reportDeprecated]
 
 def genrid():
     return str(int(time.time()*10000000)) + str(random.randint(0, 10000)).zfill(5)
@@ -60,7 +60,7 @@ def validateUrl(s):
     if not isurl(s):
         return ""
     else:
-        return s
+        return str(s)
 
 def getDomainFromUrl(s):
     if not isurl(s):
@@ -114,10 +114,10 @@ def getUserAgent(request):
 
 def DisableDiscordIntegration(app):
     request = Request(scope={"type":"http", "app": app, "headers": []})
-    app.config.discord_bot_token = ""
+    app.config.discord_integration.bot_token = ""
     try:
-        if app.config.hook_audit_log.webhook_url != "":
-            requests.post(app.config.hook_audit_log.webhook_url, data=json.dumps({"embeds": [{"title": ml.ctr(request, "attention_required"), "description": ml.ctr(request, "invalid_discord_token"), "color": int(app.config.hex_color, 16), "footer": {"text": "System"}, "timestamp": datetime.now(timezone.utc).isoformat()}]}), headers={"Content-Type": "application/json", "User-Agent": USER_AGENT})
+        if app.config_old.hook_audit_log.webhook_url != "":
+            requests.post(app.config_old.hook_audit_log.webhook_url, data=json.dumps({"embeds": [{"title": ml.ctr(request, "attention_required"), "description": ml.ctr(request, "invalid_discord_token"), "color": int(app.config.hex_color, 16), "footer": {"text": "System"}, "timestamp": datetime.now(timezone.utc).isoformat()}]}), headers={"Content-Type": "application/json", "User-Agent": USER_AGENT})
     except:
         pass
 
@@ -130,6 +130,6 @@ async def EnsureEconomyBalance(request, userid):
 
 def configured_trackers(app):
     ret = []
-    for tracker in app.config.trackers:
-        ret.append(tracker["type"])
+    for tracker in app.config_old.trackers:
+        ret.append(tracker.type)
     return ret

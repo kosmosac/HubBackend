@@ -6,6 +6,7 @@ import time
 
 from fastapi import Header, Request, Response
 
+from src.app import DHApp
 from src.functions import *
 
 async def get_leaderboard(request: Request, response: Response, authorization: str | None = Header(None), \
@@ -14,7 +15,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
         min_point: int | None = None, max_point: int | None = None, \
         speed_limit: int | None = None, game: int | None = None, \
         point_types: str | None = "distance,challenge,event,division,bonus", userids: str | None = ""):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /dlog/leaderboard', 60, 120)
@@ -23,7 +24,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -111,7 +112,7 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
             roles = str2list(tt[1])
             ok = False
             for i in roles:
-                if int(i) in app.config.perms.driver:
+                if int(i) in app.config.user_perms["driver"]:
                     ok = True
             if not ok:
                 continue
@@ -204,11 +205,11 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
                 continue
             if oo[0] not in userdivision:
                 userdivision[oo[0]] = 0
-            if oo[1] in app.division_points:
-                if app.division_points[oo[1]]["mode"] == "static":
-                    userdivision[oo[0]] += float(oo[2]) * app.division_points[oo[1]]["value"]
-                elif app.division_points[oo[1]]["mode"] == "ratio":
-                    userdivision[oo[0]] += float(oo[3]) * app.division_points[oo[1]]["value"]
+            if oo[1] in app.divisions:
+                if app.divisions[oo[1]].bonus.mode == "static":
+                    userdivision[oo[0]] += float(oo[2]) * app.divisions[oo[1]].bonus.value
+                elif app.divisions[oo[1]].bonus.mode == "ratio":
+                    userdivision[oo[0]] += float(oo[3]) * app.divisions[oo[1]].bonus.value
         for (key, item) in userdivision.items():
             userdivision[key] = int(item)
 
@@ -315,11 +316,11 @@ async def get_leaderboard(request: Request, response: Response, authorization: s
                 continue
             if oo[0] not in nluserdivision:
                 nluserdivision[oo[0]] = 0
-            if oo[1] in app.division_points:
-                if app.division_points[oo[1]]["mode"] == "static":
-                    nluserdivision[oo[0]] += float(oo[2]) * app.division_points[oo[1]]["value"]
-                elif app.division_points[oo[1]]["mode"] == "ratio":
-                    nluserdivision[oo[0]] += float(oo[3]) * app.division_points[oo[1]]["value"]
+            if oo[1] in app.divisions:
+                if app.divisions[oo[1]].bonus.mode == "static":
+                    nluserdivision[oo[0]] += float(oo[2]) * app.divisions[oo[1]].bonus.value
+                elif app.divisions[oo[1]].bonus.mode == "ratio":
+                    nluserdivision[oo[0]] += float(oo[3]) * app.divisions[oo[1]].bonus.value
         for (key, item) in nluserdivision.items():
             nluserdivision[key] = int(item)
 

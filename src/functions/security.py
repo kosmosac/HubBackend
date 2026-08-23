@@ -26,7 +26,7 @@ def checkPerm(app, roles, perms):
                 return True
     return False
 
-async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False):
+async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False) -> tuple:
     app = request.app
     cur_time = time.time()
 
@@ -45,7 +45,7 @@ async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False)
     rlkey = f"ratelimit:{cidentifier}"
 
     # whitelist ip (only active when request is not authed)
-    if cidentifier.startswith("ip") and request.client.host in app.config.whitelist_ips:
+    if cidentifier.startswith("ip") and ipaddress.ip_address(request.client.host) in app.config.ratelimit_whitelist:
         return (False, {})
 
     # check in-memory global ratelimit (300req/min)
@@ -106,7 +106,7 @@ async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False)
     rlkey = f"ratelimit:{identifier}:{endpoint}"
 
     # whitelist ip (only active when request is not authed)
-    if identifier.startswith("ip") and request.client.host in app.config.whitelist_ips:
+    if identifier.startswith("ip") and ipaddress.ip_address(request.client.host) in app.config.ratelimit_whitelist:
         return (False, {})
 
     # check route ratelimit
@@ -142,7 +142,7 @@ async def ratelimit(request, endpoint, limittime, limitcnt, cGlobalOnly = False)
         return (False, resp_headers)
 
 async def auth(authorization, request, allow_application_token = False, check_member = True, required_permission = [], only_validate_token = False, only_use_cache = False):
-    (app, dhrid) = (request.app, request.state.dhrid)
+    (dhrid, app) = (request.state.dhrid, request.app)
     # authorization header basic check
     if authorization is None or authorization == "" or len(authorization.split(" ")) < 2:
         return {"error": ml.tr(request, "invalid_authorization_token"), "code": 401}
@@ -208,7 +208,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
             return {"error": ml.tr(request, "application_token_not_allowed"), "code": 401}
 
         if not auth_cache or "uid" not in auth_cache:
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             # validate token if there's no cache
             await app.db.execute(dhrid, f"SELECT uid, last_used_timestamp FROM application_token WHERE token = '{stoken}'")
@@ -228,7 +228,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
         user_cache = app.redis.hgetall(f"uinfo:{uid}")
         if not user_cache or "uid" not in user_cache:
             # get user info
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             userinfo = await get_user_info(uid)
             if "error" in userinfo:
@@ -249,7 +249,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
         # get user language
         language = app.redis.get(f"ulang:{uid}")
         if not language:
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, f"SELECT sval FROM settings WHERE uid = {uid} AND skey = 'language'")
             t = await app.db.fetchall(dhrid)
@@ -269,7 +269,8 @@ async def auth(authorization, request, allow_application_token = False, check_me
             ok = False
             for role in roles:
                 for perm in required_permission:
-                    if perm in app.config_dict["perms"] and role in app.config_dict["perms"][perm] or role in app.config_dict["perms"]["administrator"]:
+                    if (perm in app.config.user_perms and role in app.config.user_perms[perm]) or \
+                            role in app.config.user_perms["administrator"]:
                         ok = True
 
             if not ok:
@@ -277,7 +278,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
 
         # update last used timestamp
         if int(time.time()) - last_used_timestamp >= 5:
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, f"UPDATE application_token SET last_used_timestamp = {int(time.time())} WHERE token = '{stoken}'")
             await app.db.commit(dhrid)
@@ -294,7 +295,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
 
         if not auth_cache or "uid" not in auth_cache:
             # validate token if there's no cache
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, f"SELECT uid, ip, country, last_used_timestamp, user_agent FROM session WHERE token = '{stoken}'")
             t = await app.db.fetchall(dhrid)
@@ -318,7 +319,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
         user_cache = app.redis.hgetall(f"uinfo:{uid}")
         if not user_cache or "uid" not in user_cache:
             # get user info
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             userinfo = await get_user_info(uid)
             if "error" in userinfo:
@@ -338,7 +339,7 @@ async def auth(authorization, request, allow_application_token = False, check_me
 
         language = app.redis.get(f"ulang:{uid}")
         if not language:
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, f"SELECT sval FROM settings WHERE uid = {uid} AND skey = 'language'")
             t = await app.db.fetchall(dhrid)
@@ -350,15 +351,16 @@ async def auth(authorization, request, allow_application_token = False, check_me
             app.redis.expire(f"ulang:{uid}", 60)
 
         # check country
-        if app.config.security_level >= 1 and request.client.host not in app.config.whitelist_ips:
+        if app.config.security_level >= 1 and ipaddress.ip_address(request.client.host) not in app.config.ratelimit_whitelist:
             if curCountry != country and country != "":
-                await app.db.new_conn(dhrid, db_name = app.config.db_name)
+                await app.db.new_conn(dhrid, db_name = app.config.database_schema)
                 await app.db.execute(dhrid, f"DELETE FROM session WHERE token = '{stoken}'")
                 await app.db.commit(dhrid)
                 app.redis.delete(f"auth:{authorization_key}")
                 return {"error": ml.tr(request, "unauthorized"), "code": 401}
 
-        if app.config.security_level >= 2 and request.client.host not in app.config.whitelist_ips:
+        if app.config.security_level >= 2 and \
+                ipaddress.ip_address(request.client.host) not in app.config.ratelimit_whitelist:
             orgiptype = iptype(ip)
             if orgiptype != 0:
                 curiptype = iptype(request.client.host)
@@ -367,31 +369,31 @@ async def auth(authorization, request, allow_application_token = False, check_me
                         curip = ipaddress.ip_address(request.client.host).exploded
                         orgip = ipaddress.ip_address(ip).exploded
                         if curip.split(":")[:4] != orgip.split(":")[:4]:
-                            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+                            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
                             await app.db.execute(dhrid, f"DELETE FROM session WHERE token = '{stoken}'")
                             await app.db.commit(dhrid)
                             app.redis.delete(f"auth:{authorization_key}")
                             return {"error": ml.tr(request, "unauthorized"), "code": 401}
                     elif curiptype == 4:
                         if ip.split(".")[:3] != request.client.host.split(".")[:3]:
-                            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+                            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
                             await app.db.execute(dhrid, f"DELETE FROM session WHERE token = '{stoken}'")
                             await app.db.commit(dhrid)
                             app.redis.delete(f"auth:{authorization_key}")
                             return {"error": ml.tr(request, "unauthorized"), "code": 401}
 
-        if request.client.host not in app.config.whitelist_ips:
+        if ipaddress.ip_address(request.client.host) not in app.config.ratelimit_whitelist:
             cnt = 0
             if ip != request.client.host:
-                await app.db.new_conn(dhrid, db_name = app.config.db_name)
+                await app.db.new_conn(dhrid, db_name = app.config.database_schema)
                 await app.db.execute(dhrid, f"UPDATE session SET ip = '{request.client.host}' WHERE token = '{stoken}'")
                 cnt += 1
             if curCountry != country:
-                await app.db.new_conn(dhrid, db_name = app.config.db_name)
+                await app.db.new_conn(dhrid, db_name = app.config.database_schema)
                 await app.db.execute(dhrid, f"UPDATE session SET country = '{curCountry}' WHERE token = '{stoken}'")
                 cnt += 1
             if getUserAgent(request) != user_agent:
-                await app.db.new_conn(dhrid, db_name = app.config.db_name)
+                await app.db.new_conn(dhrid, db_name = app.config.database_schema)
                 await app.db.execute(dhrid, f"UPDATE session SET user_agent = '{getUserAgent(request)}' WHERE token = '{stoken}'")
                 cnt += 1
             if cnt > 0:
@@ -410,14 +412,15 @@ async def auth(authorization, request, allow_application_token = False, check_me
 
             for role in roles:
                 for perm in required_permission:
-                    if perm in app.config_dict["perms"] and role in app.config_dict["perms"][perm] or role in app.config_dict["perms"]["administrator"]:
+                    if (perm in app.config.user_perms and role in app.config.user_perms[perm]) or \
+                            role in app.config.user_perms["administrator"]:
                         ok = True
 
             if not ok:
                 return {"error": ml.tr(request, "no_access_to_resource"), "code": 403}
 
         if int(time.time()) - last_used_timestamp >= 5:
-            await app.db.new_conn(dhrid, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, db_name = app.config.database_schema)
             await app.db.execute(dhrid, f"UPDATE session SET last_used_timestamp = {int(time.time())} WHERE token = '{stoken}'")
             await app.db.commit(dhrid)
             await app.db.execute(dhrid, f"SELECT timestamp FROM user_activity WHERE uid = {uid}")

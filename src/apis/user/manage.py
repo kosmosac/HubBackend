@@ -11,7 +11,7 @@ from src.functions import *
 
 async def post_accept(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """[Permission Control] Accepts a user as member, assign userid, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /user/accept', 60, 60)
     if rl[0]:
@@ -19,7 +19,7 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "accept_members"])
     if au["error"]:
@@ -46,16 +46,17 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
                 response.status_code = 400
                 return {"error": ml.tr(request, "invalid_value", var = {"key": "tracker"}, force_lang = au["language"])}
         else:
-            if len(app.config.trackers) > 0:
+            # TODO
+            if len(app.config.job_trackers) > 0:
                 # in case tracker_in_use is not provided in json
                 # we'll consider the first tracker as tracker_in_use
-                if app.config.trackers[0]["type"] == "tracksim":
+                if app.config.job_trackers[0].type == "tracksim":
                     tracker_in_use = 2
-                elif app.config.trackers[0]["type"] == "trucky":
+                elif app.config.job_trackers[0].type == "trucky":
                     tracker_in_use = 3
-                elif app.config.trackers[0]["type"] == "custom":
+                elif app.config.job_trackers[0].type == "custom":
                     tracker_in_use = 4
-                elif app.config.trackers[0]["type"] == "unitracker":
+                elif app.config.job_trackers[0].type == "unitracker":
                     tracker_in_use = 5
             else:
                 response.status_code = 400
@@ -116,18 +117,17 @@ async def post_accept(request: Request, response: Response, uid: int, authorizat
     def setvar(msg):
         return msg.replace("{mention}", f"<@{discordid}>").replace("{name}", username).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", f"<@!{au['discordid']}>").replace("{staff_name}", au["name"]).replace("{staff_userid}", str(au["userid"])).replace("{staff_uid}", str(au["uid"])).replace("{staff_avatar}", validateUrl(au["avatar"]))
 
-    for meta in app.config.member_accept:
-        meta = Dict2Obj(meta)
+    for meta in app.config.discord_integration.member_accept:
         if meta.webhook_url != "" or meta.channel_id != "":
             await AutoMessage(app, meta, setvar)
 
-        if discordid is not None and meta.role_change != [] and app.config.discord_bot_token != "":
+        if discordid is not None and meta.role_change != [] and app.config.discord_integration.bot_token != "":
             for role in meta.role_change:
                 try:
                     if int(role) < 0:
-                        opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
+                        app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
                     elif int(role) > 0:
-                        opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
+                        app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
                 except:
                     pass
 
@@ -137,7 +137,7 @@ async def patch_connections(request: Request, response: Response, uid: int, auth
     """[Permission Control] Updates account connections for a specific user, returns 204
 
     JSON: `{"email": Optional[str], "discordid": Optional[int], "steamid": Optional[int], "truckersmpid": Optional[int]}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/connections', 60, 30)
     if rl[0]:
@@ -145,7 +145,7 @@ async def patch_connections(request: Request, response: Response, uid: int, auth
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "update_connections"])
     if au["error"]:
@@ -247,7 +247,7 @@ async def delete_connections(request: Request, response: Response, uid: int, con
     if connection not in connections_key:
         response.status_code = 404
         return {"error": "Not Found"}
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /user/connections', 60, 30)
     if rl[0]:
@@ -255,7 +255,7 @@ async def delete_connections(request: Request, response: Response, uid: int, con
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "update_connections"])
     if au["error"]:
@@ -286,7 +286,7 @@ async def get_ban_list(request: Request, response: Response, authorization: str 
         name: str | None = "", reason: str | None = "", \
         order_by: str | None = "uid", order: str | None = "asc"):
     """Returns the information of a list of banned users"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/ban/list', 60, 120)
     if rl[0]:
@@ -294,7 +294,7 @@ async def get_ban_list(request: Request, response: Response, authorization: str 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "ban_users"])
     if au["error"]:
@@ -358,7 +358,7 @@ async def get_ban_list(request: Request, response: Response, authorization: str 
 async def get_ban(request: Request, response: Response, authorization: str | None = Header(None), \
     uid: int | None = None, email: str | None = None, discordid: int | None = None, steamid: int | None = None, truckersmpid: int | None = None):
     """Returns info of specific banned user if exists"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/ban', 60, 120)
     if rl[0]:
@@ -366,7 +366,7 @@ async def get_ban(request: Request, response: Response, authorization: str | Non
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "ban_users"])
     if au["error"]:
@@ -411,7 +411,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
     """Bans user with specific connections, returns 204
 
     JSON: {"expire": Optional[int], "reason": str}"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PUT /user/ban', 60, 60)
     if rl[0]:
@@ -419,7 +419,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "ban_users"])
     if au["error"]:
@@ -511,7 +511,7 @@ async def put_ban(request: Request, response: Response, authorization: str | Non
 
 async def delete_ban(request: Request, response: Response, authorization: str | None = Header(None)):
     """Unbans a specific user, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /user/ban', 60, 60)
     if rl[0]:
@@ -519,7 +519,7 @@ async def delete_ban(request: Request, response: Response, authorization: str | 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "ban_users"])
     if au["error"]:
@@ -570,7 +570,7 @@ async def delete_ban(request: Request, response: Response, authorization: str | 
 
 async def delete_ban_history(request: Request, response: Response, historyid: int, authorization: str | None = Header(None)):
     """Deletes a specific row of user ban history with historyid, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /user/ban/history', 60, 60)
     if rl[0]:
@@ -578,7 +578,7 @@ async def delete_ban_history(request: Request, response: Response, historyid: in
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "ban_users"])
     if au["error"]:
@@ -599,7 +599,7 @@ async def delete_ban_history(request: Request, response: Response, historyid: in
 
 async def delete_user(request: Request, response: Response, uid: int, authorization: str | None = Header(None)):
     """Deletes a specific user, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /user', 60, 60)
     if rl[0]:
@@ -607,7 +607,7 @@ async def delete_user(request: Request, response: Response, uid: int, authorizat
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:
@@ -690,7 +690,7 @@ async def patch_note_global(request: Request, response: Response, uid: int, auth
     """Updates the global note of a user, returns 204
 
     JSON: `{"note": str}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/{uid}/note/global', 60, 60)
     if rl[0]:
@@ -698,7 +698,7 @@ async def patch_note_global(request: Request, response: Response, uid: int, auth
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     to_uid = uid
 

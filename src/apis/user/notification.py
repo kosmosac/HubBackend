@@ -18,7 +18,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         content: str | None = '', status: int | None = None, \
         order_by: str | None = "notificationid", order: str | None = "desc"):
     """Returns a list of notification of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/notification/list', 60, 120)
     if rl[0]:
@@ -26,7 +26,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -84,7 +84,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
 
 async def get_notification(request: Request, response: Response, notificationid: int, authorization: str | None = Header(None)):
     """Returns a specific notification of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/notification', 60, 120)
     if rl[0]:
@@ -92,7 +92,7 @@ async def get_notification(request: Request, response: Response, notificationid:
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -111,7 +111,7 @@ async def get_notification(request: Request, response: Response, notificationid:
 
 async def delete_notification(request: Request, response: Response, after_notificationid: int, before_notificationid: int, authorization: str | None = Header(None)):
     """Delete a range of notifications (for authorized users / for all users)"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /user/notification', 60, 60)
     if rl[0]:
@@ -119,7 +119,7 @@ async def delete_notification(request: Request, response: Response, after_notifi
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     # first delete for current user
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
@@ -141,7 +141,7 @@ async def delete_notification(request: Request, response: Response, after_notifi
 
 async def patch_status(request: Request, response: Response, notificationid: str, status: int, authorization: str | None = Header(None)):
     """Updates status of a specific notification of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/notification/status', 60, 120)
     if rl[0]:
@@ -149,7 +149,7 @@ async def patch_status(request: Request, response: Response, notificationid: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -182,7 +182,7 @@ async def patch_status(request: Request, response: Response, notificationid: str
 
 async def get_settings(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns notification settings of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/notification/settings', 60, 120)
     if rl[0]:
@@ -190,7 +190,7 @@ async def get_settings(request: Request, response: Response, authorization: str 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -214,7 +214,7 @@ async def get_settings(request: Request, response: Response, authorization: str 
 # NOTE: Daily bonus notification is handled separately in member/userop
 async def post_settings_enable(request: Request, response: Response, notification_type: str, authorization: str | None = Header(None)):
     """Enables a specific type of notification of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     if notification_type not in NOTIFICATION_SETTINGS:
         response.status_code = 404
         return {"error": "Not Found"}
@@ -226,7 +226,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -259,7 +259,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
             response.status_code = 409
             return {"error": ml.tr(request, "connection_not_found", var = {"app": "Discord"}, force_lang = au["language"])}
 
-        if app.config.discord_bot_token == "":
+        if app.config.discord_integration.bot_token == "":
             response.status_code = 503
             return {"error": ml.tr(request, "discord_integrations_disabled", force_lang = au["language"])}
 
@@ -269,7 +269,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
         for k in rl[1]:
             response.headers[k] = rl[1][k]
 
-        headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
         try:
             r = await arequests.post(app, "https://discord.com/api/v10/users/@me/channels", headers = headers, data = json.dumps({"recipient_id": discordid}), dhrid = dhrid)
         except:
@@ -290,7 +290,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
             try:
                 r = await arequests.post(app, f"https://discord.com/api/v10/channels/{channelid}/messages", headers = headers, data=json.dumps({"embeds": [{"title": ml.tr(request, "notification", force_lang = await GetUserLanguage(request, uid)),
                 "description": ml.tr(request, "discord_notification_enabled", force_lang = await GetUserLanguage(request, uid)), \
-                "footer": {"text": app.config.name, "icon_url": app.config.logo_url}, \
+                "footer": {"text": app.config.org_name, "icon_url": str(app.config.logo_url)}, \
                 "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}))
             except:
                 pass
@@ -328,7 +328,7 @@ async def post_settings_enable(request: Request, response: Response, notificatio
 
 async def post_settings_disable(request: Request, response: Response, notification_type: str, authorization: str | None = Header(None)):
     """Disables a specific type of notification of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     if notification_type not in NOTIFICATION_SETTINGS:
         response.status_code = 404
         return {"error": "Not Found"}
@@ -340,7 +340,7 @@ async def post_settings_disable(request: Request, response: Response, notificati
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:

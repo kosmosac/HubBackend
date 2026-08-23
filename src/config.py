@@ -6,12 +6,12 @@
 import json
 import re
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Literal, get_args
 
 from pydantic import BaseModel, Field, HttpUrl, IPvAnyAddress, StringConstraints
 
 from src.multilang import LANGUAGES
-from src.static import ALL_PLUGINS, TRACKER
+from src.static import TRACKER
 
 '''
 config.rank_types[].details[].bonus format
@@ -33,20 +33,21 @@ BindPort = Annotated[int, Field(gt=0, le=65535)]
 HexColor = Annotated[str, StringConstraints(to_lower=True, pattern=r"^[a-f0-9]{6}$")]
 
 Language = Enum("Language", LANGUAGES)
-Plugin = Enum("Plugin", ALL_PLUGINS)
-Tracker = Enum("Plugin", TRACKER)
-DatabaseType = Enum("DatabaseType", ["mysql"])
-DistanceUnit = Enum("DistanceUnit", ["metric", "imperial"])
-CaptchaProvider = Enum("CaptchaProvider", ["hcaptcha", "cloudflare"])
-AccountConnection = Enum("AccountConnection", ["email", "discord", "steam", "truckersmp"])
-BannerInfo = Enum("BannerInfo", ["rank", "division", "division_first"])
-DeliveryRuleAction = Enum("DeliveryRuleAction", ["block", "drop", "bypass"])
-RankPointType = Enum("RankPointType", ["distance", "challenge", "division", "event", "bonus"])
-DistanceBonusType = Enum("DistanceBonusType", ["fixed_value", "fixed_percentage", "random_value", "random_percentage"])
-DailyBonusType = Enum("DailyBonusType", ["fixed", "streak"])
-DailyBonusStreakType = Enum("DailyBonusStreakType", ["fixed", "percentage", "algo"])
-DivisionPointType = Enum("DivisionPointType", ["static", "ratio"])
-TruckyRealisticSettings = Enum("TruckyRealisticSettings", ["bad_weather_factor", "detected", "detours", "fatigue", "fuel_similation", "hardcore_simulation", "hud_speed_limit", "parking_difficulty", "police", "road_events", "show_game_blockers", "simple_parking_doubles", "traffic_enabled", "trailer_advanced_coupling"])
+Plugin = Literal["announcement", "application", "banner", "challenge", "division", "downloads", "economy", "event", "poll", "task", "route"]
+Tracker = Literal["tracksim", "trucky", "custom", "unitracker"]
+assert list(get_args(Tracker)) == list(TRACKER.keys()), "`Tracker` in `config.py` must match `TRACKER` in `static.py`"
+DatabaseType = Literal["mysql"]
+DistanceUnit = Literal["metric", "imperial"]
+CaptchaProvider = Literal["hcaptcha", "cloudflare"]
+AccountConnection = Literal["email", "discord", "steam", "truckersmp"]
+BannerInfo = Literal["rank", "division", "division_first"]
+DeliveryRuleAction = Literal["block", "drop", "bypass"]
+RankPointType = Literal["distance", "challenge", "division", "event", "bonus"]
+DistanceBonusType = Literal["fixed_value", "fixed_percentage", "random_value", "random_percentage"]
+DailyBonusType = Literal["fixed", "streak"]
+DailyBonusStreakType = Literal["fixed", "percentage", "algo"]
+DivisionPointType = Literal["static", "ratio"]
+TruckyRealisticSettings = Literal["bad_weather_factor", "detected", "detours", "fatigue", "fuel_similation", "hardcore_simulation", "hud_speed_limit", "parking_difficulty", "police", "road_events", "show_game_blockers", "simple_parking_doubles", "traffic_enabled", "trailer_advanced_coupling"]
 
 class CaptchaConfig(BaseModel):
     # disable captcha with none values
@@ -155,7 +156,7 @@ class DiscordIntegration(BaseModel):
     guild_message_regex_replace: dict[re.Pattern, re.Pattern] = {}
 
     delivery_log: DeliveryLog
-    audit_log: AuditLog
+    audit_log: list[AuditLog] = []
 
     member_accept: list[WebhookWithRoleChange] = []
     member_leave: list[WebhookWithRoleChange] = []
@@ -265,8 +266,14 @@ class PluginEconomy(BaseModel):
     enable_balance_leaderboard: bool = True
 
 class PluginEvent(BaseModel):
-    creation_forwards: list[EmbedWebhook] = []
-    upcoming_forwards: list[EmbedWebhook] = []
+    class EventForward(EmbedWebhook):
+        is_private: bool | None = None
+
+    class EventUpcomingForward(EventForward):
+        seconds_ahead: int = 0
+
+    creation_forwards: list[EventForward] = []
+    upcoming_forwards: list[EventUpcomingForward] = []
 
 class PluginPoll(BaseModel):
     creation_forwards: list[EmbedWebhook] = []
@@ -275,7 +282,7 @@ class DHConfig(BaseModel):
     unique_id: Annotated[str, StringConstraints(to_lower=True, pattern=r"^[a-z0-9]+$")] # required
     org_name: str # required
     prefix: str = Field(default_factory=lambda data: "/" + data["unique_id"])
-    plugins: list[Plugin] = ALL_PLUGINS
+    plugins: list[Plugin] = list(get_args(Plugin))
     external_plugins: list[str] = []
 
     language: Language = "en"

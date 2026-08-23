@@ -14,7 +14,7 @@ from fastapi import Request
 import src.multilang as ml
 from src.functions.arequests import *
 from src.functions.dataop import *
-from src.functions.discord import parse_discord_response, opqueue
+from src.functions.discord import parse_discord_response
 from src.functions.general import *
 from src.functions.userinfo import *
 from src.static import *
@@ -23,17 +23,17 @@ from src.static import *
 # app.state.discord_retry_after = {}
 
 def QueueDiscordMessage(app, channelid, data):
-    if app.config.discord_bot_token == "":
+    if app.config.discord_integration.bot_token == "":
         return
     app.state.discord_message_queue.append((channelid, data))
 
 async def ProcessDiscordMessage(app): # thread
     request = Request(scope={"type":"http", "app": app, "headers": [], "mocked": True})
-    headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json", "User-Agent": USER_AGENT}
+    headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json", "User-Agent": USER_AGENT}
     while 1:
         dhrid = genrid()
         try:
-            if app.config.discord_bot_token == "":
+            if app.config.discord_integration.bot_token == "":
                 return
             if len(app.state.discord_message_queue) == 0:
                 try:
@@ -93,7 +93,7 @@ async def ProcessDiscordMessage(app): # thread
                 app.state.discord_retry_after[channelid] = time.time() + float(resp["retry_after"]) + 0.5
 
             elif r.status_code == 403:
-                await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+                await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
                 await app.db.execute(dhrid, f"SELECT uid FROM settings WHERE skey = 'discord-notification' AND sval = '{channelid}'")
                 t = await app.db.fetchall(dhrid)
                 if len(t) != 0:
@@ -190,8 +190,7 @@ async def notification(request, notification_type, uid, content, no_drivershub_n
     if uid is None or int(uid) < 0 or notification_type not in NOTIFICATION_SETTINGS:
         return
 
-    dhrid = request.state.dhrid
-    app = request.app
+    (dhrid, app) = (request.state.dhrid, request.app)
     settings = copy.deepcopy(NOTIFICATION_SETTINGS)
 
     await app.db.execute(dhrid, f"SELECT sval FROM settings WHERE uid = {uid} AND skey = 'notification'")
@@ -211,10 +210,10 @@ async def notification(request, notification_type, uid, content, no_drivershub_n
 
     if settings["discord"] and not no_discord_notification:
         if discord_embed != {}:
-            await SendDiscordNotification(request, uid, {"embeds": [{"title": discord_embed["title"], "url": discord_embed["url"] if "url" in discord_embed else "", "description": discord_embed["description"], "fields": discord_embed["fields"], "footer": {"text": app.config.name, "icon_url": app.config.logo_url} if "footer" not in discord_embed else discord_embed["footer"], "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
+            await SendDiscordNotification(request, uid, {"embeds": [{"title": discord_embed["title"], "url": discord_embed["url"] if "url" in discord_embed else "", "description": discord_embed["description"], "fields": discord_embed["fields"], "footer": {"text": app.config.org_name, "icon_url": str(app.config.logo_url)} if "footer" not in discord_embed else discord_embed["footer"], "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
         else:
             await SendDiscordNotification(request, uid, {"embeds": [{"title": ml.tr(request, "notification", force_lang = await GetUserLanguage(request, uid)),
-                "description": content, "footer": {"text": app.config.name, "icon_url": app.config.logo_url}, \
+                "description": content, "footer": {"text": app.config.org_name, "icon_url": str(app.config.logo_url)}, \
                 "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
 
 async def notification_to_everyone(request, notification_type, content, no_drivershub_notification = False, \
@@ -222,8 +221,7 @@ async def notification_to_everyone(request, notification_type, content, no_drive
     if notification_type not in NOTIFICATION_SETTINGS:
         return
 
-    dhrid = request.state.dhrid
-    app = request.app
+    (dhrid, app) = (request.state.dhrid, request.app)
 
     # ensure members get notifications first
     await app.db.execute(dhrid, "SELECT uid FROM user WHERE userid >= 0")
@@ -286,10 +284,10 @@ async def notification_to_everyone(request, notification_type, content, no_drive
                     for field in discord_embed["fields"]:
                         fields.append({"name": ml.hspl(request, field["name"], force_lang=userlang[uid]), "value": ml.hspl(request, field["value"], force_lang=userlang[uid]), "inline": field["inline"]})
                 footer = {"text": ml.hspl(request, discord_embed["footer"]["text"], force_lang=userlang[uid]), "icon_url": discord_embed["footer"]["icon_url"]}
-                data = {"embeds": [{"title": ml.hspl(request, discord_embed["title"], force_lang=userlang[uid]), "url": discord_embed["url"] if "url" in discord_embed else "", "description": ml.hspl(request, discord_embed["description"], force_lang=userlang[uid]), "fields": fields, "footer": {"text": app.config.name, "icon_url": app.config.logo_url} if "footer" not in discord_embed else footer, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}
+                data = {"embeds": [{"title": ml.hspl(request, discord_embed["title"], force_lang=userlang[uid]), "url": discord_embed["url"] if "url" in discord_embed else "", "description": ml.hspl(request, discord_embed["description"], force_lang=userlang[uid]), "fields": fields, "footer": {"text": app.config.org_name, "icon_url": str(app.config.logo_url)} if "footer" not in discord_embed else footer, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}
             else:
                 data = {"embeds": [{"title": ml.tr(request, "notification", force_lang = await GetUserLanguage(request, uid)),
-                    "description": content, "footer": {"text": app.config.name, "icon_url": app.config.logo_url}, \
+                    "description": content, "footer": {"text": app.config.org_name, "icon_url": str(app.config.logo_url)}, \
                     "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}
             await SendDiscordNotification(request, uid, data, channelid = channelids[uid] if uid in channelids else False)
 
@@ -313,10 +311,10 @@ async def AuditLog(request, uid, category, text, discord_message_only = False, n
             dhrid = request.state.dhrid
             await app.db.execute(dhrid, f"INSERT INTO auditlog VALUES ({uid}, '{convertQuotation(category)[:32]}', '{convertQuotation(text)}', {int(time.time())})")
             await app.db.commit(dhrid)
-        for hook in app.config.hook_audit_log:
-            if hook["channel_id"] == "" and hook["webhook_url"] == "":
+        for hook in app.config.discord_integration.audit_log:
+            if hook.channel_id == "" and hook.webhook_url == "":
                 continue
-            if hook["category"] != "*" and category not in hook["category"].split(","):
+            if hook.category != "*" and category not in hook.category:
                 continue
             try:
                 footer = {"text": name}
@@ -325,14 +323,14 @@ async def AuditLog(request, uid, category, text, discord_message_only = False, n
 
                 data = json.dumps({"embeds": [{"description": text, "footer": footer, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
 
-                if hook["channel_id"] != "":
-                    if app.config.discord_bot_token == "":
+                if hook.channel_id != "":
+                    if app.config.discord_integration.bot_token == "":
                         return
 
-                    opqueue.queue(app, "post", hook["channel_id"], f"https://discord.com/api/v10/channels/{hook['channel_id']}/messages", data, {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}, "disable", 0 if no_retry else 5)
+                    app.discord_op.queue(app, "post", hook.channel_id, f"https://discord.com/api/v10/channels/{hook.channel_id}/messages", data, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}, "disable", 0 if no_retry else 5)
 
-                elif hook["webhook_url"] != "":
-                    opqueue.queue(app, "post", hook["webhook_url"], hook["webhook_url"], data, {"Content-Type": "application/json"}, None, 0 if no_retry else 5)
+                elif hook.webhook_url != "":
+                    app.discord_op.queue(app, "post", hook.webhook_url, hook.webhook_url, data, {"Content-Type": "application/json"}, None, 0 if no_retry else 5)
 
             except:
                 import traceback
@@ -399,13 +397,13 @@ async def AutoMessage(app, meta, setvar):
             data = json.dumps({"content": newsetvar(meta.content)})
 
         if meta.channel_id != "":
-            if app.config.discord_bot_token == "":
+            if app.config.discord_integration.bot_token == "":
                 return
 
-            opqueue.queue(app, "post", meta.channel_id, f"https://discord.com/api/v10/channels/{meta.channel_id}/messages", data, {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}, "disable")
+            app.discord_op.queue(app, "post", meta.channel_id, f"https://discord.com/api/v10/channels/{meta.channel_id}/messages", data, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}, "disable")
 
         elif meta.webhook_url != "":
-            opqueue.queue(app, "post", meta.webhook_url, meta.webhook_url, data, {"Content-Type": "application/json"}, None)
+            app.discord_op.queue(app, "post", meta.webhook_url, meta.webhook_url, data, {"Content-Type": "application/json"}, None)
 
     except Exception as exc:
         from src.api import tracebackHandler

@@ -9,8 +9,8 @@ from fastapi import Header, Request, Response
 from fastapi.responses import RedirectResponse
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
-
 
 async def get_list(request: Request, response: Response, authorization: str | None = Header(None),
         page: int | None = 1, page_size: int | None = 10, after_downloadsid: int | None = None, \
@@ -18,7 +18,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         order_by: str | None = "orderid", order: str | None = "asc", \
         title: str | None = "", created_by: int | None = None,
         min_click: int | None = None, max_click: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /downloads/list', 60, 120)
     if rl[0]:
@@ -26,7 +26,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -92,7 +92,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     return {"list": ret[:page_size], "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_downloads(request: Request, response: Response, downloadsid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /downloads', 60, 120)
     if rl[0]:
@@ -100,7 +100,7 @@ async def get_downloads(request: Request, response: Response, downloadsid: int, 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -128,7 +128,7 @@ async def get_downloads(request: Request, response: Response, downloadsid: int, 
         return {"downloadsid": tt[0], "title": tt[2], "description": decompress(tt[3]), "creator": await GetUserInfo(request, userid = tt[1]), "link": tt[4], "secret": secret, "orderid": tt[6], "is_pinned": TF[tt[7]], "timestamp": tt[8], "click_count": tt[5]}
 
 async def get_redirect(request: Request, response: Response, secret: str):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /downloads/redirect', 60, 120)
     if rl[0]:
@@ -136,7 +136,7 @@ async def get_redirect(request: Request, response: Response, secret: str):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     await app.db.execute(dhrid, f"DELETE FROM downloads_templink WHERE expire <= {int(time.time())}")
     await app.db.commit(dhrid)
@@ -163,7 +163,7 @@ async def get_redirect(request: Request, response: Response, secret: str):
     return RedirectResponse(url=link, status_code=302)
 
 async def post_downloads(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /downloads', 60, 30)
     if rl[0]:
@@ -171,7 +171,7 @@ async def post_downloads(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_downloads"])
     if au["error"]:
@@ -217,20 +217,19 @@ async def post_downloads(request: Request, response: Response, authorization: st
     await AuditLog(request, au["uid"], "downloads", ml.ctr(request, "created_downloads", var = {"id": downloadsid, "title": title}))
     await app.db.commit(dhrid)
 
-    await notification_to_everyone(request, "new_downloads", ml.spl("new_downloadable_item_with_title", var = {"title": title}), discord_embed = {"title": title, "description": description, "fields": [{"name": "‎ ", "value": ml.spl("download_link", var = {"link": link}), "inline": True}], "footer": {"text": ml.spl("new_downloadable_item"), "icon_url": app.config.logo_url}}, only_to_members=True)
+    await notification_to_everyone(request, "new_downloads", ml.spl("new_downloadable_item_with_title", var = {"title": title}), discord_embed = {"title": title, "description": description, "fields": [{"name": "‎ ", "value": ml.spl("download_link", var = {"link": link}), "inline": True}], "footer": {"text": ml.spl("new_downloadable_item"), "icon_url": str(app.config.logo_url)}}, only_to_members=True)
 
     def setvar(msg):
         return msg.replace("{mention}", f"<@{au['discordid']}>").replace("{name}", au['name']).replace("{userid}", str(au['userid'])).replace("{uid}", str(au['uid'])).replace("{avatar}", validateUrl(au['avatar'])).replace("{id}", str(downloadsid)).replace("{title}", title).replace("{description}", description).replace("{link}", validateUrl(link))
 
-    for meta in app.config.downloads_forwarding:
-        meta = Dict2Obj(meta)
+    for meta in app.config.plugin_downloads.creation_forwards:
         if meta.webhook_url != "" or meta.channel_id != "":
             await AutoMessage(app, meta, setvar)
 
     return {"downloadsid": downloadsid}
 
 async def patch_downloads(request: Request, response: Response, downloadsid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /downloads', 60, 30)
     if rl[0]:
@@ -238,7 +237,7 @@ async def patch_downloads(request: Request, response: Response, downloadsid: int
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_downloads"])
     if au["error"]:
@@ -293,7 +292,7 @@ async def patch_downloads(request: Request, response: Response, downloadsid: int
     return Response(status_code=204)
 
 async def delete_downloads(request: Request, response: Response, downloadsid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /downloads', 60, 30)
     if rl[0]:
@@ -301,7 +300,7 @@ async def delete_downloads(request: Request, response: Response, downloadsid: in
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_downloads"])
     if au["error"]:

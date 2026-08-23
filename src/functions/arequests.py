@@ -3,6 +3,7 @@
 
 import aiohttp
 import requests
+from requests.structures import CaseInsensitiveDict
 
 from src.static import USER_AGENT
 
@@ -16,7 +17,7 @@ def process_headers(headers):
         return headers
 
 class arequests:
-    async def get(app, url, data = None, headers = None, timeout = 10, dhrid = -1):
+    async def get(self, app, url, data = None, headers = None, timeout = 10, dhrid = -1):
         headers = process_headers(headers)
         exc = ConnectionResetError(f"Failed to GET {url}")
         for _ in range(3):
@@ -26,7 +27,7 @@ class arequests:
                 async with aiohttp.ClientSession(trust_env = True) as session:
                     async with session.get(url, data = data, headers = headers, timeout = timeout) as resp:
                         r = requests.Response()
-                        r.headers = resp.headers
+                        r.headers = CaseInsensitiveDict(dict(resp.headers))
                         r.status_code = resp.status
                         r._content = await resp.content.read()
                         if app is not None:
@@ -37,7 +38,7 @@ class arequests:
                 continue
         raise exc
 
-    async def post(app, url, data = None, headers = None, timeout = 10, dhrid = -1):
+    async def post(self, app, url, data = None, headers = None, timeout = 10, dhrid = -1):
         headers = process_headers(headers)
         exc = ConnectionResetError(f"Failed to POST {url}")
         for _ in range(3):
@@ -47,7 +48,7 @@ class arequests:
                 async with aiohttp.ClientSession(trust_env = True) as session:
                     async with session.post(url, data = data, headers = headers, timeout = timeout) as resp:
                         r = requests.Response()
-                        r.headers = resp.headers
+                        r.headers = CaseInsensitiveDict(dict(resp.headers))
                         r.status_code = resp.status
                         r._content = await resp.content.read()
                         if app is not None:
@@ -58,7 +59,7 @@ class arequests:
                 continue
         raise exc
 
-    async def patch(app, url, data = None, headers = None, timeout = 10, dhrid = -1):
+    async def patch(self, app, url, data = None, headers = None, timeout = 10, dhrid = -1):
         headers = process_headers(headers)
         exc = ConnectionResetError(f"Failed to PATCH {url}")
         for _ in range(3):
@@ -68,7 +69,7 @@ class arequests:
                 async with aiohttp.ClientSession(trust_env = True) as session:
                     async with session.patch(url, data = data, headers = headers, timeout = timeout) as resp:
                         r = requests.Response()
-                        r.headers = resp.headers
+                        r.headers = CaseInsensitiveDict(dict(resp.headers))
                         r.status_code = resp.status
                         r._content = await resp.content.read()
                         if app is not None:
@@ -79,7 +80,7 @@ class arequests:
                 continue
         raise exc
 
-    async def put(app, url, data = None, headers = None, timeout = 10, dhrid = -1):
+    async def put(self, app, url, data = None, headers = None, timeout = 10, dhrid = -1):
         headers = process_headers(headers)
         exc = ConnectionResetError(f"Failed to PUT {url}")
         for _ in range(3):
@@ -89,7 +90,7 @@ class arequests:
                 async with aiohttp.ClientSession(trust_env = True) as session:
                     async with session.put(url, data = data, headers = headers, timeout = timeout) as resp:
                         r = requests.Response()
-                        r.headers = resp.headers
+                        r.headers = CaseInsensitiveDict(dict(resp.headers))
                         r.status_code = resp.status
                         r._content = await resp.content.read()
                         if app is not None:
@@ -100,7 +101,7 @@ class arequests:
                 continue
         raise exc
 
-    async def delete(app, url, data = None, headers = None, timeout = 10, dhrid = -1):
+    async def delete(self, app, url, data = None, headers = None, timeout = 10, dhrid = -1):
         headers = process_headers(headers)
         exc = ConnectionResetError(f"Failed to DELETE {url}")
         for _ in range(3):
@@ -110,7 +111,7 @@ class arequests:
                 async with aiohttp.ClientSession(trust_env = True) as session:
                     async with session.delete(url, data = data, headers = headers, timeout = timeout) as resp:
                         r = requests.Response()
-                        r.headers = resp.headers
+                        r.headers = CaseInsensitiveDict(dict(resp.headers))
                         r.status_code = resp.status
                         r._content = await resp.content.read()
                         if app is not None:

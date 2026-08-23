@@ -10,7 +10,7 @@ from src.functions import *
 
 async def get_privacy(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns the privacy settings of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/privacy', 60, 120)
     if rl[0]:
@@ -18,7 +18,7 @@ async def get_privacy(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -33,7 +33,7 @@ async def patch_privacy(request: Request, response: Response, authorization: str
     """Updates the privacy settings of the authorized user, returns 204
 
     JSON: `{"role_history": bool, "ban_history": bool, "email": bool, "account_connections": bool, "activity": bool, "public_profile": bool}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/privacy', 60, 60)
     if rl[0]:
@@ -41,7 +41,7 @@ async def patch_privacy(request: Request, response: Response, authorization: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:

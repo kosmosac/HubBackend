@@ -1,8 +1,6 @@
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
-import copy
-
 from src.functions import *
 from src.plugins.economy.balance import *
 from src.plugins.economy.garages import *
@@ -14,7 +12,7 @@ from src.plugins.economy.trucks import *
 # However, their garage will be transferred to the company.
 
 async def get_economy(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy', 60, 60)
     if rl[0]:
@@ -22,7 +20,7 @@ async def get_economy(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -30,7 +28,7 @@ async def get_economy(request: Request, response: Response, authorization: str |
         del au["code"]
         return au
 
-    ret = copy.deepcopy(app.config_dict["economy"])
+    ret = app.config.plugin_economy.model_dump()
     del ret["trucks"]
     del ret["garages"]
     del ret["merch"]

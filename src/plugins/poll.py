@@ -11,6 +11,7 @@ from fastapi import Header, Request, Response
 
 import src.multilang as ml
 from src.api import tracebackHandler
+from src.app import DHApp
 from src.functions import *
 
 POLL_CONFIG_KEYS = ["max_choice", "allow_modify_vote", "show_stats", "show_stats_before_vote", "show_voter", "show_stats_when_ended"]
@@ -44,7 +45,7 @@ async def PollResultNotification(app):
                 continue
 
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
             await app.db.extend_conn(dhrid, 5)
 
             notified_poll = []
@@ -131,7 +132,7 @@ async def PollResultNotification(app):
                         language = GetUserLanguage(request, uid)
                         QueueDiscordMessage(app, channelid, {"embeds": [{"title": title, "description": description,
                             "fields": [{"name": ml.tr(request, "choices", force_lang = language), "value": ctxt, "inline": False}],
-                            "footer": {"text": ml.tr(request, "poll_result", force_lang = language), "icon_url": app.config.logo_url},
+                            "footer": {"text": ml.tr(request, "poll_result", force_lang = language), "icon_url": str(app.config.logo_url)},
                             "timestamp": datetime.fromtimestamp(end_time, tz=timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
                         await notification(request, "poll_result", uid, ml.tr(request, "poll_ended_with_title", var = {"title": title}, force_lang = language), force = True, no_discord_notification = True)
                 await app.db.extend_conn(dhrid, 2)
@@ -157,7 +158,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         end_after: int | None = None, end_before: int | None = None, \
         order_by: str | None = "orderid", order: str | None = "asc", \
         title: str | None = "", created_by: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /polls/list', 60, 120)
     if rl[0]:
@@ -165,7 +166,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -271,7 +272,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     return {"list": ret[:page_size], "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_poll(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /polls', 60, 120)
     if rl[0]:
@@ -279,7 +280,7 @@ async def get_poll(request: Request, response: Response, pollid: int, authorizat
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -302,7 +303,8 @@ async def get_poll(request: Request, response: Response, pollid: int, authorizat
     for i in range(len(POLL_CONFIG_KEYS)):
         if i < len(configl):
             config[POLL_CONFIG_KEYS[i]] = POLL_CONFIG_TYPE[POLL_CONFIG_KEYS[i]](configl[i])
-    ret = {"pollid": tt[0], "title": tt[2], "description": decompress(tt[3]), "choices": [], "voted": False, "config": config, "end_time": tt[8], "creator": await GetUserInfo(request, userid = tt[1]), "orderid": tt[5], "is_pinned": TF[tt[6]], "timestamp": tt[7]}
+    choices: list = [] # make pyright happy (note: this is shallowly linked into `ret`)
+    ret = {"pollid": tt[0], "title": tt[2], "description": decompress(tt[3]), "choices": choices, "voted": False, "config": config, "end_time": tt[8], "creator": await GetUserInfo(request, userid = tt[1]), "orderid": tt[5], "is_pinned": TF[tt[6]], "timestamp": tt[7]}
 
     await app.db.execute(dhrid, f"SELECT DISTINCT pollid FROM poll_vote WHERE userid = {userid} AND pollid = {pollid}")
     t = await app.db.fetchall(dhrid)
@@ -322,20 +324,20 @@ async def get_poll(request: Request, response: Response, pollid: int, authorizat
             votes = 0
             if isstaff or config["show_voter"]:
                 voters = []
-        ret["choices"].append({"choiceid": choiceid, "orderid": orderid, "content": content, "votes": votes, "voted": False, "voters": voters})
+        choices.append({"choiceid": choiceid, "orderid": orderid, "content": content, "votes": votes, "voted": False, "voters": voters})
 
     if isstaff or (config["show_stats_before_vote"] or voted and config["show_stats"] or config["show_stats_when_ended"] and ret["end_time"] is not None and ret["end_time"] < int(time.time())):
         await app.db.execute(dhrid, f"SELECT pollid, choiceid, COUNT(userid) FROM poll_vote WHERE pollid = {pollid} GROUP BY choiceid ORDER BY pollid ASC, choiceid ASC")
         t = await app.db.fetchall(dhrid)
         for tt in t:
             (_, choiceid, count) = tt
-            ret["choices"][choiceidx[choiceid]]["votes"] = count
+            choices[choiceidx[choiceid]]["votes"] = count
 
             await app.db.execute(dhrid, f"SELECT pollid, choiceid FROM poll_vote WHERE pollid = {pollid} AND userid = {userid} GROUP BY choiceid ORDER BY pollid ASC, choiceid ASC")
             t = await app.db.fetchall(dhrid)
             for tt in t:
                 (pollid, choiceid) = tt
-                ret["choices"][choiceidx[choiceid]]["voted"] = True
+                choices[choiceidx[choiceid]]["voted"] = True
                 ret["voted"] = True
 
         if isstaff or config["show_voter"]:
@@ -343,7 +345,7 @@ async def get_poll(request: Request, response: Response, pollid: int, authorizat
             t = await app.db.fetchall(dhrid)
             for tt in t:
                 (choiceid, voters_userid) = tt
-                ret["choices"][choiceidx[choiceid]]["voters"].append(await GetUserInfo(request, userid = voters_userid))
+                choices[choiceidx[choiceid]]["voters"].append(await GetUserInfo(request, userid = voters_userid))
 
     return ret
 
@@ -355,7 +357,7 @@ async def put_poll_vote(request: Request, response: Response, pollid: int, autho
     [NOTE] `choices` must contain a list of `choiceid`
     [NOTE] Modifying vote is not allowed, use PATCH'''
 
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PUT /polls/vote', 60, 60)
     if rl[0]:
@@ -363,7 +365,7 @@ async def put_poll_vote(request: Request, response: Response, pollid: int, autho
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -432,7 +434,7 @@ async def patch_poll_vote(request: Request, response: Response, pollid: int, aut
     [NOTE] `choices` must contain a list of `choiceid`
     [NOTE] This will overwrite all voted choices of the poll for the user'''
 
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /polls/vote', 60, 60)
     if rl[0]:
@@ -440,7 +442,7 @@ async def patch_poll_vote(request: Request, response: Response, pollid: int, aut
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -511,7 +513,7 @@ async def delete_poll_vote(request: Request, response: Response, pollid: int, au
 
     [NOTE] This will deleted all voted choices of the poll for the user'''
 
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /polls/vote', 60, 60)
     if rl[0]:
@@ -519,7 +521,7 @@ async def delete_poll_vote(request: Request, response: Response, pollid: int, au
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -566,7 +568,7 @@ async def post_poll(request: Request, response: Response, authorization: str | N
     `config`: dict containing optional keys "max_choice", "allow_modify_vote", "show_stats", "show_stats_before_vote", "show_voter", "show_stats_when_ended"
     `choices`: list of string choices
     `end_time`: int/null'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /polls', 60, 30)
     if rl[0]:
@@ -574,7 +576,7 @@ async def post_poll(request: Request, response: Response, authorization: str | N
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_polls"])
     if au["error"]:
@@ -667,13 +669,12 @@ async def post_poll(request: Request, response: Response, authorization: str | N
     await app.db.commit(dhrid)
     await AuditLog(request, au["uid"], "poll", ml.ctr(request, "created_poll", var = {"id": pollid, "title": title}))
 
-    await notification_to_everyone(request, "new_poll", ml.spl("new_poll_with_title", var = {"title": title}), discord_embed = {"title": title, "description": description, "fields": [{"name": ml.spl("choices"), "value": " - " + "\n - ".join(choices), "inline": False}], "footer": {"text": ml.spl("new_poll"), "icon_url": app.config.logo_url}}, only_to_members=True)
+    await notification_to_everyone(request, "new_poll", ml.spl("new_poll_with_title", var = {"title": title}), discord_embed = {"title": title, "description": description, "fields": [{"name": ml.spl("choices"), "value": " - " + "\n - ".join(choices), "inline": False}], "footer": {"text": ml.spl("new_poll"), "icon_url": str(app.config.logo_url)}}, only_to_members=True)
 
     def setvar(msg):
         return msg.replace("{mention}", f"<@{au['discordid']}>").replace("{name}", au['name']).replace("{userid}", str(au['userid'])).replace("{uid}", str(au['uid'])).replace("{avatar}", validateUrl(au['avatar'])).replace("{id}", str(pollid)).replace("{title}", title).replace("{description}", description)
 
-    for meta in app.config.poll_forwarding:
-        meta = Dict2Obj(meta)
+    for meta in app.config.plugin_poll.creation_forwards:
         if meta.webhook_url != "" or meta.channel_id != "":
             await AutoMessage(app, meta, setvar)
 
@@ -686,7 +687,7 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
     `choices`: list of object choices {"choiceid": int, "orderid": int}
     `end_time`: int/null
     [NOTE] Editing choices is not allowed'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /polls', 60, 30)
     if rl[0]:
@@ -694,7 +695,7 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_polls"])
     if au["error"]:
@@ -804,7 +805,7 @@ async def patch_poll(request: Request, response: Response, pollid: int, authoriz
     return Response(status_code=204)
 
 async def delete_poll(request: Request, response: Response, pollid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /polls', 60, 30)
     if rl[0]:
@@ -812,7 +813,7 @@ async def delete_poll(request: Request, response: Response, pollid: int, authori
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_polls"])
     if au["error"]:

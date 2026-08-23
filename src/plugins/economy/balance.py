@@ -9,6 +9,7 @@ from fastapi import Header, Request, Response
 from fastapi.responses import StreamingResponse
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 
 
@@ -21,8 +22,8 @@ async def get_balance_leaderboard(request: Request, response: Response, authoriz
     [NOTE] If authorized user is not a balance_manager, and the user chose to hide their balance, they will not be included in the leaderboard.
     If authorized user is a balance_manager, they can view the full leaderboard.
     User balance is by default private.'''
-    app = request.app
-    if not app.config.economy.enable_balance_leaderboard:
+    app: DHApp = request.app
+    if not app.config.plugin_economy.enable_balance_leaderboard:
         response.status_code = 404
         return {"error": "Not Found"}
 
@@ -33,7 +34,7 @@ async def get_balance_leaderboard(request: Request, response: Response, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -120,7 +121,7 @@ async def post_balance_transfer(request: Request, response: Response, authorizat
     '''Transfer balance.
 
     JSON: `{"from_userid": Optional[int], "to_userid": int, "amount": int, "message": Optional[str]}`'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/balance/transfer', 60, 60)
     if rl[0]:
@@ -128,7 +129,7 @@ async def post_balance_transfer(request: Request, response: Response, authorizat
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -218,8 +219,8 @@ async def post_balance_transfer(request: Request, response: Response, authorizat
         from_message = "  \n" + ml.tr(request, "economy_transaction_message", var = {"message": message}, force_lang = from_user_language)
         to_message = "  \n" + ml.tr(request, "economy_transaction_message", var = {"message": message}, force_lang = to_user_language)
 
-    await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction", var = {"amount": amount, "currency_name": app.config.economy.currency_name, "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
-    await notification(request, "economy", to_user["uid"], ml.tr(request, "economy_received_transaction", var = {"amount": amount, "currency_name": app.config.economy.currency_name, "from_user": from_user["name"], "from_userid": from_user["userid"] if from_user["userid"] is not None else "N/A", "message": to_message}, force_lang = to_user_language))
+    await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction", var = {"amount": amount, "currency_name": app.config.plugin_economy.currency_name, "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
+    await notification(request, "economy", to_user["uid"], ml.tr(request, "economy_received_transaction", var = {"amount": amount, "currency_name": app.config.plugin_economy.currency_name, "from_user": from_user["name"], "from_userid": from_user["userid"] if from_user["userid"] is not None else "N/A", "message": to_message}, force_lang = to_user_language))
 
     if company_balance_perm_ok:
         return {"from_balance": from_balance - amount, "to_balance": to_balance + amount}
@@ -230,7 +231,7 @@ async def patch_balance(request: Request, response: Response, userid: int, autho
     '''Patch user balance. This should not be actively used.
     This should only be used to fix ultra-high balance.
     Patches here WILL NOT go into the transaction table.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /economy/balance/userid', 60, 60)
     if rl[0]:
@@ -238,7 +239,7 @@ async def patch_balance(request: Request, response: Response, userid: int, autho
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission=["administrator", "manage_economy", "manage_economy_balance"])
     if au["error"]:
@@ -269,7 +270,7 @@ async def get_balance(request: Request, response: Response, authorization: str |
     [NOTE] If authorized user is not a balance_manager, and the user chose to hide their balance, 403 will be returned.
     If authorized user is a balance_manager, they can view the user's balance without restrictions.
     User balance is by default private.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/balance/userid', 60, 60)
     if rl[0]:
@@ -277,7 +278,7 @@ async def get_balance(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -382,7 +383,7 @@ async def get_balance_transaction_list(request: Request, response: Response, use
     '''Get a user's transaction history.
 
     [NOTE] This can only be viewed by balance manager and user. The user cannot make this info public.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/balance/userid/transactions/list', 60, 60)
     if rl[0]:
@@ -390,7 +391,7 @@ async def get_balance_transaction_list(request: Request, response: Response, use
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -484,7 +485,7 @@ async def get_balance_transaction_export(request: Request, response: Response, u
     '''Export a user's transaction history.
 
     [NOTE] This can only be done by balance manager and user. The user cannot make this info public.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/balance/userid/transactions/export', 60, 3)
     if rl[0]:
@@ -492,7 +493,7 @@ async def get_balance_transaction_export(request: Request, response: Response, u
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -583,7 +584,7 @@ async def get_balance_transaction_export(request: Request, response: Response, u
 
 async def post_balance_visibility(request: Request, response: Response, userid: int, visibility: str, authorization: str | None = Header(None)):
     '''Make user balance public.'''
-    app = request.app
+    app: DHApp = request.app
     if visibility not in ["public", "private"]:
         response.status_code = 404
         return {"error": "Not Found"}
@@ -595,7 +596,7 @@ async def post_balance_visibility(request: Request, response: Response, userid: 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:

@@ -37,7 +37,7 @@ async def ActivityUpdate(request, uid, activity, force = False):
     (app, dhrid) = (request.app, request.state.dhrid)
     if uid is None or int(uid) < 0:
         return
-    if not app.config.use_custom_activity or force:
+    if not app.config_old.use_custom_activity or force:
         activity = convertQuotation(activity)
         await app.db.execute(dhrid, f"SELECT timestamp FROM user_activity WHERE uid = {uid}")
         t = await app.db.fetchall(dhrid)
@@ -69,7 +69,7 @@ async def ActivityUpdate(request, uid, activity, force = False):
 async def GetUserLanguage(request, uid, nocache = False):
     (app, dhrid) = (request.app, request.state.dhrid)
     if uid is None:
-        return app.config.language
+        return app.config_old.language
 
     if not nocache:
         language = app.redis.get(f"ulang:{uid}")
@@ -80,9 +80,9 @@ async def GetUserLanguage(request, uid, nocache = False):
     await app.db.execute(dhrid, f"SELECT sval FROM settings WHERE uid = {uid} AND skey = 'language'")
     t = await app.db.fetchall(dhrid)
     if len(t) == 0:
-        app.redis.set(f"ulang:{uid}", app.config.language)
+        app.redis.set(f"ulang:{uid}", app.config_old.language)
         app.redis.expire(f"ulang:{uid}", 60)
-        return app.config.language
+        return app.config_old.language
     else:
         app.redis.set(f"ulang:{uid}", t[0][0])
         app.redis.expire(f"ulang:{uid}", 60)
@@ -180,7 +180,7 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
 
     miscuserid = {-997: "Trucky", -998: ml.ctr(request, "discord_api"), -999: "system", -1000: "company", -1001: "dealership", -1002: "garage_agency", -1003: "client", -1004: "service_station", -1005: "scrap_station", -1005: "blackhole"}
     if userid == -1000 or uid == -1000:
-        return {"uid": None, "userid": None, "name": app.config.name, "email": None, "discordid": None, "steamid": None, "truckersmpid": None, "tracker": None, "avatar": app.config.logo_url, "bio": None, "note": "", "global_note": None, "roles": [], "activity": None, "mfa": None, "join_timestamp": None}
+        return {"uid": None, "userid": None, "name": app.config.org_name, "email": None, "discordid": None, "steamid": None, "truckersmpid": None, "tracker": None, "avatar": str(app.config.logo_url), "bio": None, "note": "", "global_note": None, "roles": [], "activity": None, "mfa": None, "join_timestamp": None}
     if userid in miscuserid:
         return {"uid": None, "userid": None, "name": ml.tr(request, miscuserid[userid]), "email": None, "discordid": None, "steamid": None, "truckersmpid": None, "tracker": None, "avatar": None, "bio": None, "note": "", "global_note": None, "roles": [], "activity": None, "mfa": None, "join_timestamp": None}
     if uid in miscuserid:
@@ -205,10 +205,10 @@ async def GetUserInfo(request, userid: int | None = -1, discordid: int | None = 
                 request_uid = au["uid"]
                 roles = au["roles"]
                 for i in roles:
-                    if int(i) in app.config.perms.administrator or int(i) in app.config.perms.view_sensitive_profile:
+                    if int(i) in app.config_old.perms.administrator or int(i) in app.config_old.perms.view_sensitive_profile:
                         include_sensitive = True
                         include_global_note = True
-                    if int(i) in app.config.perms.view_global_note:
+                    if int(i) in app.config_old.perms.view_global_note:
                         include_global_note = True
                 if au["userid"] >= 0:
                     is_member = True
@@ -440,7 +440,7 @@ async def UpdateRoleConnection(request, discordid):
 
         if userinfo["join_timestamp"] is None:
             # deleted account
-            r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_client_id}/role-connection", data = json.dumps({"platform_name": "", "platform_username": "", "metadata": {"member_since": "", "is_driver": "", "dlog": "", "distance": ""}}), headers = headers, dhrid = dhrid)
+            r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_integration.client_id}/role-connection", data = json.dumps({"platform_name": "", "platform_username": "", "metadata": {"member_since": "", "is_driver": "", "dlog": "", "distance": ""}}), headers = headers, dhrid = dhrid)
             if r.status_code in [401, 403]:
                 await app.db.execute(dhrid, f"DELETE FROM discord_access_token WHERE access_token = '{access_token}'")
                 await app.db.commit(dhrid)
@@ -456,12 +456,12 @@ async def UpdateRoleConnection(request, discordid):
             t = await app.db.fetchone(dhrid)
             if len(t) != 0:
                 discord_distance = nint(t[0])
-            r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_client_id}/role-connection", data = json.dumps({"platform_name": "Drivers Hub", "platform_username": userinfo["name"], "metadata": {"member_since": datetime.fromtimestamp(userinfo["join_timestamp"], tz=timezone.utc).isoformat(), "is_driver": "true" if is_driver else "false", "dlog": str(discord_jobs), "distance": str(discord_distance)}}), headers = headers, dhrid = dhrid)
+            r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_integration.client_id}/role-connection", data = json.dumps({"platform_name": "Drivers Hub", "platform_username": userinfo["name"], "metadata": {"member_since": datetime.fromtimestamp(userinfo["join_timestamp"], tz=timezone.utc).isoformat(), "is_driver": "true" if is_driver else "false", "dlog": str(discord_jobs), "distance": str(discord_distance)}}), headers = headers, dhrid = dhrid)
             if r.status_code in [401, 403]:
                 await app.db.execute(dhrid, f"DELETE FROM discord_access_token WHERE access_token = '{access_token}'")
                 await app.db.commit(dhrid)
         else:
-            r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_client_id}/role-connection", data = json.dumps({"platform_name": "Drivers Hub", "platform_username": userinfo["name"], "metadata": {"member_since": datetime.fromtimestamp(userinfo["join_timestamp"], tz=timezone.utc).isoformat(), "is_driver": "true" if is_driver else "false"}}), headers = headers, dhrid = dhrid)
+            r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_integration.client_id}/role-connection", data = json.dumps({"platform_name": "Drivers Hub", "platform_username": userinfo["name"], "metadata": {"member_since": datetime.fromtimestamp(userinfo["join_timestamp"], tz=timezone.utc).isoformat(), "is_driver": "true" if is_driver else "false"}}), headers = headers, dhrid = dhrid)
             if r.status_code in [401, 403]:
                 await app.db.execute(dhrid, f"DELETE FROM discord_access_token WHERE access_token = '{access_token}'")
                 await app.db.commit(dhrid)
@@ -478,7 +478,7 @@ async def DeleteRoleConnection(request, discordid):
         access_token = t[0][0]
         headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
 
-        r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_client_id}/role-connection", data = json.dumps({"platform_name": "", "platform_username": "", "metadata": {}}), headers = headers, dhrid = dhrid)
+        r = await arequests.put(app, f"https://discord.com/api/v10/users/@me/applications/{app.config.discord_integration.client_id}/role-connection", data = json.dumps({"platform_name": "", "platform_username": "", "metadata": {}}), headers = headers, dhrid = dhrid)
         if r.status_code in [401, 403]:
             await app.db.execute(dhrid, f"DELETE FROM discord_access_token WHERE access_token = '{access_token}'")
             await app.db.commit(dhrid)
@@ -488,7 +488,7 @@ async def GetPoints(request, userid, point_types = ["distance", "challenge", "di
 
     # handle bonus point on different rank
     ratio = 1
-    if app.config.distance_unit == "imperial":
+    if app.config_old.distance_unit == "imperial":
         ratio = 0.621371
 
     # calculate distance

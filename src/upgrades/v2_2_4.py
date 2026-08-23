@@ -10,7 +10,7 @@ def run(app):
     cur = conn.cursor()
 
     logger.info("Getting %_old TABLES...")
-    cur.execute(f"SELECT CONCAT('DROP TABLE ', TABLE_NAME, ';') AS 'SQL' FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{app.config.abbr}_drivershub' AND TABLE_NAME LIKE '%_old';")
+    cur.execute(f"SELECT CONCAT('DROP TABLE ', TABLE_NAME, ';') AS 'SQL' FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{app.config.unique_id}_drivershub' AND TABLE_NAME LIKE '%_old';")
     t = cur.fetchall()
     if len(t) > 0:
         logger.info("Dropping %_old TABLES...")

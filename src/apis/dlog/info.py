@@ -18,7 +18,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         game: int | None = None, status: int | None = None,\
         challenge: str | None = "any", division: str | None = "any", manual: bool | None = False):
     '''`challenge` and `division` can only be include/only/none/any/{id}'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /dlog/list', 60, 120)
@@ -27,7 +27,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
     quserid = userid
 
@@ -154,8 +154,8 @@ async def get_list(request: Request, response: Response, authorization: str | No
         division_name = None
         division = None
         if division_id is not None:
-            if division_id in app.division_name:
-                division_name = app.division_name[division_id]
+            if division_id in app.divisions:
+                division_name = app.divisions[division_id].name
             division = {"divisionid": division_id, "name": division_name, "status": division_status}
 
         await app.db.execute(dhrid, f"SELECT dlog.logid, challenge_info.challengeid, challenge.title FROM dlog \
@@ -171,9 +171,9 @@ async def get_list(request: Request, response: Response, authorization: str | No
             challengeids.append(pp[1])
             challengenames.append(pp[2])
 
-        challenge = []
+        challenges = []
         for i in range(len(challengeids)):
-            challenge.append({"challengeid": challengeids[i], "name": challengenames[i]})
+            challenges.append({"challengeid": challengeids[i], "name": challengenames[i]})
 
         source_city = tt[13]
         source_company = tt[14]
@@ -202,7 +202,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
             "source_city": source_city, "source_company": source_company, \
                 "destination_city": destination_city, "destination_company": destination_company, \
                     "cargo": cargo, "cargo_mass": cargo_mass, "profit": profit, "unit": unit, \
-                        "division": division, "challenge": challenge, \
+                        "division": division, "challenge": challenges, \
                             "status": status, "views": tt[12], "timestamp": tt[2]})
 
     await app.db.execute(dhrid, f"SELECT COUNT(*) FROM dlog WHERE {'logid >= 0' if not manual else 'logid < 0'} {limit} {timelimit} {speed_limit} {gamelimit} {status_limit}")
@@ -214,7 +214,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_dlog(request: Request, response: Response, logid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /dlog', 60, 120)
     if rl[0]:
@@ -222,7 +222,7 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
     userid = -1
     uid = -1
@@ -291,8 +291,8 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
         division_id = p[0][0]
         division_status = p[0][1]
         division_name = None
-        if division_id in app.division_name:
-            division_name = app.division_name[division_id]
+        if division_id in app.divisions:
+            division_name = app.divisions[division_id].name
         division = {"divisionid": division_id, "name": division_name, "status": division_status}
 
     await app.db.execute(dhrid, f"SELECT dlog.logid, challenge_info.challengeid, challenge.title FROM dlog \
@@ -329,7 +329,7 @@ async def get_dlog(request: Request, response: Response, logid: int, authorizati
             "detail": data, "telemetry": telemetry}
 
 async def delete_dlog(request: Request, response: Response, logid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /dlog', 60, 60)
     if rl[0]:
@@ -337,7 +337,7 @@ async def delete_dlog(request: Request, response: Response, logid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "delete_dlogs"], allow_application_token = True)
     if au["error"]:

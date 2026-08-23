@@ -15,8 +15,8 @@ from src.functions import *
 
 async def FetchRoute(app, gameid, userid, logid, trackerid, request, dhrid = None):
     r = None
-    for tracker in app.config.trackers:
-        if tracker["type"] != "tracksim":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "tracksim":
             continue
         try: # try multiple tracker's api token
             r = await arequests.get(app, f"https://api.tracksim.app/v1/jobs/{trackerid}/route", headers = {"Authorization": f"Api-Key {tracker['api_token']}"}, timeout = 15, dhrid = dhrid)
@@ -108,7 +108,7 @@ async def FetchRoute(app, gameid, userid, logid, trackerid, request, dhrid = Non
 
     if dhrid is None:
         dhrid = genrid()
-        await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.database_schema)
 
     for _ in range(3):
         try:
@@ -124,29 +124,29 @@ async def FetchRoute(app, gameid, userid, logid, trackerid, request, dhrid = Non
         except:
             await app.db.close_conn(dhrid)
             dhrid = genrid()
-            await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, extra_time = 5, db_name = app.config.database_schema)
             continue
 
     return True
 
 async def post_update(response: Response, request: Request):
-    app = request.app
+    app: DHApp = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
     dhrid = request.state.dhrid
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     webhook_signature = request.headers.get('tracksim-signature')
 
     ip_ok = False
     needs_validate = False
-    for tracker in app.config.trackers:
-        if tracker["type"] != "tracksim":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "tracksim":
             continue
-        if type(tracker["ip_whitelist"]) == list and len(tracker["ip_whitelist"]) > 0:
+        if type(tracker.ip_whitelist) == list and len(tracker.ip_whitelist) > 0:
             needs_validate = True
-            if request.client.host in tracker["ip_whitelist"]:
+            if request.client.host in tracker.ip_whitelist:
                 ip_ok = True
     if needs_validate and not ip_ok:
         response.status_code = 403
@@ -162,12 +162,12 @@ async def post_update(response: Response, request: Request):
         return {"error": "Unsupported content type."}
     sig_ok = False
     needs_validate = False # if at least one tracker has webhook secret, then true (only false when all doesn't have webhook secret)
-    for tracker in app.config.trackers:
-        if tracker["type"] != "tracksim":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "tracksim":
             continue
-        if tracker["webhook_secret"] is not None and tracker["webhook_secret"] != "":
+        if tracker.webhook_secret is not None and tracker.webhook_secret != "":
             needs_validate = True
-            sig = hmac.new(tracker["webhook_secret"].encode(), msg=json.dumps(d).encode(), digestmod=hashlib.sha256).hexdigest()
+            sig = hmac.new(tracker.webhook_secret.encode(), msg=json.dumps(d).encode(), digestmod=hashlib.sha256).hexdigest()
             if webhook_signature is not None and hmac.compare_digest(sig, webhook_signature):
                 sig_ok = True
     if needs_validate and not sig_ok:
@@ -187,7 +187,7 @@ async def post_update(response: Response, request: Request):
     return Response(status_code = 204)
 
 async def post_update_route(response: Response, request: Request, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
@@ -198,7 +198,7 @@ async def post_update_route(response: Response, request: Request, authorization:
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -239,7 +239,7 @@ async def post_update_route(response: Response, request: Request, authorization:
         return r
 
 async def put_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
@@ -250,7 +250,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "update_roles"])
     if au["error"]:
@@ -272,7 +272,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
         return {"error": tracker_app_error}
 
 async def delete_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     if "tracksim" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
@@ -283,7 +283,7 @@ async def delete_driver(response: Response, request: Request, userid: int, autho
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "update_roles"])
     if au["error"]:

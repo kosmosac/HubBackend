@@ -16,7 +16,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     """Returns the information of a list of users
 
     Not all information is included, use `/user/profile` for detailed profile."""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/list', 60, 120)
     if rl[0]:
@@ -24,7 +24,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "view_external_user_list"])
     if au["error"]:
@@ -105,7 +105,7 @@ async def get_profile(request: Request, response: Response, authorization: str |
     """Returns the profile of a specific user
 
     If no request param is provided, then returns the profile of the authorized user."""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/profile', 60, 120)
     if rl[0]:
@@ -113,7 +113,7 @@ async def get_profile(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     request_uid = -1
     aulanguage = ""
@@ -220,7 +220,7 @@ async def patch_profile(request: Request, response: Response, authorization: str
     If `sync_from_discord` is `true`, then syncs to their Discord profile.
 
     If `uid` in request param is not provided, then syncs the profile for the authorized user."""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/profile', 60, 15)
     if rl[0]:
@@ -228,7 +228,7 @@ async def patch_profile(request: Request, response: Response, authorization: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -267,12 +267,12 @@ async def patch_profile(request: Request, response: Response, authorization: str
             else:
                 return {"error": ml.tr(request, "connection_invalid", var = {"app": "Discord"}, force_lang = au["language"])}
 
-        if app.config.discord_bot_token == "":
+        if app.config.discord_integration.bot_token == "":
             response.status_code = 503
             return {"error": ml.tr(request, "discord_integrations_disabled", force_lang = au["language"])}
 
         try:
-            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}", headers={"Authorization": f"Bot {app.config.discord_bot_token}"}, dhrid = dhrid)
+            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}", headers={"Authorization": f"Bot {app.config.discord_integration.bot_token}"}, dhrid = dhrid)
         except:
             response.status_code = 503
             if not staffmode:
@@ -298,7 +298,7 @@ async def patch_profile(request: Request, response: Response, authorization: str
             name = str(d["user"]['username'])
         name = convertQuotation(name)
         avatar = ""
-        if app.config.use_server_nickname and d["nick"] is not None:
+        if app.config.discord_integration.use_server_nickname and d["nick"] is not None:
             name = convertQuotation(d["nick"])
         if d["user"]["avatar"] is not None:
             avatar = getAvatarSrc(discordid, d["user"]["avatar"])
@@ -415,7 +415,7 @@ async def patch_bio(request: Request, response: Response, authorization: str | N
     """Updates the bio of the authorized user, returns 204
 
     JSON: `{"bio": str}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/bio', 60, 30)
     if rl[0]:
@@ -423,7 +423,7 @@ async def patch_bio(request: Request, response: Response, authorization: str | N
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -455,7 +455,7 @@ async def patch_activity(request: Request, response: Response, authorization: st
     JSON: `{"activity": str}`
 
     [NOTE] `last_seen` is always automatically set"""
-    app = request.app
+    app: DHApp = request.app
     if app.config.use_custom_activity is False:
         response.status_code = 404
         return {"error": "Not Found"}
@@ -467,7 +467,7 @@ async def patch_activity(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -494,7 +494,7 @@ async def patch_note(request: Request, response: Response, uid: int, authorizati
     """Updates the note of a user, returns 204
 
     JSON: `{"note": str}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/{uid}/note', 60, 30)
     if rl[0]:
@@ -502,7 +502,7 @@ async def patch_note(request: Request, response: Response, uid: int, authorizati
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     to_uid = uid
 
@@ -535,7 +535,7 @@ async def patch_note(request: Request, response: Response, uid: int, authorizati
 
 async def post_tracker_switch(request: Request, response: Response, uid: int | None = None, authorization: str | None = Header(None)):
     """Updates tracker_in_use column of user table in database, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /user/tracker/switch', 60, 60)
     if rl[0]:
@@ -543,7 +543,7 @@ async def post_tracker_switch(request: Request, response: Response, uid: int | N
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:

@@ -69,7 +69,7 @@ def run(app):
                     logger.info(f"Changing UID: {uid} to {max_uid}")
                     for table in UID_TABLES:
                         cur.execute(f"UPDATE {table} SET uid = {max_uid} WHERE uid = {uid}")
-                logger.info("Update AUTO INCREMENT app.config...")
+                logger.info("Update AUTO INCREMENT app.config_old...")
                 cur.execute(f"ALTER TABLE user AUTO_INCREMENT = {max_uid + 1}")
                 conn.commit()
 

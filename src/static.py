@@ -28,58 +28,50 @@ USER_AGENT = f"DriversHub/{version} ({os_info}; Python {py_version}) +https://dr
 
 def load(app):
     app.roles = {} # sorted based on order_id
-    sroles = app.config.roles
-    for srole in sroles:
+    for role in app.config.user_roles:
         try:
-            app.roles[srole["id"]] = srole
+            app.roles[role.id] = role
         except:
             pass
-    app.roles = dict(sorted(app.roles.items(), key=lambda x: x[1]["order_id"]))
+    app.roles = dict(sorted(app.roles.items(), key=lambda x: x[1].order_id))
 
     app.default_rank_type_point_types = []
     app.rank_type_point_types = {}
-    app.ranktypes = {}
-    for rt in app.config.rank_types:
+    app.ranks = {}
+    for rt in app.config.user_ranks:
         try:
-            if rt["default"]:
-                app.default_rank_type_point_types = rt["point_types"]
-            app.rank_type_point_types[rt["id"]] = rt["point_types"]
-            app.ranktypes[rt["id"]] = {}
-            for t in rt["details"]:
-                if t["discord_role_id"] is None:
-                    t["discord_role_id"] = 0
-                app.ranktypes[rt["id"]][t["points"]] = {"name": t["name"], "discord_role_id": t["discord_role_id"], "distance_bonus": t["distance_bonus"], "daily_bonus": t["daily_bonus"]}
-            app.ranktypes[rt["id"]] = dict(sorted(app.ranktypes[rt["id"]].items(), key=lambda x: x[0]))
+            if rt.default:
+                app.default_rank_type_point_types = rt.point_types
+            app.rank_type_point_types[rt.id] = rt.point_types
+            app.ranks[rt.id] = {}
+            for t in rt.details:
+                app.ranks[rt.id][t.points] = t
+            app.ranks[rt.id] = dict(sorted(app.ranks[rt.id].items(), key=lambda x: x[0]))
         except:
             pass
 
-    app.division_roles = []
-    for division in app.config.divisions:
+    app.divisions = {}
+    app.division_role_ids = []
+    for division in app.config.plugin_division.types:
         try:
-            app.division_roles.append(division["role_id"])
+            app.divisions[division.id] = division
+            app.division_role_ids.append(division.role_id)
         except:
             pass
-
-    app.division_points = {}
-    app.division_name = {}
-    for division in app.config.divisions:
-        app.division_points[division["id"]] = division["points"]
-        app.division_name[division["id"]] = division["name"]
 
     app.trucks = {}
     app.garages = {}
     app.merch = {}
-    for truck in app.config_dict["economy"]["trucks"]:
-        app.trucks[truck["id"]] = truck
-    for garage in app.config_dict["economy"]["garages"]:
-        app.garages[garage["id"]] = garage
-    for merch in app.config_dict["economy"]["merch"]:
-        app.merch[merch["id"]] = merch
+    for truck in app.config.plugin_economy.trucks:
+        app.trucks[truck.id] = truck
+    for garage in app.config.plugin_economy.garages:
+        app.garages[garage.id] = garage
+    for merch in app.config.plugin_economy.merch:
+        app.merch[merch.id] = merch
 
     return app
 
 TF = {-1: False, 0: False, 1: True, "0": False, "1": True, "False": False, "True": True}
-ALL_PLUGINS = ["announcements", "applications", "banner", "challenges", "divisions", "downloads", "events", "polls", "route"]
 
 OPENAPI_RESPONSES = '"responses": {"200": {"content": {"application/json": {"schema": {"type": "object"}}},  "description": "Success"}}'
 
@@ -91,7 +83,7 @@ else:
 NOTIFICATION_SETTINGS = {"drivershub": False, "discord": False, "login": False, "dlog": False, "member": False, "bonus": False, "new_announcement": False, "application": False, "new_challenge": False, "challenge": False, "division": False, "new_downloads": False, "economy": False, "new_event": False, "upcoming_event": False, "new_poll": False, "poll_result": False, "new_task": False, "task_reminder": False, "task_updated": False, "task_mark_completed": False, "task_confirm_completed": False}
 # task_mark_completed is for task assignees only, task_confirm_completed is for task creator only
 
-ISO_COUNTRIES = {country.alpha_2: country.name for country in pycountry.countries}
+ISO_COUNTRIES = {getattr(country, "alpha_2"): getattr(country, "name") for country in pycountry.countries}
 ISO_COUNTRIES["00"] = "Local Network"
 ISO_COUNTRIES["XX"] = "Unknown Region"
 ISO_COUNTRIES["T1"] = "Tor"

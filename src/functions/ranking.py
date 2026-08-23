@@ -3,11 +3,11 @@
 
 def point2rank(app, rank_type_id, point):
     if rank_type_id == "default":
-        for rank_type in app.config.rank_types:
+        for rank_type in app.config_old.rank_types:
             if rank_type["default"]:
                 rank_type_id = rank_type["id"]
 
-    ranks = app.ranktypes[rank_type_id]
+    ranks = app.ranks[rank_type_id]
     keys = list(ranks)
     if point < keys[0]:
         return None

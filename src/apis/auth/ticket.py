@@ -11,7 +11,7 @@ from src.functions import *
 
 
 async def get_ticket(request: Request, response: Response, token: str | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /auth/ticket', 60, 120)
     if rl[0]:
@@ -19,7 +19,7 @@ async def get_ticket(request: Request, response: Response, token: str | None = N
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     if token is None:
         response.status_code = 401
@@ -38,7 +38,7 @@ async def get_ticket(request: Request, response: Response, token: str | None = N
     return (await GetUserInfo(request, uid = t[0][0]))
 
 async def post_ticket(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /auth/ticket', 180, 30)
     if rl[0]:
@@ -46,7 +46,7 @@ async def post_ticket(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:

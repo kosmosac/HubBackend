@@ -7,6 +7,7 @@ import time
 from fastapi import Header, Request, Response
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 
 
@@ -14,7 +15,7 @@ from src.functions import *
 # All merch income will be transferred to the "company" account.
 
 async def get_all_merch(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/merch', 60, 30)
     if rl[0]:
@@ -22,7 +23,7 @@ async def get_all_merch(request: Request, response: Response, authorization: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -30,7 +31,7 @@ async def get_all_merch(request: Request, response: Response, authorization: str
         del au["code"]
         return au
 
-    return app.config.economy.merch
+    return app.config.plugin_economy.merch
 
 async def get_merch_list(request: Request, response: Response, authorization: str | None = Header(None), \
         page: int | None = 1, page_size: int | None = 10, after_itemid: int | None = None, \
@@ -39,7 +40,7 @@ async def get_merch_list(request: Request, response: Response, authorization: st
         purchased_after: int | None = None, purchased_before: int | None = None, \
         order_by: str | None = "price", order: str | None = "desc"):
     '''Get a list of merch.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/merch/list', 60, 60)
     if rl[0]:
@@ -47,7 +48,7 @@ async def get_merch_list(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -120,7 +121,7 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
     JSON: `{"owner": Optional[str]}`
 
     `owner` can be `self` | `user-{userid}`'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/merch/purchase', 60, 30)
     if rl[0]:
@@ -128,7 +129,7 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -189,21 +190,21 @@ async def post_merch_purchase(request: Request, response: Response, merchid: str
     company_balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, -1000) if company_balance == 0 else None
 
-    if merch["buy_price"] > balance:
+    if merch.buy_price > balance:
         response.status_code = 402
         return {"error": ml.tr(request, "insufficient_balance", force_lang = au["language"])}
 
     ts = int(time.time())
-    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {merch['buy_price']} WHERE userid = {opuserid}")
-    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance + {merch['buy_price']} WHERE userid = {-1000}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_merch(merchid, userid, buy_price, sell_price, purchase_timestamp) VALUES ('{merchid}', {foruser}, {merch['buy_price']}, {merch['sell_price']}, {ts})")
+    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {merch.buy_price} WHERE userid = {opuserid}")
+    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance + {merch.buy_price} WHERE userid = {-1000}")
+    await app.db.execute(dhrid, f"INSERT INTO economy_merch(merchid, userid, buy_price, sell_price, purchase_timestamp) VALUES ('{merchid}', {foruser}, {merch.buy_price}, {merch.sell_price}, {ts})")
     await app.db.commit(dhrid)
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     itemid = (await app.db.fetchone(dhrid))[0]
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1000, {merch['buy_price']}, 'm{itemid}-purchase', 'for-user-{foruser}', {round(balance - merch['buy_price'])}, {int(company_balance + merch['buy_price'])}, {ts})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1000, {merch.buy_price}, 'm{itemid}-purchase', 'for-user-{foruser}', {round(balance - merch.buy_price)}, {int(company_balance + merch.buy_price)}, {ts})")
     await app.db.commit(dhrid)
 
-    return {"itemid": itemid, "cost": merch['buy_price'], "balance": round(balance - merch['buy_price'])}
+    return {"itemid": itemid, "cost": merch.buy_price, "balance": round(balance - merch.buy_price)}
 
 async def post_merch_transfer(request: Request, response: Response, itemid: int, authorization: str | None = Header(None)):
     '''Transfer a merch (ownership).
@@ -211,7 +212,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
     JSON: `{"owner": Optional[str], "message": Optional[str]}`
 
     `owner` can be `self` | `user-{userid}`'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/merch/transfer', 60, 30)
     if rl[0]:
@@ -219,7 +220,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -298,7 +299,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
 
     merch = ml.ctr(request, "unknown") + " (" + merchid + ")"
     if merchid in app.merch:
-        merch = app.merch[merchid]["name"]
+        merch = app.merch[merchid].name
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": "1x " + ml.tr(request, "merch", force_lang = from_user_language).title(), "name": merch, "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
     await notification(request, "economy", to_user["uid"], ml.tr(request, "economy_received_transaction_item", var = {"type": "1x " + ml.tr(request, "merch", force_lang = from_user_language).title(), "name": merch, "from_user": from_user["name"], "from_userid": from_user["userid"] if from_user["userid"] is not None else "N/A", "message": to_message}, force_lang = to_user_language))
@@ -307,7 +308,7 @@ async def post_merch_transfer(request: Request, response: Response, itemid: int,
 
 async def post_merch_sell(request: Request, response: Response, itemid: int, authorization: str | None = Header(None)):
     '''Sell a merch, returns `refund`, `balance`.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/merch/sell', 60, 30)
     if rl[0]:
@@ -315,7 +316,7 @@ async def post_merch_sell(request: Request, response: Response, itemid: int, aut
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:

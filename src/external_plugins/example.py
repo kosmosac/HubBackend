@@ -15,15 +15,15 @@ from src.functions import *
 
 async def get_index(request: Request, authorization: str | None = Header(None)):
     '''Rework original get_index and add `message` to response'''
-    app = request.app
+    app: DHApp = request.app
     if authorization is not None:
         dhrid = request.state.dhrid
-        await app.db.new_conn(dhrid, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, db_name = app.config.database_schema)
         au = await auth(authorization, request, check_member = False, allow_application_token = True)
         if not au["error"]:
             await ActivityUpdate(request, au["uid"], "index")
     year = datetime.now(timezone.utc).strftime("%Y")
-    return {"name": app.config.name, "abbr": app.config.abbr, "language": app.config.language, "version": app.version, "message": app.state.message, "copyright": f"Copyright (C) {year} CharlesWithC"}
+    return {"name": app.config.org_name, "abbr": app.config.unique_id, "language": app.config.language, "version": app.version, "message": app.state.message, "copyright": f"Copyright (C) {year} CharlesWithC"}
 
 async def get_external(request: Request):
     '''New route responding with `app.state.message`'''

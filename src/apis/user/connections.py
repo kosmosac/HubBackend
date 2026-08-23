@@ -13,7 +13,7 @@ from src.functions.discord import DiscordAuth
 
 async def post_resend_confirmation(request: Request, response: Response, authorization: str | None = Header(None)):
     """Resends confirmation email"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /user/resend-confirmation', 60, 1)
     if rl[0]:
@@ -21,7 +21,7 @@ async def post_resend_confirmation(request: Request, response: Response, authori
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:
@@ -49,7 +49,7 @@ async def post_resend_confirmation(request: Request, response: Response, authori
     await app.db.execute(dhrid, f"INSERT INTO email_confirmation VALUES ({uid}, '{secret}', 'register/{email}', {expire})")
     await app.db.commit(dhrid)
 
-    link = app.config.frontend_urls.email_confirm.replace("{secret}", secret)
+    link = str(app.config.frontend_urls.email_confirm).replace("{secret}", secret)
     await app.db.extend_conn(dhrid, 15)
     ok = (await sendEmail(app, au["name"], email, "register", link))
     await app.db.extend_conn(dhrid, 2)
@@ -65,7 +65,7 @@ async def patch_email(request: Request, response: Response, authorization: str |
     """Updates email for the authorized user, returns 204
 
     JSON: `{"email": str}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/email', 60, 1)
     if rl[0]:
@@ -73,7 +73,7 @@ async def patch_email(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:
@@ -105,7 +105,7 @@ async def patch_email(request: Request, response: Response, authorization: str |
     await app.db.execute(dhrid, f"INSERT INTO email_confirmation VALUES ({uid}, '{secret}', 'update-email/{new_email}', {int(time.time() + 3600)})")
     await app.db.commit(dhrid)
 
-    link = app.config.frontend_urls.email_confirm.replace("{secret}", secret)
+    link = str(app.config.frontend_urls.email_confirm).replace("{secret}", secret)
     await app.db.extend_conn(dhrid, 15)
     ok = (await sendEmail(app, au["name"], new_email, "update_email", link))
     await app.db.extend_conn(dhrid, 2)
@@ -121,7 +121,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
     """Updates Discord account connection for the authorized user, returns 204
 
     JSON: `{"code": str}`"""
-    app = request.app
+    app: DHApp = request.app
     if code is None and error_description is None or callback_url is None:
         response.status_code = 400
         return {"error": ml.tr(request, "invalid_params")}
@@ -137,7 +137,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:
@@ -147,7 +147,7 @@ async def patch_discord(request: Request, response: Response, authorization: str
     uid = au["uid"]
 
     try:
-        discord_auth = DiscordAuth(app.config.discord_client_id, app.config.discord_client_secret, callback_url)
+        discord_auth = DiscordAuth(app.config.discord_integration.client_id, app.config.discord_integration.client_secret, callback_url)
         tokens = await discord_auth.get_tokens(code)
         if "access_token" in tokens:
             await app.db.extend_conn(dhrid, 30)
@@ -188,12 +188,12 @@ async def patch_discord(request: Request, response: Response, authorization: str
 
             await app.db.execute(dhrid, f"SELECT email FROM user WHERE uid = {uid}")
             t = await app.db.fetchall(dhrid)
-            if t[0][0] is None or "@" not in t[0][0] or app.config.sync_discord_email:
+            if t[0][0] is None or "@" not in t[0][0] or app.config.discord_integration.sync_discord_email:
                 await app.db.execute(dhrid, f"UPDATE user SET email = {email} WHERE uid = {uid}")
                 await app.db.commit(dhrid)
                 app.redis.hset(f"uinfo:{uid}", mapping = {"email": email if "@" in email else ""}) # use "" when email is invalid
             # when user already has an email, and the config is set to not sync the latest discord email, then use user's old email for further operations
-            if t[0][0] is not None and "@" in t[0][0] and not app.config.sync_discord_email:
+            if t[0][0] is not None and "@" in t[0][0] and not app.config.discord_integration.sync_discord_email:
                 email = "'" + convertQuotation(t[0][0]) + "'"
 
             await DeleteRoleConnection(request, au["discordid"])
@@ -238,7 +238,7 @@ async def patch_steam(request: Request, response: Response, authorization: str |
     """Updates Steam account connection for the authorized user, returns 204
 
     JSON: `{"callback": str}`"""
-    app = request.app
+    app: DHApp = request.app
     data = str(request.query_params).replace("openid.mode=id_res", "openid.mode=check_authentication")
     if data == "":
         response.status_code = 400
@@ -251,7 +251,7 @@ async def patch_steam(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:
@@ -356,7 +356,7 @@ async def patch_truckersmp(request: Request, response: Response, authorization: 
     """Updates TruckersMP account connection for the authorized user, returns 204
 
     JSON: `{"truckersmpid": int}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/truckersmp', 60, 3)
     if rl[0]:
@@ -364,7 +364,7 @@ async def patch_truckersmp(request: Request, response: Response, authorization: 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:

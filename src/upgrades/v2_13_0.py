@@ -1335,10 +1335,10 @@ def validateConfig(cfg):
         if "type" not in tracker or "company_id" not in tracker or "api_token" not in tracker or "webhook_secret" not in tracker:
             continue
         if "ip_whitelist" not in tracker:
-            tracker["ip_whitelist"] = []
-        if tracker["type"] not in ["tracksim", "trucky", "custom", "unitracker"]:
+            tracker.ip_whitelist = []
+        if tracker.type not in ["tracksim", "trucky", "custom", "unitracker"]:
             continue
-        if tracker["ip_whitelist"] is not None and type(tracker["ip_whitelist"]) != list:
+        if tracker.ip_whitelist is not None and type(tracker.ip_whitelist) != list:
             continue
         try:
             tracker["company_id"] = int(tracker["company_id"])

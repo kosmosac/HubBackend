@@ -42,12 +42,12 @@ async def DetectConfigChanges(app):
                 try:
                     app.config = load_config(app.config_path)
                 except ValidationError as e:
-                    logger.warning(f"[{app.config.abbr}] [PID: {os.getpid()}] Detected modified config, but it is invalid: {str(e)}")
+                    logger.warning(f"[{app.config.unique_id}] [PID: {os.getpid()}] Detected modified config, but it is invalid: {str(e)}")
                     ignore_modify = last_modified
                     continue
 
                 app.config_last_modified = last_modified
-                logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Detected modified config and successfully reloaded config.")
+                logger.info(f"[{app.config.unique_id}] [PID: {os.getpid()}] Detected modified config and successfully reloaded config.")
                 app = static.load(app)
 
         except:
@@ -66,7 +66,7 @@ async def ClearOutdatedData(app):
         dhrid = genrid()
         try:
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, f"DELETE FROM banned WHERE expire_timestamp < {int(time.time())}")
             await app.db.commit(dhrid)
@@ -141,14 +141,14 @@ async def RefreshDiscordAccessToken(app):
                     return
 
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, f"SELECT discordid, callback_url, refresh_token FROM discord_access_token WHERE expire_timestamp <= {int(time.time() + 3600)}")
             t = await app.db.fetchall(dhrid)
             for tt in t:
                 (discordid, callback_url, refresh_token) = (tt[0], tt[1], tt[2])
                 await app.db.extend_conn(dhrid, 30)
-                discord_auth = DiscordAuth(app.config.discord_client_id, app.config.discord_client_secret, callback_url)
+                discord_auth = DiscordAuth(app.config.discord_integration.client_id, app.config.discord_integration.client_secret, callback_url)
                 tokens = await discord_auth.refresh_token(refresh_token)
                 await app.db.extend_conn(dhrid, 2)
                 await app.db.execute(dhrid, f"DELETE FROM discord_access_token WHERE discordid = {discordid}")
@@ -193,7 +193,7 @@ async def UpdateDlogStats(app):
                     return
                 continue
 
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
 
             await app.db.execute(dhrid, "SELECT sval FROM settings WHERE skey = 'dlog_stats_up_to'")
             t = await app.db.fetchall(dhrid)
@@ -416,7 +416,7 @@ async def SendDailyBonusNotification(app):
                 continue
 
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
 
             uid2userid = {}
             await app.db.execute(dhrid, "SELECT uid, userid FROM user WHERE userid >= 0")

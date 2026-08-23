@@ -7,6 +7,7 @@ import time
 from fastapi import Header, Request, Response
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 
 async def GetTruckInfo(request, vehicleid):
@@ -25,10 +26,10 @@ async def GetTruckInfo(request, vehicleid):
     if tt[1] in app.trucks:
         (truck["brand"], truck["model"]) = (app.trucks[tt[1]]["brand"], app.trucks[tt[1]]["model"])
 
-    return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
+    return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.plugin_economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
 
 async def get_all_trucks(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/trucks', 60, 30)
     if rl[0]:
@@ -36,7 +37,7 @@ async def get_all_trucks(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -44,7 +45,7 @@ async def get_all_trucks(request: Request, response: Response, authorization: st
         del au["code"]
         return au
 
-    return app.config.economy.trucks
+    return app.config.plugin_economy.trucks
 
 async def get_truck_list(request: Request, response: Response, authorization: str | None = Header(None), \
         page: int | None = 1, page_size: int | None = 10, after_vehicleid: int | None = None, \
@@ -56,7 +57,7 @@ async def get_truck_list(request: Request, response: Response, authorization: st
         min_damage: float | None = None, max_damage: float | None = None,
         order_by: str | None = "odometer", order: str | None = "desc"):
     '''Get a list of trucks.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/trucks/list', 60, 60)
     if rl[0]:
@@ -64,7 +65,7 @@ async def get_truck_list(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -148,14 +149,14 @@ async def get_truck_list(request: Request, response: Response, authorization: st
     for tt in t:
         truck = {"id": tt[1], "brand": None, "model": None}
         if tt[1] in app.trucks:
-            (truck["brand"], truck["model"]) = (app.trucks[tt[1]]["brand"], app.trucks[tt[1]]["model"])
-        ret.append({"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price),"purchase_timestamp": tt[8], "status": STATUS[tt[9]]})
+            (truck["brand"], truck["model"]) = (app.trucks[tt[1]].brand, app.trucks[tt[1]].model)
+        ret.append({"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.plugin_economy.unit_service_price),"purchase_timestamp": tt[8], "status": STATUS[tt[9]]})
 
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_truck(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Get info of a specific truck'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/trucks/vehicleid', 60, 60)
     if rl[0]:
@@ -163,7 +164,7 @@ async def get_truck(request: Request, response: Response, vehicleid: int, author
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -184,15 +185,15 @@ async def get_truck(request: Request, response: Response, vehicleid: int, author
 
     truck = {"id": tt[1], "brand": None, "model": None}
     if tt[1] in app.trucks:
-        (truck["brand"], truck["model"]) = (app.trucks[tt[1]]["brand"], app.trucks[tt[1]]["model"])
+        (truck["brand"], truck["model"]) = (app.trucks[tt[1]].brand, app.trucks[tt[1]].model)
 
-    return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
+    return {"vehicleid": tt[0], "truck": truck, "garageid": tt[2], "slotid": tt[3], "owner": await GetUserInfo(request, userid = tt[4]), "assignee": await GetUserInfo(request, userid = tt[12]), "price": tt[5], "income": tt[10], "service": tt[11], "odometer": tt[6], "damage": tt[7], "repair_cost": round(tt[7] * 100 * app.config.plugin_economy.unit_service_price), "purchase_timestamp": tt[8], "status": STATUS[tt[9]]}
 
 async def get_truck_operation_history(request: Request, response: Response, vehicleid: int, operation: str, authorization: str | None = Header(None), page: int | None = 1, page_size: int | None = 10, after_txid: int | None = None, after: int | None = None, before: int | None = None, order: str | None = "desc"):
     '''Get the transaction history of a specific truck.
 
     `order_by` is `timestamp`.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/trucks/operation/history', 60, 60)
     if rl[0]:
@@ -200,7 +201,7 @@ async def get_truck_operation_history(request: Request, response: Response, vehi
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -321,7 +322,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
     `assignee` is only required when `owner = company`
 
     [NOTE] If the owner / assignee already has a truck of the same model, the purchased truck will be deactivated to prevent conflict on job submission.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/purchase', 60, 30)
     if rl[0]:
@@ -329,7 +330,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -362,7 +363,7 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
     permok = checkPerm(app, au["roles"], ["administrator", "manage_economy", "manage_economy_truck"])
 
     # check access
-    if not app.config.economy.allow_purchase_truck and not permok:
+    if not app.config.plugin_economy.allow_truck_purchase and not permok:
         response.status_code = 403
         return {"error": ml.tr(request, "purchase_forbidden", var = {"item": ml.tr(request, "economy_truck", force_lang = au["language"])}, force_lang = au["language"])}
     if owner == "company" and not permok:
@@ -435,22 +436,22 @@ async def post_truck_purchase(request: Request, response: Response, truckid: str
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, opuserid) if balance == 0 else None
 
-    if truck["price"] > balance:
+    if truck.price > balance:
         response.status_code = 402
         return {"error": ml.tr(request, "insufficient_balance", force_lang = au["language"])}
 
-    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {truck['price']} WHERE userid = {opuserid}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_truck(truckid, garageid, slotid, userid, assigneeid, price, income, service_cost, odometer, damage, purchase_timestamp, status) VALUES ('{truckid}', '{garageid}', {slotid}, {foruser}, {assigneeid}, {truck['price']}, 0, 0, 0, 0, {int(time.time())}, {status})")
+    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {truck.price} WHERE userid = {opuserid}")
+    await app.db.execute(dhrid, f"INSERT INTO economy_truck(truckid, garageid, slotid, userid, assigneeid, price, income, service_cost, odometer, damage, purchase_timestamp, status) VALUES ('{truckid}', '{garageid}', {slotid}, {foruser}, {assigneeid}, {truck.price}, 0, 0, 0, 0, {int(time.time())}, {status})")
     await app.db.commit(dhrid)
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     vehicleid = (await app.db.fetchone(dhrid))[0]
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1001, {truck['price']}, 't{vehicleid}-purchase', 'for-user-{foruser}', {round(balance - truck['price'])}, NULL, {int(time.time())})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1001, {truck.price}, 't{vehicleid}-purchase', 'for-user-{foruser}', {round(balance - truck.price)}, NULL, {int(time.time())})")
     await app.db.commit(dhrid)
 
     username = (await GetUserInfo(request, userid = foruser, is_internal_function = True))["name"]
-    await AuditLog(request, au["uid"], "economy", ml.ctr(request, "purchased_truck", var = {"name": truck["brand"] + " " + truck["model"], "id": truckid, "username": username, "userid": foruser}))
+    await AuditLog(request, au["uid"], "economy", ml.ctr(request, "purchased_truck", var = {"name": truck.brand + " " + truck.model, "id": truckid, "username": username, "userid": foruser}))
 
-    return {"vehicleid": vehicleid, "cost": truck["price"], "balance": round(balance - truck["price"])}
+    return {"vehicleid": vehicleid, "cost": truck.price, "balance": round(balance - truck.price)}
 
 async def post_truck_transfer(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Transfer / Reassign a truck, returns 204.
@@ -462,7 +463,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
     `assignee` is only required when `owner = company`
 
     [NOTE] If the new owner / assignee already has a truck of the same model, the transferred truck will be deactivated to prevent conflict on job submission.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/transfer', 60, 30)
     if rl[0]:
@@ -470,7 +471,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -610,7 +611,7 @@ async def post_truck_transfer(request: Request, response: Response, vehicleid: i
 
     truck = ml.ctr(request, "unknown") + " (" + truckid + ")"
     if truckid in app.trucks:
-        truck = app.trucks[truckid]["brand"] + " " + app.trucks[truckid]["model"]
+        truck = app.trucks[truckid].brand + " " + app.trucks[truckid].model
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": ml.tr(request, "truck", force_lang = from_user_language).title(), "name": f"#{vehicleid} ({truck})", "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
     await notification(request, "economy", to_user["uid"], ml.tr(request, "economy_received_transaction_item", var = {"type": ml.tr(request, "truck", force_lang = from_user_language).title(), "name": f"#{vehicleid} ({truck})", "from_user": from_user["name"], "from_userid": from_user["userid"] if from_user["userid"] is not None else "N/A", "message": to_message}, force_lang = to_user_language))
@@ -621,7 +622,7 @@ async def post_truck_relocate(request: Request, response: Response, vehicleid: i
     '''Transfer / Reassign a truck, returns 204.
 
     JSON: `{"slotid": int"}`'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/relocate', 60, 30)
     if rl[0]:
@@ -629,7 +630,7 @@ async def post_truck_relocate(request: Request, response: Response, vehicleid: i
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -687,7 +688,7 @@ async def post_truck_relocate(request: Request, response: Response, vehicleid: i
 
     garage = ml.ctr(request, "unknown_garage")
     if garage in app.garages:
-        garage = app.garages[garage]["name"]
+        garage = app.garages[garage].name
 
     await AuditLog(request, au["uid"], "economy", ml.ctr(request, "relocated_truck", var = {"id": vehicleid, "garage": garage, "garageid": garageid, "slotid": slotid}))
 
@@ -697,7 +698,7 @@ async def post_truck_activate(request: Request, response: Response, vehicleid: i
     '''Activate a truck, returns 204.
 
     [NOTE] If the owner / assignee has multiple trucks of the same model, other trucks of the same model will be deactivated.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/activate', 60, 30)
     if rl[0]:
@@ -705,7 +706,7 @@ async def post_truck_activate(request: Request, response: Response, vehicleid: i
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -760,7 +761,7 @@ async def post_truck_deactivate(request: Request, response: Response, vehicleid:
     '''Deactivate a truck, returns 204.
 
     [NOTE] If there's no status truck of a model, new jobs of that model will be charged a rental cost.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/deactivate', 60, 30)
     if rl[0]:
@@ -768,7 +769,7 @@ async def post_truck_deactivate(request: Request, response: Response, vehicleid:
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -807,8 +808,8 @@ async def post_truck_deactivate(request: Request, response: Response, vehicleid:
 async def post_truck_repair(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Repair a truck, returns `cost`, `balance`.
 
-    [NOTE] If the truck's damage > app.config.economy.max_wear_before_service, new jobs will be charged a rental cost. Once the issue is noticed, status state of the truck will be modified to -1. If the truck's state is -1 and a repair is performed, it will be reactivated automatically if there's no other status trucks.'''
-    app = request.app
+    [NOTE] If the truck's damage > app.config.plugin_economy.max_wear_before_service, new jobs will be charged a rental cost. Once the issue is noticed, status state of the truck will be modified to -1. If the truck's state is -1 and a repair is performed, it will be reactivated automatically if there's no other status trucks.'''
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/repair', 60, 30)
     if rl[0]:
@@ -816,7 +817,7 @@ async def post_truck_repair(request: Request, response: Response, vehicleid: int
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -856,7 +857,7 @@ async def post_truck_repair(request: Request, response: Response, vehicleid: int
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, userid) if balance == 0 else None
 
-    cost = round(damage * 100 * app.config.economy.unit_service_price)
+    cost = round(damage * 100 * app.config.plugin_economy.unit_service_price)
     if cost > balance:
         response.status_code = 402
         return {"error": ml.tr(request, "insufficient_balance", force_lang = au["language"])}
@@ -892,8 +893,8 @@ async def post_truck_repair(request: Request, response: Response, vehicleid: int
 async def post_truck_sell(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Sell a truck, returns `refund`, `balance`.
 
-    [Note] refund = price * (1 - damage) * app.config.economy.truck_refund (ratio)'''
-    app = request.app
+    [Note] refund = price * (1 - damage) * app.config.plugin_economy.truck_refund (ratio)'''
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/sell', 60, 30)
     if rl[0]:
@@ -901,7 +902,7 @@ async def post_truck_sell(request: Request, response: Response, vehicleid: int, 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -920,7 +921,7 @@ async def post_truck_sell(request: Request, response: Response, vehicleid: int, 
     odometer = t[0][1]
     damage = t[0][2]
     price = t[0][3]
-    refund = round(price * (1 - damage) * app.config.economy.truck_refund)
+    refund = round(price * (1 - damage) * app.config.plugin_economy.truck_refund_pct)
 
     if current_owner in [-1001, -1005]:
         response.status_code = 403
@@ -942,7 +943,7 @@ async def post_truck_sell(request: Request, response: Response, vehicleid: int, 
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, current_owner) if balance == 0 else None
     await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance + {refund} WHERE userid = {current_owner}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1001, {current_owner}, {refund}, 't{vehicleid}-sell', 'damage-{damage}/odometer-{odometer}/refund-{app.config.economy.truck_refund}', NULL, {round(balance + refund)}, {int(time.time())})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1001, {current_owner}, {refund}, 't{vehicleid}-sell', 'damage-{damage}/odometer-{odometer}/refund-{app.config.plugin_economy.truck_refund_pct}', NULL, {round(balance + refund)}, {int(time.time())})")
     await app.db.commit(dhrid)
 
     return {"refund": refund, "balance": round(balance + refund)}
@@ -950,8 +951,8 @@ async def post_truck_sell(request: Request, response: Response, vehicleid: int, 
 async def post_truck_scrap(request: Request, response: Response, vehicleid: int, authorization: str | None = Header(None)):
     '''Scrap a truck, returns `refund`, `balance`.
 
-    [Note] refund = price * app.config.economy.scrap_refund (ratio)'''
-    app = request.app
+    [Note] refund = price * app.config.plugin_economy.scrap_refund (ratio)'''
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/trucks/scrap', 60, 30)
     if rl[0]:
@@ -959,7 +960,7 @@ async def post_truck_scrap(request: Request, response: Response, vehicleid: int,
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -978,7 +979,7 @@ async def post_truck_scrap(request: Request, response: Response, vehicleid: int,
     odometer = t[0][1]
     damage = t[0][2]
     price = t[0][3]
-    refund = round(price * app.config.economy.scrap_refund)
+    refund = round(price * app.config.plugin_economy.scrap_refund_pct)
 
     if current_owner in [-1001, -1005]:
         response.status_code = 403
@@ -994,7 +995,7 @@ async def post_truck_scrap(request: Request, response: Response, vehicleid: int,
             response.status_code = 403
             return {"error": ml.tr(request, "modify_forbidden", var = {"item": ml.tr(request, "economy_truck", force_lang = au["language"])}, force_lang = au["language"])}
 
-    if odometer < 0.9 * app.config.economy.max_distance_before_scrap:
+    if odometer < 0.9 * app.config.plugin_economy.max_distance_before_scrap:
         response.status_code = 428
         return {"error": ml.tr(request, "truck_scrap_unncessary", force_lang = au["language"])}
 
@@ -1004,7 +1005,7 @@ async def post_truck_scrap(request: Request, response: Response, vehicleid: int,
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, current_owner) if balance == 0 else None
     await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance + {refund} WHERE userid = {current_owner}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1005, {current_owner}, {refund}, 't{vehicleid}-scrap', 'damage-{damage}/odometer-{odometer}/refund-{app.config.economy.truck_refund}', NULL, {round(balance + refund)}, {int(time.time())})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1005, {current_owner}, {refund}, 't{vehicleid}-scrap', 'damage-{damage}/odometer-{odometer}/refund-{app.config.plugin_economy.scrap_refund_pct}', NULL, {round(balance + refund)}, {int(time.time())})")
     await app.db.commit(dhrid)
 
     return {"refund": refund, "balance": round(balance + refund)}

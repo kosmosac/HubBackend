@@ -23,7 +23,7 @@ LANGUAGES = sorted(list(LANG_DATAS)) # must be valid language file
 
 def get_lang(request: Request | None):
     if request is None:
-        return request.app.config.language
+        return "en"
     lang = request.headers.get('Accept-Language', 'en').lower()
     lang = lang.split(',')[0]
     lang = lang.split(';')[0]
@@ -77,7 +77,7 @@ def hspl(request: Request, data, force_lang: str | None = ""):
         return translate(request, data["key"], data["var"], force_lang)
 
 def company_translate(request: Request, key: str, var: dict | None = {}, force_lang: str | None = ""):
-    lang = request.app.config.language if force_lang == "" else force_lang
+    lang = request.app.config_old.language if force_lang == "" else force_lang
     if lang not in LANGUAGES:
         lang = "en"
 

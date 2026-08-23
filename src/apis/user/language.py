@@ -10,7 +10,7 @@ from src.functions import *
 
 async def get_language(request: Request, response: Response, authorization: str | None = Header(None)):
     """Returns the language of the authorized user"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /user/language', 60, 60)
     if rl[0]:
@@ -18,7 +18,7 @@ async def get_language(request: Request, response: Response, authorization: str 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:
@@ -33,7 +33,7 @@ async def patch_language(request: Request, response: Response, authorization: st
     """Updates the language of the authorized user, returns 204
 
     JSON: `{"language": str}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/language', 60, 60)
     if rl[0]:
@@ -41,7 +41,7 @@ async def patch_language(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, check_member = False)
     if au["error"]:

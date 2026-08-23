@@ -10,7 +10,7 @@ from src.functions import *
 
 async def patch_password(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the password of the authorized user, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /user/password', 60, 10)
     if rl[0]:
@@ -18,7 +18,7 @@ async def patch_password(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:
@@ -88,7 +88,7 @@ async def patch_password(request: Request, response: Response, authorization: st
 
 async def post_password_disable(request: Request, response: Response, authorization: str | None = Header(None)):
     """Disables password login for the authorized user, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /user/password/disable', 60, 10)
     if rl[0]:
@@ -96,7 +96,7 @@ async def post_password_disable(request: Request, response: Response, authorizat
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, check_member = False)
     if au["error"]:

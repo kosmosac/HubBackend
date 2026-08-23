@@ -47,6 +47,7 @@ from fastapi import Header, Request, Response
 
 import src.multilang as ml
 from src.api import tracebackHandler
+from src.app import DHApp
 from src.functions import *
 
 
@@ -72,7 +73,7 @@ async def TaskReminderNotification(app):
                 continue
 
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
             await app.db.extend_conn(dhrid, 5)
 
             notified_task = []
@@ -164,7 +165,7 @@ async def RecurringTaskHandler(app):
                 continue
 
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
             await app.db.extend_conn(dhrid, 5)
 
             await app.db.execute(dhrid, f"SELECT userid, taskid, title, due_timestamp, assign_mode, assign_to, recurring FROM task WHERE recurring > 0 AND due_timestamp <= {int(time.time())} AND taskid >= 0")
@@ -221,7 +222,7 @@ async def get_task_list(request: Request, response: Response, authorization: str
                         min_bonus: int | None = None, max_bonus: int | None = None, \
                         assign_mode: int | None = None, assign_to_userid: int | None = None,\
                         assign_to_roleid: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /tasks/list', 60, 60)
     if rl[0]:
@@ -229,7 +230,7 @@ async def get_task_list(request: Request, response: Response, authorization: str
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -339,7 +340,7 @@ async def get_task_list(request: Request, response: Response, authorization: str
     return {"list": ret, "total_items": tot, "total_pages": math.ceil(tot/page_size)}
 
 async def get_task(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /tasks', 60, 60)
     if rl[0]:
@@ -347,7 +348,7 @@ async def get_task(request: Request, response: Response, taskid: int, authorizat
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -375,7 +376,7 @@ async def get_task(request: Request, response: Response, taskid: int, authorizat
     return {"taskid": taskid, "title": title, "description": description, "priority": priority, "bonus": bonus, "due_timestamp": due_timestamp, "remind_timestamp": remind_timestamp, "recurring": recurring, "assign_mode": assign_mode, "assign_to": assign_to, "mark_completed": bool(mark_completed), "mark_timestamp": mark_timestamp, "mark_note": mark_note, "confirm_completed": bool(confirm_completed), "confirm_timestamp": confirm_timestamp, "confirm_note": confirm_note, "creator": await GetUserInfo(request, userid = creator_userid)}
 
 async def post_task(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /tasks', 60, 30)
     if rl[0]:
@@ -383,7 +384,7 @@ async def post_task(request: Request, response: Response, authorization: str | N
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -471,7 +472,7 @@ async def post_task(request: Request, response: Response, authorization: str | N
     return {"taskid": taskid}
 
 async def patch_task(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /tasks', 60, 30)
     if rl[0]:
@@ -479,7 +480,7 @@ async def patch_task(request: Request, response: Response, taskid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -578,7 +579,7 @@ async def patch_task(request: Request, response: Response, taskid: int, authoriz
     return Response(status_code = 204)
 
 async def delete_task(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /tasks', 60, 30)
     if rl[0]:
@@ -586,7 +587,7 @@ async def delete_task(request: Request, response: Response, taskid: int, authori
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -613,7 +614,7 @@ async def delete_task(request: Request, response: Response, taskid: int, authori
     return Response(status_code=204)
 
 async def put_task_complete_mark(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PUT /tasks/complete/mark', 60, 30)
     if rl[0]:
@@ -621,7 +622,7 @@ async def put_task_complete_mark(request: Request, response: Response, taskid: i
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -671,7 +672,7 @@ async def put_task_complete_mark(request: Request, response: Response, taskid: i
     return Response(status_code=204)
 
 async def delete_task_complete_mark(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /tasks/complete/mark', 60, 30)
     if rl[0]:
@@ -679,7 +680,7 @@ async def delete_task_complete_mark(request: Request, response: Response, taskid
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -729,7 +730,7 @@ async def delete_task_complete_mark(request: Request, response: Response, taskid
     return Response(status_code=204)
 
 async def post_task_complete_accept(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /tasks/complete/accept', 60, 30)
     if rl[0]:
@@ -737,7 +738,7 @@ async def post_task_complete_accept(request: Request, response: Response, taskid
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -826,7 +827,7 @@ async def post_task_complete_accept(request: Request, response: Response, taskid
 
 async def post_task_complete_reject(request: Request, response: Response, taskid: int, authorization: str | None = Header(None)):
     # NOTE: If task is already marked as completed, this will revert bonus point.
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /tasks/complete/reject', 60, 30)
     if rl[0]:
@@ -834,7 +835,7 @@ async def post_task_complete_reject(request: Request, response: Response, taskid
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:

@@ -24,7 +24,6 @@
     "reportArgumentType": "none",
     "reportGeneralTypeIssues": "none",
     "reportPossiblyUnboundVariable": "none",
-    "reportIndexIssue": "none",
     "reportOptionalOperand": "none",
     "reportOperatorIssue": "none",
     "reportOptionalIterable": "none",

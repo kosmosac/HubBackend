@@ -8,6 +8,7 @@ import time
 from fastapi import Header, Query, Request, Response
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 
 JOB_REQUIREMENTS = ["source_city_id", "source_company_id", "destination_city_id", "destination_company_id", "minimum_distance", "cargo_id", "minimum_cargo_mass", "maximum_cargo_damage", "maximum_speed", "maximum_fuel", "minimum_profit", "maximum_profit", "maximum_offence", "allow_overspeed", "allow_auto_park", "allow_auto_load", "must_not_be_late", "must_be_special", "minimum_average_speed", "maximum_average_speed", "minimum_average_fuel", "maximum_average_fuel", "minimum_seconds_spent", "maximum_seconds_spent", "maximum_distance", "minimum_detour_percentage", "maximum_detour_percentage", "minimum_adblue", "maximum_adblue", "minimum_fuel", "market", "game", "truck_id", "truck_plate_country_id", "minimum_truck_wheel", "maximum_truck_wheel", "maximum_cargo_mass", "minimum_cargo_damage", "minimum_offence", "minimum_xp", "maximum_xp", "minimum_train", "maximum_train", "minimum_ferry", "maximum_ferry", "minimum_teleport", "maximum_teleport", "minimum_tollgate", "maximum_tollgate", "minimum_toll_paid", "maximum_toll_paid", "minimum_collision", "maximum_collision", "minimum_warp", "maximum_warp", "enabled_realistic_settings"]
@@ -57,7 +58,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         minimum_required_distance: int | None = None, maximum_required_distance: int | None = None,\
         completed_by: int | None = None, must_have_completed: bool | None = False, \
         order: str | None = "desc", order_by: str | None = "reward_points"):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /challenges/list', 60, 120)
@@ -66,7 +67,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -200,7 +201,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
 #                     or if public_details = false
 
 async def get_challenge(request: Request, response: Response, challengeid: int, authorization: str | None = Header(None), completed_by: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /challenges', 60, 120)
     if rl[0]:
@@ -208,7 +209,7 @@ async def get_challenge(request: Request, response: Response, challengeid: int, 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -323,7 +324,7 @@ async def get_challenge(request: Request, response: Response, challengeid: int, 
 #   - float: maximum_average_fuel (L/100km)
 
 async def post_challenge(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /challenges', 60, 30)
     if rl[0]:
@@ -331,7 +332,7 @@ async def post_challenge(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_challenges"])
     if au["error"]:
@@ -446,20 +447,19 @@ async def post_challenge(request: Request, response: Response, authorization: st
 
     await AuditLog(request, au["uid"], "challenge", ml.ctr(request, "created_challenge", var = {"id": challengeid, "title": title}))
 
-    await notification_to_everyone(request, "new_challenge", ml.spl("new_challenge_with_title", var = {"title": title}),     discord_embed = {"title": title, "description": description, "fields": [{"name": ml.spl("start"), "value": f"<t:{start_time}:R>", "inline": True}, {"name": ml.spl("end"), "value": f"<t:{end_time}:R>", "inline": True}, {"name": ml.spl("reward_points"), "value": f"{reward_points}", "inline": True}], "footer": {"text": ml.spl("new_challenge"), "icon_url": app.config.logo_url}}, only_to_members=True)
+    await notification_to_everyone(request, "new_challenge", ml.spl("new_challenge_with_title", var = {"title": title}),     discord_embed = {"title": title, "description": description, "fields": [{"name": ml.spl("start"), "value": f"<t:{start_time}:R>", "inline": True}, {"name": ml.spl("end"), "value": f"<t:{end_time}:R>", "inline": True}, {"name": ml.spl("reward_points"), "value": f"{reward_points}", "inline": True}], "footer": {"text": ml.spl("new_challenge"), "icon_url": str(app.config.logo_url)}}, only_to_members=True)
 
     required_roles_list = []
     for roleid in str2list(required_roles):
         if roleid in app.roles:
-            required_roles_list.append(app.roles[roleid]["name"])
+            required_roles_list.append(app.roles[roleid].name)
         else:
             required_roles_list.append(f"#{roleid}")
     required_roles_txt = ", ".join(required_roles_list)
     def setvar(msg):
         return msg.replace("{mention}", f"<@{au['discordid']}>").replace("{name}", au['name']).replace("{userid}", str(au['userid'])).replace("{uid}", str(au['uid'])).replace("{avatar}", validateUrl(au['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{description}", description).replace("{start_timestamp}", str(start_time)).replace("{end_timestamp}", str(end_time)).replace("{delivery_count}", str(delivery_count)).replace("{required_roles}", required_roles_txt).replace("{required_distance}", str(required_distance)).replace("{reward_points}", str(reward_points))
 
-    for meta in app.config.challenge_forwarding:
-        meta = Dict2Obj(meta)
+    for meta in app.config.plugin_challenge.creation_forwards:
         if meta.webhook_url != "" or meta.channel_id != "":
             await AutoMessage(app, meta, setvar)
 
@@ -472,7 +472,7 @@ async def post_challenge(request: Request, response: Response, authorization: st
 # *Same as POST /challenge
 
 async def patch_challenge(request: Request, response: Response, challengeid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'PATCH /challenges', 60, 30)
@@ -481,7 +481,7 @@ async def patch_challenge(request: Request, response: Response, challengeid: int
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_challenges"])
     if au["error"]:
@@ -649,8 +649,7 @@ async def patch_challenge(request: Request, response: Response, challengeid: int
                     def setvar(msg):
                         return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                    for meta in app.config.challenge_completed_forwarding:
-                        meta = Dict2Obj(meta)
+                    for meta in app.config.plugin_challenge.completion_forwards:
                         if meta.webhook_url != "" or meta.channel_id != "":
                             await AutoMessage(app, meta, setvar)
 
@@ -709,8 +708,7 @@ async def patch_challenge(request: Request, response: Response, challengeid: int
                     def setvar(msg):
                         return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                    for meta in app.config.challenge_completed_forwarding:
-                        meta = Dict2Obj(meta)
+                    for meta in app.config.plugin_challenge.completion_forwards:
                         if meta.webhook_url != "" or meta.channel_id != "":
                             await AutoMessage(app, meta, setvar)
 
@@ -912,7 +910,7 @@ async def patch_challenge(request: Request, response: Response, challengeid: int
 # - integer: challengeid
 
 async def delete_challenge(request: Request, response: Response, challengeid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /challenges', 60, 30)
     if rl[0]:
@@ -920,7 +918,7 @@ async def delete_challenge(request: Request, response: Response, challengeid: in
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_challenges"])
     if au["error"]:
@@ -955,7 +953,7 @@ async def delete_challenge(request: Request, response: Response, challengeid: in
 # => manually accept a delivery as challenge
 
 async def put_delivery(request: Request, response: Response, challengeid: int, logid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'PUT /challenges/delivery', 60, 30)
@@ -964,7 +962,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_challenges"])
     if au["error"]:
@@ -1035,8 +1033,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
                 def setvar(msg):
                     return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                for meta in app.config.challenge_completed_forwarding:
-                    meta = Dict2Obj(meta)
+                for meta in app.config.plugin_challenge.completion_forwards:
                     if meta.webhook_url != "" or meta.channel_id != "":
                         await AutoMessage(app, meta, setvar)
 
@@ -1055,8 +1052,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
                 def setvar(msg):
                     return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                for meta in app.config.challenge_completed_forwarding:
-                    meta = Dict2Obj(meta)
+                for meta in app.config.plugin_challenge.completion_forwards:
                     if meta.webhook_url != "" or meta.channel_id != "":
                         await AutoMessage(app, meta, setvar)
 
@@ -1087,8 +1083,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
                     def setvar(msg):
                         return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                    for meta in app.config.challenge_completed_forwarding:
-                        meta = Dict2Obj(meta)
+                    for meta in app.config.plugin_challenge.completion_forwards:
                         if meta.webhook_url != "" or meta.channel_id != "":
                             await AutoMessage(app, meta, setvar)
 
@@ -1128,8 +1123,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
                     def setvar(msg):
                         return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                    for meta in app.config.challenge_completed_forwarding:
-                        meta = Dict2Obj(meta)
+                    for meta in app.config.plugin_challenge.completion_forwards:
                         if meta.webhook_url != "" or meta.channel_id != "":
                             await AutoMessage(app, meta, setvar)
 
@@ -1146,7 +1140,7 @@ async def put_delivery(request: Request, response: Response, challengeid: int, l
 # => denies a delivery as challenge
 
 async def delete_delivery(request: Request, response: Response, challengeid: int, logid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'DELETE /challenges/delivery', 60, 30)
@@ -1155,7 +1149,7 @@ async def delete_delivery(request: Request, response: Response, challengeid: int
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 3, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_challenges"])
     if au["error"]:

@@ -21,7 +21,8 @@ async def FetchDiscordMembers(app):
             return
         app.redis.set("multiprocess-pid", os.getpid())
 
-        accept_discord_roles = [str(x["discord_role_id"]) for x in app.config.roles if x["id"] in app.config.perms.driver and "discord_role_id" in x and isint(x["discord_role_id"])]
+        # TODO
+        accept_discord_roles = [str(x["discord_role_id"]) for x in app.config.user_roles if x["id"] in app.config.user_perms["driver"] and "discord_role_id" in x and isint(x["discord_role_id"])]
         if len(accept_discord_roles) == 0:
             await asyncio.sleep(3600)
             continue
@@ -29,7 +30,7 @@ async def FetchDiscordMembers(app):
         new_members = []
 
         while True:
-            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members?limit=1000&after={after}", headers = {"Authorization": f"Bot {app.config.discord_bot_token}"})
+            r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members?limit=1000&after={after}", headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}"})
             (_, status_code, d) = parse_discord_response(r)
             if status_code == 429:
                 await asyncio.sleep(d["retry_after"])
@@ -57,9 +58,9 @@ async def FetchDiscordMembers(app):
         await asyncio.sleep(600)
 
 async def get_discord_member(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
     au = await auth(authorization, request, required_permission = ["manage_profiles"])
     if au["error"]:
         response.status_code = au["code"]

@@ -12,10 +12,11 @@ from fastapi import Header, Request, Response
 
 import src.multilang as ml
 from src.api import tracebackHandler
+from src.app import DHApp
 from src.functions import *
 
 
-async def EventNotification(app):
+async def EventNotification(app: DHApp):
     await asyncio.sleep(35)
     rrnd = 0
     request = Request(scope={"type":"http", "app": app, "headers": [], "mocked": True})
@@ -37,7 +38,7 @@ async def EventNotification(app):
                 continue
 
             request.state.dhrid = dhrid
-            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.db_name)
+            await app.db.new_conn(dhrid, acquire_max_wait = 10, db_name = app.config.database_schema)
             await app.db.extend_conn(dhrid, 5)
 
             notified_event_company = []
@@ -75,9 +76,7 @@ async def EventNotification(app):
                     tonotify[dd[0]] = dd[1]
 
             try:
-                for meta in app.config.event_upcoming_forwarding:
-                    meta = Dict2Obj(meta)
-
+                for meta in app.config.plugin_event.upcoming_forwards:
                     if meta.webhook_url == "" and meta.channel_id == "":
                         continue
 
@@ -149,7 +148,7 @@ async def EventNotification(app):
                                     {"name": ml.tr(request, "distance", force_lang = language), "value": distance, "inline": True},
                                     {"name": ml.tr(request, "meetup_time", force_lang = language), "value": f"<t:{meetup_timestamp}:R>", "inline": True},
                                     {"name": ml.tr(request, "departure_time", force_lang = language), "value": f"<t:{departure_timestamp}:R>", "inline": True}],
-                                "footer": {"text": ml.tr(request, "event_notification", force_lang = language), "icon_url": app.config.logo_url},
+                                "footer": {"text": ml.tr(request, "event_notification", force_lang = language), "icon_url": str(app.config.logo_url)},
                                 "timestamp": datetime.fromtimestamp(meetup_timestamp, tz=timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]})
                             await notification(request, "upcoming_event", uid, ml.tr(request, "event_starting", var = {"eventid": tt[0], "title": title}, force_lang = language), force = True, no_discord_notification = True)
                     await app.db.extend_conn(dhrid, 2)
@@ -180,7 +179,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         departure_after: int | None = None, departure_before: int | None = None, \
         min_vote: int | None = None, max_vote: int | None = None, \
         min_attendee: int | None = None, max_attendee: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /events/list', 60, 120)
     if rl[0]:
@@ -188,7 +187,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     userid = -1
     if authorization is not None:
@@ -318,7 +317,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     return {"list": ret[:page_size], "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_event(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /events', 60, 120)
     if rl[0]:
@@ -326,7 +325,7 @@ async def get_event(request: Request, response: Response, eventid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     userid = -1
     aulanguage = ""
@@ -368,7 +367,7 @@ async def get_event(request: Request, response: Response, eventid: int, authoriz
     return {"eventid": tt[0], "title": tt[8], "link": decompress(tt[1]), "description": decompress(tt[7]), "creator": await GetUserInfo(request, userid = tt[16]), "departure": tt[2], "destination": tt[3], "distance": tt[4], "meetup_timestamp": tt[5], "departure_timestamp": tt[6], "points": tt[12], "is_private": TF[tt[11]], "orderid": tt[13], "is_pinned": TF[tt[14]], "timestamp": tt[15], "attendees": attendee_ret, "votes": vote_ret, "voted": voted}
 
 async def put_vote(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PUT /events/vote', 60, 30)
     if rl[0]:
@@ -376,7 +375,7 @@ async def put_vote(request: Request, response: Response, eventid: int, authoriza
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -402,7 +401,7 @@ async def put_vote(request: Request, response: Response, eventid: int, authoriza
         return Response(status_code=204)
 
 async def delete_vote(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /events/vote', 60, 30)
     if rl[0]:
@@ -410,7 +409,7 @@ async def delete_vote(request: Request, response: Response, eventid: int, author
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -436,7 +435,7 @@ async def delete_vote(request: Request, response: Response, eventid: int, author
         return {"error": ml.tr(request, "event_not_voted", force_lang = au["language"])}
 
 async def post_event(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /events', 60, 30)
     if rl[0]:
@@ -444,7 +443,7 @@ async def post_event(request: Request, response: Response, authorization: str | 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_events"])
     if au["error"]:
@@ -517,13 +516,12 @@ async def post_event(request: Request, response: Response, authorization: str | 
     await AuditLog(request, au["uid"], "event", ml.ctr(request, "created_event", var = {"id": eventid, "title": title}))
     await app.db.commit(dhrid)
 
-    await notification_to_everyone(request, "new_event", ml.spl("new_event_with_title", var = {"title": title}), discord_embed = {"title": title, "url": link, "description": description, "fields": [{"name": ml.spl("departure"), "value": departure, "inline": True}, {"name": ml.spl("destination"), "value": destination, "inline": True}, {"name": ml.spl("distance"), "value": distance, "inline": True}, {"name": ml.spl("meetup_time"), "value": f"<t:{meetup_timestamp}:R>", "inline": True}, {"name": ml.spl("departure_time"), "value": f"<t:{departure_timestamp}:R>", "inline": True}], "footer": {"text": ml.spl("new_event"), "icon_url": app.config.logo_url}}, only_to_members=is_private)
+    await notification_to_everyone(request, "new_event", ml.spl("new_event_with_title", var = {"title": title}), discord_embed = {"title": title, "url": link, "description": description, "fields": [{"name": ml.spl("departure"), "value": departure, "inline": True}, {"name": ml.spl("destination"), "value": destination, "inline": True}, {"name": ml.spl("distance"), "value": distance, "inline": True}, {"name": ml.spl("meetup_time"), "value": f"<t:{meetup_timestamp}:R>", "inline": True}, {"name": ml.spl("departure_time"), "value": f"<t:{departure_timestamp}:R>", "inline": True}], "footer": {"text": ml.spl("new_event"), "icon_url": str(app.config.logo_url)}}, only_to_members=is_private)
 
     def setvar(msg):
         return msg.replace("{mention}", f"<@{au['discordid']}>").replace("{name}", au['name']).replace("{userid}", str(au['userid'])).replace("{uid}", str(au['uid'])).replace("{avatar}", validateUrl(au['avatar'])).replace("{id}", str(eventid)).replace("{title}", title).replace("{description}", description).replace("{link}", validateUrl(link)).replace("{departure}", departure).replace("{destination}", destination).replace("{distance}", distance).replace("{meetup_timestamp}", str(meetup_timestamp)).replace("{departure_timestamp}", str(departure_timestamp))
 
-    for meta in app.config.event_forwarding:
-        meta = Dict2Obj(meta)
+    for meta in app.config.plugin_event.creation_forwards:
         if meta.is_private is not None and int(meta.is_private) != is_private:
             continue
         if meta.webhook_url != "" or meta.channel_id != "":
@@ -532,7 +530,7 @@ async def post_event(request: Request, response: Response, authorization: str | 
     return {"eventid": eventid}
 
 async def patch_event(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /events', 60, 30)
     if rl[0]:
@@ -540,7 +538,7 @@ async def patch_event(request: Request, response: Response, eventid: int, author
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_events"])
     if au["error"]:
@@ -619,7 +617,7 @@ async def patch_event(request: Request, response: Response, eventid: int, author
     return Response(status_code=204)
 
 async def delete_event(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /events', 60, 30)
     if rl[0]:
@@ -627,7 +625,7 @@ async def delete_event(request: Request, response: Response, eventid: int, autho
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_events"])
     if au["error"]:
@@ -649,7 +647,7 @@ async def delete_event(request: Request, response: Response, eventid: int, autho
     return Response(status_code=204)
 
 async def patch_attendees(request: Request, response: Response, eventid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /events/attendees', 60, 30)
     if rl[0]:
@@ -657,7 +655,7 @@ async def patch_attendees(request: Request, response: Response, eventid: int, au
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_events"])
     if au["error"]:

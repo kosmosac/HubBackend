@@ -9,12 +9,13 @@ from fastapi import Request, Response
 
 import src.multilang as ml
 from src.api import tracebackHandler
+from src.app import DHApp
 from src.functions import *
 from src.functions.discord import DiscordAuth
 
 
 async def get_callback(request: Request, response: Response, code: str | None = None, error_description: str | None = None, callback_url: str | None = None):
-    app = request.app
+    app: DHApp = request.app
     if code is None and error_description is None or callback_url is None:
         response.status_code = 400
         return {"error": ml.tr(request, "invalid_params")}
@@ -30,10 +31,10 @@ async def get_callback(request: Request, response: Response, code: str | None = 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     try:
-        discord_auth = DiscordAuth(app.config.discord_client_id, app.config.discord_client_secret, callback_url)
+        discord_auth = DiscordAuth(app.config.discord_integration.client_id, app.config.discord_integration.client_secret, callback_url)
         tokens = await discord_auth.get_tokens(code)
 
         if "access_token" in tokens:
@@ -72,9 +73,9 @@ async def get_callback(request: Request, response: Response, code: str | None = 
                     response.status_code = 404
                     return {"error": ml.tr(request, "user_not_found")}
 
-                if app.config.use_server_nickname:
+                if app.config.discord_integration.use_server_nickname:
                     try:
-                        r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}", headers={"Authorization": f"Bot {app.config.discord_bot_token}"}, dhrid = dhrid)
+                        r = await arequests.get(app, f"https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}", headers={"Authorization": f"Bot {app.config.discord_integration.bot_token}"}, dhrid = dhrid)
                         if r.status_code == 200:
                             d = r.json()
                             if d["nick"] is not None:
@@ -93,13 +94,13 @@ async def get_callback(request: Request, response: Response, code: str | None = 
             else:
                 uid = t[0][0]
                 mfa_secret = t[0][1]
-                if t[0][2] is None or "@" not in t[0][2] or app.config.sync_discord_email:
+                if t[0][2] is None or "@" not in t[0][2] or app.config.discord_integration.sync_discord_email:
                     await app.db.execute(dhrid, f"UPDATE user SET email = {email} WHERE uid = {uid}") # email should be pre-quoated
                     await app.db.commit(dhrid)
                     await GetUserInfo(request, uid = uid, nocache = True) # force update cache
 
                 # when user already has an email, and the config is set to not sync the latest discord email, then use user's old email for further operations
-                if t[0][2] is not None and "@" in t[0][2] and not app.config.sync_discord_email:
+                if t[0][2] is not None and "@" in t[0][2] and not app.config.discord_integration.sync_discord_email:
                     email = "'" + convertQuotation(t[0][2]) + "'"
 
             if mfa_secret != "":

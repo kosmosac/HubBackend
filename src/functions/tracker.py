@@ -17,59 +17,59 @@ from src.static import TRACKER
 
 
 async def add_driver(request, steamid, staff_uid, userid, username, trackers = ["tracksim", "trucky"]):
-    (app, dhrid) = (request.app, request.state.dhrid)
+    (dhrid, app) = (request.state.dhrid, request.app)
     all_errors = ""
-    for tracker in app.config.trackers:
+    for tracker in app.config.job_trackers:
         resp_error = ""
         plain_error = ""
         try:
-            if tracker["type"] not in trackers:
+            if tracker.type not in trackers:
                 continue
-            if tracker["type"] == "tracksim":
-                r = await arequests.post(app, "https://api.tracksim.app/v1/drivers/add", data = {"steam_id": str(steamid)}, headers = {"Authorization": "Api-Key " + tracker["api_token"]}, dhrid = dhrid)
-            elif tracker["type"] == "trucky":
+            if tracker.type == "tracksim":
+                r = await arequests.post(app, "https://api.tracksim.app/v1/drivers/add", data = {"steam_id": str(steamid)}, headers = {"Authorization": "Api-Key " + tracker.api_token}, dhrid = dhrid)
+            elif tracker.type == "trucky":
                 await app.db.execute(dhrid, f"SELECT name, email FROM user WHERE steamid = {steamid}")
                 t = await app.db.fetchall(dhrid)
                 email = t[0][1]
                 if email is None or "@" not in email:
                     email = gensecret(8) + "@example.com"
-                r = await arequests.post(app, "https://e.truckyapp.com/api/v1/drivershub/members", data = {"steam_id": str(steamid), "name": t[0][0], "email": email}, headers = {"X-ACCESS-TOKEN": tracker["api_token"]}, dhrid = dhrid)
-            if tracker["type"] == "tracksim":
+                r = await arequests.post(app, "https://e.truckyapp.com/api/v1/drivershub/members", data = {"steam_id": str(steamid), "name": t[0][0], "email": email}, headers = {"X-ACCESS-TOKEN": tracker.api_token}, dhrid = dhrid)
+            if tracker.type == "tracksim":
                 if r.status_code != 200:
                     try:
                         resp = r.json()
                         if resp.get("error") is not None:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['error']}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{resp['error']}`"
                             plain_error = resp['error']
                         elif resp.get("message") is not None:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['message']}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{resp['message']}`"
                             plain_error = resp['message']
                         elif resp.get("detail") is not None:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['detail']}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{resp['detail']}`"
                             plain_error = resp['detail']
                         else:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{ml.ctr(request, 'unknown_error')}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{ml.ctr(request, 'unknown_error')}`"
                             plain_error = ml.ctr(request, 'unknown_error')
                     except:
-                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{ml.ctr(request, 'unknown_error')}`"
+                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{ml.ctr(request, 'unknown_error')}`"
                         plain_error = ml.ctr(request, 'unknown_error')
-            elif tracker["type"] == "trucky":
+            elif tracker.type == "trucky":
                 try:
                     resp = r.json()
                     if not resp["success"]:
-                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `" + resp["message"] + "`"
+                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `" + resp["message"] + "`"
                         plain_error = resp["message"]
                 except:
-                    resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{ml.ctr(request, 'unknown_error')}`"
+                    resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{ml.ctr(request, 'unknown_error')}`"
                     plain_error = ml.ctr(request, 'unknown_error')
         except:
-            resp_error = f"{TRACKER[tracker['type']]} {ml.ctr(request, 'api_timeout')}"
+            resp_error = f"{TRACKER[tracker.type]} {ml.ctr(request, 'api_timeout')}"
             plain_error = ml.ctr(request, 'api_timeout')
 
         if resp_error != "":
-            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "failed_to_add_user_to_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker['type']], "error": resp_error}))
+            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "failed_to_add_user_to_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker.type], "error": resp_error}))
         else:
-            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "added_user_to_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker['type']]}))
+            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "added_user_to_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker.type]}))
 
         if plain_error != "":
             plain_error += "\n"
@@ -77,54 +77,54 @@ async def add_driver(request, steamid, staff_uid, userid, username, trackers = [
     return all_errors
 
 async def remove_driver(request, steamid, staff_uid, userid, username, trackers = ["tracksim", "trucky"]):
-    (app, dhrid) = (request.app, request.state.dhrid)
+    (dhrid, app) = (request.state.dhrid, request.app)
     all_errors = ""
-    for tracker in app.config.trackers:
+    for tracker in app.config.job_trackers:
         resp_error = ""
         plain_error = ""
         try:
-            if tracker["type"] not in trackers:
+            if tracker.type not in trackers:
                 continue
-            if tracker["type"] == "tracksim":
-                r = await arequests.delete(app, "https://api.tracksim.app/v1/drivers/remove", data = {"steam_id": str(steamid)}, headers = {"Authorization": "Api-Key " + tracker["api_token"]}, dhrid = dhrid)
-            elif tracker["type"] == "trucky":
-                r = await arequests.delete(app, "https://e.truckyapp.com/api/v1/drivershub/members", data = {"steam_id": str(steamid)}, headers = {"X-ACCESS-TOKEN": tracker["api_token"]}, dhrid = dhrid)
-            if tracker["type"] == "tracksim":
+            if tracker.type == "tracksim":
+                r = await arequests.delete(app, "https://api.tracksim.app/v1/drivers/remove", data = {"steam_id": str(steamid)}, headers = {"Authorization": "Api-Key " + tracker.api_token}, dhrid = dhrid)
+            elif tracker.type == "trucky":
+                r = await arequests.delete(app, "https://e.truckyapp.com/api/v1/drivershub/members", data = {"steam_id": str(steamid)}, headers = {"X-ACCESS-TOKEN": tracker.api_token}, dhrid = dhrid)
+            if tracker.type == "tracksim":
                 if r.status_code != 200:
                     try:
                         resp = r.json()
                         if resp.get("error") is not None:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['error']}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{resp['error']}`"
                             plain_error = resp['error']
                         elif resp.get("message") is not None:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['message']}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{resp['message']}`"
                             plain_error = resp['message']
                         elif resp.get("detail") is not None:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{resp['detail']}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{resp['detail']}`"
                             plain_error = resp['detail']
                         else:
-                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{ml.ctr(request, 'unknown_error')}`"
+                            resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{ml.ctr(request, 'unknown_error')}`"
                             plain_error = ml.ctr(request, 'unknown_error')
                     except:
-                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{ml.ctr(request, 'unknown_error')}`"
+                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{ml.ctr(request, 'unknown_error')}`"
                         plain_error = ml.ctr(request, 'unknown_error')
-            elif tracker["type"] == "trucky":
+            elif tracker.type == "trucky":
                 try:
                     resp = r.json()
                     if not resp["success"]:
-                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `" + resp["message"] + "`"
+                        resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `" + resp["message"] + "`"
                         plain_error = resp["message"]
                 except:
-                    resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker['type']]})}: `{ml.ctr(request, 'unknown_error')}`"
+                    resp_error = f"{ml.ctr(request, 'service_api_error', var = {'service': TRACKER[tracker.type]})}: `{ml.ctr(request, 'unknown_error')}`"
                     plain_error = ml.ctr(request, 'unknown_error')
         except:
-            resp_error = f"{TRACKER[tracker['type']]} {ml.ctr(request, 'api_timeout')}"
+            resp_error = f"{TRACKER[tracker.type]} {ml.ctr(request, 'api_timeout')}"
             plain_error = ml.ctr(request, 'api_timeout')
 
         if resp_error != "":
-            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "failed_remove_user_from_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker['type']], "error": resp_error}))
+            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "failed_remove_user_from_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker.type], "error": resp_error}))
         else:
-            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "removed_user_from_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker['type']]}))
+            await AuditLog(request, staff_uid, "tracker", ml.ctr(request, "removed_user_from_tracker_company", var = {"username": username, "userid": userid, "tracker": TRACKER[tracker.type]}))
 
         if plain_error != "":
             plain_error += "\n"
@@ -196,22 +196,20 @@ async def publish_webhook(request, userid, username, discordid, logid, tracker, 
         if "earnedXP" in data["events"][-1]["meta"]:
             xp = data["events"][-1]["meta"]["earnedXP"]
 
-        headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
         munit = "€"
         game = data["game"]["short_name"]
         if not game.startswith("e"):
             munit = "$"
         offence = -offence
 
-        image_urls = app.config.delivery_webhook_image_urls
+        image_urls = app.config.discord_integration.delivery_log.image_urls
         if len(image_urls) == 0:
             image_urls = [""]
         k = randint(0, len(image_urls)-1)
-        imgurl = image_urls[k]
-        if not isurl(imgurl):
-            imgurl = ""
-        dhulink = app.config.frontend_urls.member.replace("{userid}", str(userid))
-        dlglink = app.config.frontend_urls.delivery.replace("{logid}", str(logid))
+        imgurl = str(image_urls[k])
+        dhulink = str(app.config.frontend_urls.member).replace("{userid}", str(userid))
+        dlglink = str(app.config.frontend_urls.delivery).replace("{logid}", str(logid))
 
         if app.config.distance_unit == "imperial":
             dist_val, dist_unit = int(driven_distance * 0.621371), "mi"
@@ -245,13 +243,13 @@ async def publish_webhook(request, userid, username, discordid, logid, tracker, 
         }]}
 
         try:
-            if app.config.hook_delivery_log.channel_id != "":
-                durl = f"https://discord.com/api/v10/channels/{app.config.hook_delivery_log.channel_id}/messages"
-                key = app.config.hook_delivery_log.channel_id
-            elif app.config.hook_delivery_log.webhook_url != "":
-                durl = app.config.hook_delivery_log.webhook_url
-                key = app.config.hook_delivery_log.webhook_url
-            opqueue.queue(app, "post", key, durl, json.dumps(embed_data), headers, "disable")
+            if app.config.discord_integration.delivery_log.channel_id != "":
+                durl = f"https://discord.com/api/v10/channels/{app.config.discord_integration.delivery_log.channel_id}/messages"
+                key = app.config.discord_integration.delivery_log.channel_id
+            elif app.config.discord_integration.delivery_log.webhook_url != "":
+                durl = app.config.discord_integration.delivery_log.webhook_url
+                key = app.config.discord_integration.delivery_log.webhook_url
+            app.discord_op.queue(app, "post", key, durl, json.dumps(embed_data), headers, "disable")
         except:
             pass
 
@@ -287,7 +285,7 @@ async def publish_webhook(request, userid, username, discordid, logid, tracker, 
         await tracebackHandler(request, exc, traceback.format_exc())
 
 async def process_challenge(request, userid, logid, data, driven_distance, offence, has_overspeed, enabled_realistic_settings):
-    (app, dhrid) = (request.app, request.state.dhrid)
+    (dhrid, app) = (request.state.dhrid, request.app)
 
     from src.plugins.challenge import JOB_REQUIREMENT_DEFAULT, JOB_REQUIREMENTS
 
@@ -344,7 +342,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                 if jobreq["maximum_detour_percentage"] != -1 and (driven_distance / planned_distance) > float(jobreq["maximum_detour_percentage"]):
                     continue
 
-                if jobreq["game"] != "" and data["game"]["short_name"] not in jobreq["game"].split(","):
+                if jobreq["game"] != "" and data["game"]["short_name"] not in str(jobreq["game"]).split(","):
                     continue
 
                 source_city = data["source_city"]
@@ -367,15 +365,15 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                     destination_company = "[unknown]"
                 else:
                     destination_company = destination_company["unique_id"]
-                if jobreq["source_city_id"] != "" and source_city not in jobreq["source_city_id"].split(","):
+                if jobreq["source_city_id"] != "" and source_city not in str(jobreq["source_city_id"]).split(","):
                     continue
-                if jobreq["source_company_id"] != "" and source_company not in jobreq["source_company_id"].split(","):
+                if jobreq["source_company_id"] != "" and source_company not in str(jobreq["source_company_id"]).split(","):
                     continue
-                if jobreq["destination_city_id"] != "" and destination_city not in jobreq["destination_city_id"].split(","):
+                if jobreq["destination_city_id"] != "" and destination_city not in str(jobreq["destination_city_id"]).split(","):
                     continue
-                if jobreq["destination_company_id"] != "" and destination_company not in jobreq["destination_company_id"].split(","):
+                if jobreq["destination_company_id"] != "" and destination_company not in str(jobreq["destination_company_id"]).split(","):
                     continue
-                if jobreq["market"] != "" and data["market"] not in jobreq["market"].split(","):
+                if jobreq["market"] != "" and data["market"] not in str(jobreq["market"]).split(","):
                     continue
 
                 cargo = "[unknown]"
@@ -388,7 +386,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                 if data["cargo"] is not None and data["cargo"]["damage"] is not None:
                     cargo_damage = data["cargo"]["damage"]
 
-                if jobreq["cargo_id"] != "" and cargo not in jobreq["cargo_id"].split(","):
+                if jobreq["cargo_id"] != "" and cargo not in str(jobreq["cargo_id"]).split(","):
                     continue
                 if jobreq["minimum_cargo_mass"] != -1 and cargo_mass < jobreq["minimum_cargo_mass"]:
                     continue
@@ -401,7 +399,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
 
                 if data["truck"] is not None:
                     truck_id = data["truck"]["unique_id"]
-                    if jobreq["truck_id"] != "" and truck_id not in jobreq["truck_id"].split(","):
+                    if jobreq["truck_id"] != "" and truck_id not in str(jobreq["truck_id"]).split(","):
                         continue
 
                 top_speed = data["truck"]["top_speed"] * 3.6
@@ -486,7 +484,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                         continue
 
                 if jobreq["enabled_realistic_settings"] != "":
-                    required_realistic_settings = jobreq["enabled_realistic_settings"].split(",")
+                    required_realistic_settings = str(jobreq["enabled_realistic_settings"]).split(",")
                     for attr in data["game"]["realistic_settings"]:
                         if data["game"]["realistic_settings"][attr] is True:
                             enabled_realistic_settings.append(attr)
@@ -531,8 +529,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                             def setvar(msg):
                                 return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                            for meta in app.config.challenge_completed_forwarding:
-                                meta = Dict2Obj(meta)
+                            for meta in app.config.plugin_challenge.completion_forwards:
                                 if meta.webhook_url != "" or meta.channel_id != "":
                                     await AutoMessage(app, meta, setvar)
 
@@ -551,8 +548,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                             def setvar(msg):
                                 return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                            for meta in app.config.challenge_completed_forwarding:
-                                meta = Dict2Obj(meta)
+                            for meta in app.config.plugin_challenge.completion_forwards:
                                 if meta.webhook_url != "" or meta.channel_id != "":
                                     await AutoMessage(app, meta, setvar)
 
@@ -583,8 +579,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                                 def setvar(msg):
                                     return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                                for meta in app.config.challenge_completed_forwarding:
-                                    meta = Dict2Obj(meta)
+                                for meta in app.config.plugin_challenge.completion_forwards:
                                     if meta.webhook_url != "" or meta.channel_id != "":
                                         await AutoMessage(app, meta, setvar)
 
@@ -624,8 +619,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
                                 def setvar(msg):
                                     return msg.replace("{mention}", f"<@{userinfo['discordid']}>").replace("{name}", userinfo['name']).replace("{userid}", str(userinfo['userid'])).replace("{uid}", str(userinfo['uid'])).replace("{avatar}", validateUrl(userinfo['avatar'])).replace("{id}", str(challengeid)).replace("{title}", title).replace("{earned_points}", str(reward_points))
 
-                                for meta in app.config.challenge_completed_forwarding:
-                                    meta = Dict2Obj(meta)
+                                for meta in app.config.plugin_challenge.completion_forwards:
                                     if meta.webhook_url != "" or meta.channel_id != "":
                                         await AutoMessage(app, meta, setvar)
 
@@ -640,7 +634,7 @@ async def process_challenge(request, userid, logid, data, driven_distance, offen
         await tracebackHandler(request, exc, traceback.format_exc())
 
 async def process_economy(request, userid, logid, data, driven_distance, revenue):
-    (app, dhrid) = (request.app, request.state.dhrid)
+    (dhrid, app) = (request.state.dhrid, request.app)
 
     try:
         economy_revenue = round(revenue)
@@ -654,7 +648,7 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
         t = await app.db.fetchall(dhrid)
         if len(t) == 0:
             isrented = True
-            economy_revenue = max(round(economy_revenue - app.config.economy.truck_rental_cost), 0)
+            economy_revenue = max(round(economy_revenue - app.config.plugin_economy.truck_rental_cost), 0)
             note = 'rented-truck'
         else:
             vehicleid = t[0][0]
@@ -664,8 +658,8 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
             current_odometer = t[0][4]
             note = f't{vehicleid}-income'
 
-        driver_revenue = round(economy_revenue * (1 - app.config.economy.revenue_share_to_company))
-        company_revenue = round(economy_revenue * app.config.economy.revenue_share_to_company)
+        driver_revenue = round(economy_revenue * (1 - app.config.plugin_economy.revenue_cut_pct))
+        company_revenue = round(economy_revenue * app.config.plugin_economy.revenue_cut_pct)
 
         await app.db.execute(dhrid, f"SELECT balance FROM economy_balance WHERE userid = {userid} FOR UPDATE")
         driver_balance = nint(await app.db.fetchone(dhrid))
@@ -680,12 +674,12 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
         uid = (await GetUserInfo(request, userid = userid, is_internal_function = True))["uid"]
         user_language = await GetUserLanguage(request, uid)
         message = "  \n" + ml.tr(request, "economy_message_for_delivery", var = {"logid": logid}, force_lang = user_language)
-        await notification(request, "economy", uid, ml.tr(request, "economy_received_transaction", var = {"amount": driver_revenue, "currency_name": app.config.economy.currency_name, "from_user": ml.tr(request, "client"), "from_userid": "N/A", "message": message}, force_lang = user_language))
+        await notification(request, "economy", uid, ml.tr(request, "economy_received_transaction", var = {"amount": driver_revenue, "currency_name": app.config.plugin_economy.currency_name, "from_user": ml.tr(request, "client"), "from_userid": "N/A", "message": message}, force_lang = user_language))
 
         if not isrented:
             message = convertQuotation(f'dlog-{logid}/garage-{garageid}-{slotid}/revenue-{economy_revenue}')
         else:
-            message = convertQuotation(f'dlog-{logid}/rental-{app.config.economy.truck_rental_cost}/revenue-{economy_revenue}')
+            message = convertQuotation(f'dlog-{logid}/rental-{app.config.plugin_economy.truck_rental_cost}/revenue-{economy_revenue}')
 
         await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1003, {userid}, {driver_revenue}, '{note}', '{message}', NULL, {int(driver_balance + driver_revenue)}, {int(time.time())})")
         await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1003, -1000, {company_revenue}, 'c{note}', '{message}', NULL, {int(company_balance + company_revenue)}, {int(time.time())})")
@@ -697,12 +691,12 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
             for item in truck_damage:
                 damage += nfloat(truck_damage[item])
 
-            damage = damage * app.config.economy.wear_ratio
+            damage = damage * app.config.plugin_economy.truck_wear_ratio
 
             await app.db.execute(dhrid, f"UPDATE economy_truck SET odometer = odometer + {driven_distance}, damage = damage + {damage}, income = income + {economy_revenue} WHERE vehicleid = {vehicleid}")
-            if current_damage + damage > app.config.economy.max_wear_before_service:
+            if current_damage + damage > app.config.plugin_economy.max_wear_before_service:
                 await app.db.execute(dhrid, f"UPDATE economy_truck SET status = -1 WHERE vehicleid = {vehicleid}")
-            if current_odometer + driven_distance > app.config.economy.max_distance_before_scrap:
+            if current_odometer + driven_distance > app.config.plugin_economy.max_distance_before_scrap:
                 await app.db.execute(dhrid, f"UPDATE economy_truck SET status = -2 WHERE vehicleid = {vehicleid}")
             await app.db.commit(dhrid)
 
@@ -712,7 +706,7 @@ async def process_economy(request, userid, logid, data, driven_distance, revenue
 
 TRACKER_MAP = {"tracksim": 2, "trucky": 3, "custom": 4, "unitracker": 5}
 async def handle_new_job(request, original_data, converted_data, tracker, bypass_tracker_check = False):
-    (app, dhrid) = (request.app, request.state.dhrid)
+    (dhrid, app) = (request.state.dhrid, request.app)
     await app.db.extend_conn(dhrid, 10)
     data = converted_data["data"]["object"]
     event_type = converted_data["type"]
@@ -773,7 +767,7 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
         elif eve["type"] in ["tollgate", "ferry", "train"]:
             totalexpense += int(eve["meta"]["cost"])
         elif eve["type"] == "speeding":
-            if eve["meta"]["max_speed"] > eve["meta"]["speed_limit"]:
+            if eve["meta"].max_speed > eve["meta"]["speed_limit"]:
                 has_overspeed = True
     revenue = revenue - offence - totalexpense
 
@@ -788,20 +782,19 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
                 enabled_realistic_settings.append(attr)
 
     meta_revenue = revenue # metadata revenue (for aggregation only)
-    if "action" in app.config_dict["delivery_rules"] \
-            and app.config_dict["delivery_rules"]["action"] != "keep_job":
-        action = app.config_dict["delivery_rules"]["action"]
-        delivery_rules = app.config_dict["delivery_rules"]
+    if app.config.delivery_rules.action != "keep_job":
+        action = app.config.delivery_rules.action
+        delivery_rules = app.config.delivery_rules
 
-        if "max_speed" in delivery_rules and isint(delivery_rules["max_speed"]) and \
-                top_speed > int(delivery_rules["max_speed"]) and \
+        if "max_speed" in delivery_rules and isint(delivery_rules.max_speed) and \
+                top_speed > int(delivery_rules.max_speed) and \
                 action == "block_job":
             delivery_rule_ok = False
             delivery_rule_key = "max_speed"
             delivery_rule_value = str(top_speed)
 
-        if "max_profit" in delivery_rules and isint(delivery_rules["max_profit"]) and \
-                revenue > int(delivery_rules["max_profit"]):
+        if "max_profit" in delivery_rules and isint(delivery_rules.max_profit) and \
+                revenue > int(delivery_rules.max_profit):
             if action == "block_job":
                 delivery_rule_ok = False
                 delivery_rule_key = "profit"
@@ -810,21 +803,21 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
                 meta_revenue = 0
 
         if "warp" in data and data["warp"] is not None and \
-                "max_warp" in delivery_rules and isint(delivery_rules["max_warp"]) and \
-                data["warp"] > int(delivery_rules["max_warp"]) and action == "block_job":
+                "max_warp" in delivery_rules and isint(delivery_rules.max_warp) and \
+                data["warp"] > int(delivery_rules.max_warp) and action == "block_job":
             delivery_rule_ok = False
             delivery_rule_key = "warp"
             delivery_rule_value = str(data["warp"])
 
         if "realistic_settings" in data["game"] and data["game"]["realistic_settings"] is not None and \
                 "required_realistic_settings" in delivery_rules and \
-                isinstance(delivery_rules["required_realistic_settings"], list) and \
+                isinstance(delivery_rules.required_realistic_settings, list) and \
                 action == "block_job":
-            for attr in delivery_rules["required_realistic_settings"]:
+            for attr in delivery_rules.required_realistic_settings:
                 if attr not in enabled_realistic_settings:
                     delivery_rule_ok = False
                     delivery_rule_key = "required_realistic_settings"
-                    delivery_rule_value = ",".join(delivery_rules["required_realistic_settings"])
+                    delivery_rule_value = ",".join(delivery_rules.required_realistic_settings)
                     break
 
     if not delivery_rule_ok:
@@ -900,8 +893,8 @@ async def handle_new_job(request, original_data, converted_data, tracker, bypass
             await tracebackHandler(request, exc, traceback.format_exc())
 
     if isdelivered and not duplicate:
-        if (app.config.hook_delivery_log.channel_id != "" or app.config.hook_delivery_log.webhook_url != "") \
-                and app.config.discord_bot_token != "":
+        if (app.config.discord_integration.delivery_log.channel_id != "" or app.config.discord_integration.delivery_log.webhook_url != "") \
+                and app.config.discord_integration.bot_token != "":
             await publish_webhook(request, userid, username, discordid, logid, tracker, data, original_data, event_type, driven_distance, revenue, offence)
 
         if "challenge" in app.config.plugins:

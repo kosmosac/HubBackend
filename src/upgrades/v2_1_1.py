@@ -10,7 +10,7 @@ def run(app):
     cur = conn.cursor()
 
     logger.info("Moving application to DATA DIRECTORY...")
-    cur.execute(f"ALTER TABLE application DATA DIRECTORY = '{app.config.db_data_directory}'")
+    cur.execute(f"ALTER TABLE application DATA DIRECTORY = '{app.config_old.db_data_directory}'")
 
     logger.info("Fixing nxtuserid in settings...")
     cur.execute("SELECT MAX(userid) FROM user")

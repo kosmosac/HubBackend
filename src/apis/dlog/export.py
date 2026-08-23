@@ -17,7 +17,7 @@ from src.functions import *
 async def get_export(request: Request, response: Response, authorization: str | None = Header(None), \
         after: int | None = None, before: int | None = None, \
         include_ids: bool | None = False, userid: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     running_export = nint(app.redis.get("running_export"))
     if time.time() - running_export <= 300:
         return JSONResponse({"error": "Service Unavailable"}, status_code = 503)
@@ -29,7 +29,7 @@ async def get_export(request: Request, response: Response, authorization: str | 
         response.headers[k] = rl[1][k]
 
     dhrid = request.state.dhrid
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -142,8 +142,8 @@ async def get_export(request: Request, response: Response, authorization: str | 
             if division_id is None:
                 division_id = ""
             else:
-                if division_id in app.division_name:
-                    division = app.division_name[division_id]
+                if division_id in app.divisions:
+                    division = app.divisions[division_id].name
 
             challengeids = (challenge_data[logid] if logid in challenge_data else None)
             challengenames = []

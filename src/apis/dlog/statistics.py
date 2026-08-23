@@ -15,7 +15,7 @@ from src.logger import logger
 # app.state.statistics_details_last_work = -1
 # <=0 is finished, >0 is unfinished, it uses timestamp
 
-def rebuild(app):
+def rebuild(app: DHApp):
     '''Delete all dlog_stats and rebuild stats from dlog detail.
 
     NOTE Time consuming! Drivers Hub will not start before this is done once called.
@@ -35,7 +35,7 @@ def rebuild(app):
 
     for i in range(len(t)):
         if time.time() - last_log >= 5:
-            logger.info(f"[{app.config.abbr}] Rebuilding dlog stats: {i}/{len(t)} ({round(i / len(t) * 100, 2)}%) processed.")
+            logger.info(f"[{app.config.unique_id}] Rebuilding dlog stats: {i}/{len(t)} ({round(i / len(t) * 100, 2)}%) processed.")
             last_log = time.time()
 
         tt = t[i]
@@ -179,8 +179,8 @@ def rebuild(app):
                         memtable[(itype, stat_userid, dd[0])][1] += dd[2]
                         memtable[(itype, stat_userid, dd[0])][2] += dd[3]
 
-    logger.info(f"[{app.config.abbr}] Rebuilding dlog stats: {len(t)}/{len(t)} (100%) processed.")
-    logger.info(f"[{app.config.abbr}] Rebuilding dlog stats: Updating database...")
+    logger.info(f"[{app.config.unique_id}] Rebuilding dlog stats: {len(t)}/{len(t)} (100%) processed.")
+    logger.info(f"[{app.config.unique_id}] Rebuilding dlog stats: Updating database...")
 
     cur.execute("DELETE FROM dlog_stats")
     for (item_type, stat_userid, item_key) in memtable:
@@ -194,13 +194,13 @@ def rebuild(app):
     cur.close()
     conn.close()
 
-    logger.info(f"[{app.config.abbr}] Rebuilding dlog stats: Completed.")
+    logger.info(f"[{app.config.unique_id}] Rebuilding dlog stats: Completed.")
 
 # app.state.cache_statistics = {}
 
 async def get_summary(request: Request, response: Response, authorization: str | None = Header(None), \
         after: int | None = None, before: int | None = None, userid: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /dlog/statistics/summary', 60, 30)
@@ -209,7 +209,7 @@ async def get_summary(request: Request, response: Response, authorization: str |
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
     if after is None:
         after = 0
@@ -237,7 +237,7 @@ async def get_summary(request: Request, response: Response, authorization: str |
 
     # clear statistics cache
     keys = app.redis.keys("stats:*:*")
-    ids = [x.split(":")[2] for x in keys] # the first part is {abbr}, second part is "stats", third part is {dhrid}
+    ids = [x.split(":")[2] for x in keys] # the first part is {unique_id}, second part is "stats", third part is {dhrid}
     # delete data in stats:after/before whose key is not in ids
     with app.redis.pipeline() as pipe:
         for idx in app.redis.zrange("stats:after", 0, -1):
@@ -414,7 +414,7 @@ async def get_summary(request: Request, response: Response, authorization: str |
 async def get_chart(request: Request, response: Response, authorization: str | None = Header(None), \
         ranges: int | None = 30, interval: int | None = 86400, before: int | None = None, \
         sum_up: bool | None = False, userid: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     rl = await ratelimit(request, 'GET /dlog/statistics/chart', 60, 30)
@@ -423,7 +423,7 @@ async def get_chart(request: Request, response: Response, authorization: str | N
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
     quser = ""
     au = await auth(authorization, request, allow_application_token = True)
@@ -565,7 +565,7 @@ async def get_chart(request: Request, response: Response, authorization: str | N
     return ret
 
 async def get_details(request: Request, response: Response, authorization: str | None = Header(None), userid: int | None = None, after: int | None = None, before: int | None = None):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
 
     if after is None and before is None:
@@ -575,7 +575,7 @@ async def get_details(request: Request, response: Response, authorization: str |
         for k in rl[1]:
             response.headers[k] = rl[1][k]
 
-        await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
         quser = ""
         au = await auth(authorization, request, allow_application_token = True)
@@ -617,7 +617,7 @@ async def get_details(request: Request, response: Response, authorization: str |
         for k in rl[1]:
             response.headers[k] = rl[1][k]
 
-        await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, extra_time = 10, db_name = app.config.database_schema)
 
         # require authorization to prevent DDoS
         au = await auth(authorization, request, allow_application_token = True)

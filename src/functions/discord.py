@@ -10,9 +10,14 @@ from fastapi import Request
 
 import src.multilang as ml
 from src.functions.arequests import arequests
-from src.functions.general import RateLimitException, DisableDiscordIntegration, validateUrl
+from src.functions.general import (
+    DisableDiscordIntegration,
+    RateLimitException,
+    validateUrl,
+)
 
-def parse_discord_response(resp):
+
+def parse_discord_response(resp) -> tuple[bool, int, dict]:
     content_type = resp.headers.get('Content-Type', '')
 
     if resp.status_code == 429:
@@ -31,7 +36,7 @@ def parse_discord_response(resp):
     if 'application/json' in content_type:
         return (True, resp.status_code, resp.json())
     else:
-        return (False, resp.status_code, resp.text)
+        return (False, resp.status_code, {})
 
 class DiscordAuth:
     def __init__(self, client_id, client_secret, callback_url):
@@ -92,7 +97,7 @@ class DiscordAuth:
         else:
             return resp
 
-    async def get_user_data_from_token(self, access_token, retry = 3):
+    async def get_user_data_from_token(self, access_token, retry = 3) -> dict:
         """ Gets the user data from an access_token """
         if retry == -1:
             raise RateLimitException("Unable to get user data: Rate limited.")
@@ -111,20 +116,26 @@ class DiscordAuth:
         else:
             return resp
 
-# app.state.discord_opqueue = []
-
 class opqueue:
-    def queue(app, method, key, url, data, headers, error_msg, max_retry = 5):
+    q: list[tuple] = []
+    retry_after: dict[str, int] = {}
+
+    def __init__(self):
+        self.q = []
+        self.retry_after = {}
+
+    def queue(self, app, method: str, key: str, url: str, \
+            data: dict | None, headers: dict, error_msg: str, max_retry: int = 5):
         for middleware in app.external_middleware["discord_request"]:
             if not inspect.iscoroutinefunction(middleware):
                 data = middleware(method = method, url = url, data = data)
-        app.state.discord_opqueue.append((method, key, url, data, headers, error_msg, 4 - max_retry))
+        self.q.append((method, key, url, data, headers, error_msg, 4 - max_retry))
 
-    async def run(app):
+    async def run(self, app):
         METHOD_MAP = {"post": arequests.post, "put": arequests.put, "delete": arequests.delete}
         while 1:
             try:
-                if len(app.state.discord_opqueue) == 0:
+                if len(self.q) == 0:
                     try:
                         await asyncio.sleep(1)
                     except:
@@ -134,10 +145,10 @@ class opqueue:
                 # get an available one in queue
                 ok = False
                 idx = 0
-                for i in range(len(app.state.discord_opqueue)):
-                    (method, key, url, data, headers, error_msg, retry_count) = app.state.discord_opqueue[i]
-                    if key not in app.state.discord_retry_after or \
-                            app.state.discord_retry_after[key] < time.time():
+                for i in range(len(self.q)):
+                    (method, key, url, data, headers, error_msg, retry_count) = self.q[i]
+                    if key not in self.retry_after or \
+                            self.retry_after[key] < time.time():
                         ok = True
                         idx = i
                         break
@@ -148,7 +159,7 @@ class opqueue:
                     except:
                         return
                     continue
-                app.state.discord_opqueue.pop(idx)
+                self.q.pop(idx)
 
                 # max retry = 5
                 if retry_count == 5:
@@ -164,7 +175,7 @@ class opqueue:
                     (_, _, d) = parse_discord_response(r)
 
                     if r.status_code == 429:
-                        app.state.discord_opqueue.append((method, key, url, data, headers, error_msg, retry_count + 1))
+                        self.q.append((method, key, url, data, headers, error_msg, retry_count + 1))
 
                         if d["global"]:
                             try:
@@ -172,7 +183,7 @@ class opqueue:
                             except:
                                 return
                             continue
-                        app.state.discord_retry_after[key] = time.time() + float(d["retry_after"]) + 0.5
+                        self.retry_after[key] = time.time() + float(d["retry_after"]) + 0.5
 
                     elif r.status_code == 401 and (error_msg == "disable" or error_msg.startswith("add_role") or error_msg.startswith("remove_role")):
                         DisableDiscordIntegration(app)
@@ -198,7 +209,7 @@ class opqueue:
                             await AuditLog(request, -998, "discord", "**" + ml.ctr(request, "service_api_error", var = {"service": "Discord"}) + f"**\n```{r.text}```")
 
                 except:
-                    app.state.discord_opqueue.append((method, key, url, data, headers, error_msg, retry_count + 1))
+                    self.q.append((method, key, url, data, headers, error_msg, retry_count + 1))
 
                     try:
                         await asyncio.sleep(5)

@@ -12,7 +12,7 @@ from src.multilang import LANGUAGES
 
 
 async def get_index(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /', 60, 120)
     if rl[0]:
@@ -21,14 +21,14 @@ async def get_index(request: Request, response: Response, authorization: str | N
         response.headers[k] = rl[1][k]
 
     if authorization is not None:
-        await app.db.new_conn(dhrid, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, db_name = app.config.database_schema)
         au = await auth(authorization, request, check_member = False, allow_application_token = True)
         if not au["error"]:
             await ActivityUpdate(request, au["uid"], "index")
-    return {"name": app.config.name, "abbr": app.config.abbr, "language": app.config.language, "version": app.version, "copyright": "Copyright (C) 2022-2026 CharlesWithC"}
+    return {"name": app.config.org_name, "abbr": app.config.unique_id, "language": app.config.language, "version": app.version, "copyright": "Copyright (C) 2022-2026 CharlesWithC"}
 
 async def get_status(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /status', 60, 120)
     if rl[0]:
@@ -39,7 +39,7 @@ async def get_status(request: Request, response: Response):
     dbstatus = "unavailable"
     try:
         dhrid = request.state.dhrid
-        await app.db.new_conn(dhrid, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, db_name = app.config.database_schema)
         dbstatus = "available"
     except:
         pass
@@ -47,18 +47,18 @@ async def get_status(request: Request, response: Response):
     return {"api": "active", "database": dbstatus, "uptime": str(timedelta(seconds = up_time_second))}
 
 async def get_languages(request: Request):
-    app = request.app
+    app: DHApp = request.app
     return {"company": app.config.language, "supported": LANGUAGES}
 
 async def restart_database(request: Request):
-    app = request.app
-    if time.time() - app.db.POOL_START_TIME < 60:
+    app: DHApp = request.app
+    if time.time() - app.db.pool_start_time < 60:
         return {"error": "Database pool is too young to be restarted."}
 
     dbstatus = "unavailable"
     try:
         dhrid = request.state.dhrid
-        await app.db.new_conn(dhrid, db_name = app.config.db_name)
+        await app.db.new_conn(dhrid, db_name = app.config.database_schema)
         dbstatus = "available"
     except:
         pass
@@ -70,12 +70,12 @@ async def restart_database(request: Request):
         return {"error": "Database pool is already restarting."}
 
     app.db.is_restarting = True
-    app.db.restart_start = time.time()
+    app.db.restart_start = int(time.time())
     try:
         app.db.pool.terminate()
-        app.db.pool = await aiomysql.create_pool(host = app.db.host, user = app.db.user, password = app.db.passwd, \
-                                            db = app.db.db_name, autocommit = False, pool_recycle = 5, \
-                                            maxsize = app.db.db_pool_size)
+        app.db.pool = await aiomysql.create_pool(host = app.db.host, user = app.db.username, password = app.db.password, \
+                                            db = app.db.schema, autocommit = False, pool_recycle = 5, \
+                                            maxsize = app.db.pool_size)
         return {"success": True}
     except Exception as exc:
         from src.api import tracebackHandler

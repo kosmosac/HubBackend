@@ -7,12 +7,13 @@ from datetime import datetime, timezone
 from fastapi import Header, Request, Response
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 
 async def get_all_divisions(request: Request):
-    app = request.app
-    ret = copy.deepcopy(app.config.divisions)
-    to_remove = ["webhook_url", "channel_id", "message"]
+    app: DHApp = request.app
+    ret = [x.model_dump() for x in app.config.plugin_division.types]
+    to_remove = ["validation_request_forwards"]
     for i in range(len(ret)):
         for k in to_remove:
             if k in ret[i]:
@@ -21,7 +22,7 @@ async def get_all_divisions(request: Request):
 
 async def get_divisions_statistics(request: Request, response: Response, authorization: str | None = Header(None), \
         after: int | None = None, before: int | None = None, include_pending: bool | None = False):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /divisions/statistics', 60, 120)
     if rl[0]:
@@ -29,7 +30,7 @@ async def get_divisions_statistics(request: Request, response: Response, authori
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -46,10 +47,10 @@ async def get_divisions_statistics(request: Request, response: Response, authori
     await ActivityUpdate(request, au["uid"], "divisions")
 
     stats = []
-    for division in app.config.divisions:
-        division_id = division["id"]
-        division_role_id = division["role_id"]
-        division_point = division["points"]
+    for division in app.config.plugin_division.types:
+        division_id = division.id
+        division_role_id = division.role_id
+        division_bonus = division.bonus
 
         await app.db.execute(dhrid, f"SELECT COUNT(*) FROM user WHERE roles LIKE '%,{division_role_id},%'")
         usertot = nint(await app.db.fetchone(dhrid))
@@ -80,14 +81,14 @@ async def get_divisions_statistics(request: Request, response: Response, authori
             fueltot = nint(t[0][2])
             europrofit = nint(t[0][3])
             dollarprofit = nint(t[0][4])
-            if division_point["mode"] == "static":
-                pointtot = jobstot * division_point["value"]
-            elif division_point["mode"] == "ratio":
-                pointtot = round(distancetot * division_point["value"])
+            if division_bonus.mode == "static":
+                pointtot = jobstot * division_bonus.value
+            elif division_bonus.mode == "ratio":
+                pointtot = round(distancetot * division_bonus.value)
 
         profit = {"euro": europrofit, "dollar": dollarprofit}
 
-        stats.append({"divisionid": division_id, "name": division['name'], "drivers": usertot, "points": pointtot, "jobs": jobstot, "distance": distancetot, "fuel": fueltot, "profit": profit})
+        stats.append({"divisionid": division_id, "name": division.name, "drivers": usertot, "points": pointtot, "jobs": jobstot, "distance": distancetot, "fuel": fueltot, "profit": profit})
 
     return stats
 
@@ -98,7 +99,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
                                 include_pending: bool | None = False, \
                                 order: str | None = "desc", order_by: str | None = "points", \
                                 page: int | None = 1, page_size: int | None = 10):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /divisions/activity', 60, 120)
     if rl[0]:
@@ -106,7 +107,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -116,10 +117,10 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
 
     division_role_id = None
     division_point = None
-    for division in app.config.divisions:
-        if division["id"] == divisionid:
-            division_role_id = division["role_id"]
-            division_point = division["points"]
+    for division in app.config.plugin_division.types:
+        if division.id == divisionid:
+            division_role_id = division.role_id
+            division_point = division.bonus
     if division_role_id is None:
         response.status_code = 404
         return {"error": ml.tr(request, "not_found", force_lang = au["language"])}
@@ -175,10 +176,10 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
         if not include_previous_drivers and (tt[0] not in all_users or division_role_id not in all_users[tt[0]]["roles"]):
             continue
         user_points = 0
-        if division_point["mode"] == "static":
-            user_points = tt[1] * division_point["value"]
-        elif division_point["mode"] == "ratio":
-            user_points = round(tt[2] * division_point["value"])
+        if division_point.mode == "static":
+            user_points = tt[1] * division_point.value
+        elif division_point.mode == "ratio":
+            user_points = round(tt[2] * division_point.value)
         ret.append({
             "userid": tt[0],
             "jobs": nint(tt[1]),
@@ -213,7 +214,7 @@ async def get_divisions_activity(request: Request, response: Response, divisioni
     return {"list": ret, "total_items": total_items, "total_pages": total_pages}
 
 async def get_dlog_division(request: Request, response: Response, logid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /dlog/division', 60, 120)
     if rl[0]:
@@ -221,7 +222,7 @@ async def get_dlog_division(request: Request, response: Response, logid: int, au
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -262,7 +263,7 @@ async def get_dlog_division(request: Request, response: Response, logid: int, au
         return {"divisionid": divisionid, "status": status}
 
 async def post_dlog_division(request: Request, response: Response, logid: int, divisionid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /dlog/division', 180, 10)
     if rl[0]:
@@ -270,7 +271,7 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -310,11 +311,11 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
     roles = str2list(t[0][0])
     joined_divisions = []
     for role in roles:
-        if role in app.division_roles:
-            for division in app.config.divisions:
+        if role in app.division_role_ids:
+            for division in app.config.plugin_division.types:
                 try:
-                    if division["role_id"] == role:
-                        joined_divisions.append(division["id"])
+                    if division.role_id == role:
+                        joined_divisions.append(division.id)
                 except:
                     pass
     if not checkPerm(app, roles, "administrator") and divisionid not in joined_divisions:
@@ -327,23 +328,25 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
     language = await GetUserLanguage(request, uid)
     await notification(request, "division", uid, ml.tr(request, "division_validation_request_submitted", var = {"logid": logid}, force_lang = language), \
         discord_embed = {"title": ml.tr(request, "division_validation_request_submitted_title", force_lang = language), "description": "", \
-            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.division_name[divisionid] if divisionid in app.division_name else "/", "inline": True},
+            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.divisions[divisionid].name if divisionid in app.divisions else "/", "inline": True},
                        {"name": ml.tr(request, "log_id", force_lang = language), "value": f"{logid}", "inline": True}, \
                        {"name": ml.tr(request, "status", force_lang = language), "value": ml.tr(request, "pending", force_lang = language), "inline": True}]})
 
-    dlglink = app.config.frontend_urls.delivery.replace("{logid}", str(logid))
+    dlglink = str(app.config.frontend_urls.delivery).replace("{logid}", str(logid))
     await app.db.execute(dhrid, f"SELECT userid, name, avatar FROM user WHERE uid = {uid}")
     t = await app.db.fetchall(dhrid)
     tt = t[0]
     msg = f"**UID**: {uid}\n**User ID**: {tt[0]}\n**Name**: {tt[1]}\n**Discord**: <@{discordid}> (`{discordid}`)\n\n"
-    msg += f"**Delivery ID**: [{logid}]({dlglink})\n**Division**: {app.division_name[divisionid] if divisionid in app.division_name else '/'}"
+    msg += f"**Delivery ID**: [{logid}]({dlglink})\n**Division**: {app.divisions[divisionid].name if divisionid in app.divisions else '/'}"
     avatar = tt[2]
 
     hook_message = ""
     hook_url = ""
     hook_key = ""
-    for o in app.config.divisions:
-        if divisionid == o["id"]:
+    for o in app.config.plugin_division.types:
+        assert False, "`division.py` requires update to support multiple discord forwards (TODO)"
+
+        if divisionid == o.id:
             hook_message = o["message"]
             if o["channel_id"] != "":
                 hook_url = f"https://discord.com/api/v10/channels/{o['channel_id']}/messages"
@@ -355,16 +358,16 @@ async def post_dlog_division(request: Request, response: Response, logid: int, d
         try:
             author = {"name": tt[1], "icon_url": avatar}
 
-            headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+            headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
 
-            opqueue.queue(app, "post", hook_key, hook_url, json.dumps({"content": hook_message, "embeds": [{"title": f"New Division Validation Request for Delivery #{logid}", "description": msg, "author": author, "footer": {"text": f"Delivery ID: {logid} "}, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}), headers, "disable")
+            app.discord_op.queue(app, "post", hook_key, hook_url, json.dumps({"content": hook_message, "embeds": [{"title": f"New Division Validation Request for Delivery #{logid}", "description": msg, "author": author, "footer": {"text": f"Delivery ID: {logid} "}, "timestamp": datetime.now(timezone.utc).isoformat(), "color": int(app.config.hex_color, 16)}]}), headers, "disable")
         except:
             pass
 
     return Response(status_code=204)
 
 async def patch_dlog_division(request: Request, response: Response, logid: int, divisionid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /dlog/division', 60, 30)
     if rl[0]:
@@ -372,7 +375,7 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_divisions"])
     if au["error"]:
@@ -401,14 +404,14 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
     if len(t) == 0:
         response.status_code = 404
         return {"error": ml.tr(request, "division_validation_not_found", force_lang = au["language"])}
-    if divisionid not in app.division_name:
+    if divisionid not in app.divisions:
         divisionid = t[0][0]
     userid = t[0][2]
 
     staff_role_ids = []
-    for division in app.config.divisions:
-        if division["id"] == divisionid:
-            staff_role_ids = division["staff_role_ids"]
+    for division in app.config.plugin_division.types:
+        if division.id == divisionid:
+            staff_role_ids = division.staff_role_ids
     ok = False
     for role in au["roles"]:
         if role in staff_role_ids:
@@ -432,7 +435,7 @@ async def patch_dlog_division(request: Request, response: Response, logid: int, 
 
     await notification(request, "division", uid, ml.tr(request, "division_validation_request_status_updated", var = {"logid": logid, "status": statustxtTR.lower()}, force_lang = await GetUserLanguage(request, uid)), \
         discord_embed = {"title": ml.tr(request, "division_validation_request_status_updated_title", force_lang = language), "description": message, \
-            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.division_name[divisionid] if divisionid in app.division_name else "/", "inline": True},
+            "fields": [{"name": ml.tr(request, "division", force_lang = language), "value": app.divisions[divisionid].name if divisionid in app.divisions else "/", "inline": True},
                        {"name": ml.tr(request, "log_id", force_lang = language), "value": f"{logid}", "inline": True}, \
                        {"name": ml.tr(request, "status", force_lang = language), "value": statustxtTR, "inline": True}]})
 
@@ -442,7 +445,7 @@ async def get_list_pending(request: Request, response: Response, authorization: 
         divisionid: int | None = None, \
         page: int | None = 1, page_size: int | None = 10, requested_by: int | None = None, after_logid: int | None = None,
         order_by: str | None = "request_timestamp", order: str | None = "asc"):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /divisions/list/pending', 60, 120)
     if rl[0]:
@@ -450,7 +453,7 @@ async def get_list_pending(request: Request, response: Response, authorization: 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_divisions"])
     if au["error"]:
@@ -460,9 +463,9 @@ async def get_list_pending(request: Request, response: Response, authorization: 
 
     if divisionid is not None:
         staff_role_ids = []
-        for division in app.config.divisions:
-            if division["id"] == divisionid:
-                staff_role_ids = division["staff_role_ids"]
+        for division in app.config.plugin_division.types:
+            if division.id == divisionid:
+                staff_role_ids = division.staff_role_ids
         ok = False
         for role in au["roles"]:
             if role in staff_role_ids:
@@ -473,14 +476,14 @@ async def get_list_pending(request: Request, response: Response, authorization: 
 
     allowed_divisions = []
     if not checkPerm(app, au["roles"], "administrator"):
-        for division in app.config.divisions:
-            for role in division["staff_role_ids"]:
+        for division in app.config.plugin_division.types:
+            for role in division.staff_role_ids:
                 if role in au["roles"]:
-                    allowed_divisions.append(division["id"])
+                    allowed_divisions.append(division.id)
                     break
     else:
-        for division in app.config.divisions:
-            allowed_divisions.append(division["id"])
+        for division in app.config.plugin_division.types:
+            allowed_divisions.append(division.id)
     if len(allowed_divisions) == 0:
         response.status_code = 403
         return {"error": ml.tr(request, "no_access_to_resource", force_lang = au["language"])}

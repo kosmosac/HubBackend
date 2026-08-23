@@ -177,23 +177,23 @@ def convert_format(data):
 
 
 async def post_update(response: Response, request: Request):
-    app = request.app
+    app: DHApp = request.app
     if "trucky" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
     dhrid = request.state.dhrid
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     webhook_signature = request.headers.get('X-Signature-SHA256')
 
     ip_ok = False
     needs_validate = False
-    for tracker in app.config.trackers:
-        if tracker["type"] != "trucky":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "trucky":
             continue
-        if type(tracker["ip_whitelist"]) == list and len(tracker["ip_whitelist"]) > 0:
+        if type(tracker.ip_whitelist) == list and len(tracker.ip_whitelist) > 0:
             needs_validate = True
-            if request.client.host in tracker["ip_whitelist"]:
+            if request.client.host in tracker.ip_whitelist:
                 ip_ok = True
     if needs_validate and not ip_ok:
         response.status_code = 403
@@ -212,12 +212,12 @@ async def post_update(response: Response, request: Request):
         return {"error": "Unsupported content type."}
     sig_ok = False
     needs_validate = False # if at least one tracker has webhook secret, then true (only false when all doesn't have webhook secret)
-    for tracker in app.config.trackers:
-        if tracker["type"] != "trucky":
+    for tracker in app.config.job_trackers:
+        if tracker.type != "trucky":
             continue
-        if tracker["webhook_secret"] is not None and tracker["webhook_secret"] != "":
+        if tracker.webhook_secret is not None and tracker.webhook_secret != "":
             needs_validate = True
-            sig = hmac.new(tracker["webhook_secret"].encode(), msg=raw_body, digestmod=hashlib.sha256).hexdigest()
+            sig = hmac.new(tracker.webhook_secret.encode(), msg=raw_body, digestmod=hashlib.sha256).hexdigest()
             if webhook_signature is not None and hmac.compare_digest(sig, webhook_signature):
                 sig_ok = True
     if needs_validate and not sig_ok:
@@ -282,25 +282,24 @@ async def post_update(response: Response, request: Request):
             await notification(request, "member", uid, ml.tr(request, "member_accepted", var = {"userid": userid}, force_lang = await GetUserLanguage(request, uid)))
 
             def setvar(msg):
-                return msg.replace("{mention}", f"<@{discordid}>").replace("{name}", name).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", "").replace("{staff_name}", "Trucky").replace("{staff_userid}", "-997").replace("{staff_uid}", "-997").replace("{staff_avatar}", validateUrl(app.config.logo_url))
+                return msg.replace("{mention}", f"<@{discordid}>").replace("{name}", name).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", "").replace("{staff_name}", "Trucky").replace("{staff_userid}", "-997").replace("{staff_uid}", "-997").replace("{staff_avatar}", str(app.config.logo_url))
 
-            for meta in app.config.member_accept:
-                meta = Dict2Obj(meta)
+            for meta in app.config.discord_integration.member_accept:
                 if meta.webhook_url != "" or meta.channel_id != "":
                     await AutoMessage(app, meta, setvar)
 
-                if discordid is not None and meta.role_change != [] and app.config.discord_bot_token != "":
+                if discordid is not None and meta.role_change != [] and app.config.discord_integration.bot_token != "":
                     for role in meta.role_change:
                         try:
                             if int(role) < 0:
-                                opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
+                                app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
                             elif int(role) > 0:
-                                opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
+                                app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
                         except:
                             pass
 
         if not checkPerm(app, roles, "driver"):
-            roles.append(app.config.perms.driver[0])
+            roles.append(app.config.user_perms["driver"][0])
             await app.db.execute(dhrid, f"UPDATE user SET roles = '{list2str(roles)}' WHERE uid = {uid}")
             await app.db.commit(dhrid)
 
@@ -309,20 +308,19 @@ async def post_update(response: Response, request: Request):
             await UpdateRoleConnection(request, discordid)
 
             def setvar(msg):
-                return msg.replace("{mention}", f"<@{discordid}>").replace("{name}", name).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", "").replace("{staff_name}", "Trucky").replace("{staff_userid}", "-997").replace("{staff_uid}", "-997").replace("{staff_avatar}", validateUrl(app.config.logo_url))
+                return msg.replace("{mention}", f"<@{discordid}>").replace("{name}", name).replace("{userid}", str(userid)).replace("{uid}", str(uid)).replace("{avatar}", validateUrl(avatar)).replace("{staff_mention}", "").replace("{staff_name}", "Trucky").replace("{staff_userid}", "-997").replace("{staff_uid}", "-997").replace("{staff_avatar}", str(app.config.logo_url))
 
-            for meta in app.config.driver_role_add:
-                meta = Dict2Obj(meta)
+            for meta in app.config.discord_integration.driver_role_add:
                 if meta.webhook_url != "" or meta.channel_id != "":
                     await AutoMessage(app, meta, setvar)
 
-                if discordid is not None and meta.role_change != [] and app.config.discord_bot_token != "":
+                if discordid is not None and meta.role_change != [] and app.config.discord_integration.bot_token != "":
                     for role in meta.role_change:
                         try:
                             if int(role) < 0:
-                                opqueue.queue(app, "delete", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
+                                app.discord_op.queue(app, "delete", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{str(-int(role))}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"remove_role,{-int(role)},{discordid}")
                             elif int(role) > 0:
-                                opqueue.queue(app, "put", app.config.discord_guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
+                                app.discord_op.queue(app, "put", app.config.discord_integration.guild_id, f'https://discord.com/api/v10/guilds/{app.config.discord_integration.guild_id}/members/{discordid}/roles/{int(role)}', None, {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "X-Audit-Log-Reason": "Automatic role changes when driver role is added."}, f"add_role,{int(role)},{discordid}")
                         except:
                             pass
 
@@ -340,7 +338,7 @@ async def post_update(response: Response, request: Request):
     return Response(status_code = 204)
 
 async def post_import(response: Response, request: Request, jobid: int, authorization: str | None = Header(None), bypass_tracker_check: bool | None = False):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /trucky/import', 60, 60)
     if rl[0]:
@@ -348,7 +346,7 @@ async def post_import(response: Response, request: Request, jobid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "import_dlogs"])
     if au["error"]:
@@ -400,7 +398,7 @@ async def post_import(response: Response, request: Request, jobid: int, authoriz
     return {"logid": result[0]}
 
 async def put_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     if "trucky" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
@@ -411,7 +409,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "update_roles"])
     if au["error"]:
@@ -433,7 +431,7 @@ async def put_driver(response: Response, request: Request, userid: int, authoriz
         return {"error": tracker_app_error}
 
 async def delete_driver(response: Response, request: Request, userid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     if "trucky" not in configured_trackers(app):
         response.status_code = 404
         return {"error": "Not Found"}
@@ -444,7 +442,7 @@ async def delete_driver(response: Response, request: Request, userid: int, autho
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "update_roles"])
     if au["error"]:

@@ -1,6 +1,8 @@
 # Copyright (C) 2022-2026 CharlesWithC All rights reserved.
 # Author: @CharlesWithC
 
+assert False, "`admin.py` requires config format to be updated (TODO)"
+
 import json
 import math
 import os
@@ -40,7 +42,7 @@ async def post_discord_role_connection_enable(request: Request, response: Respon
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator"])
     if au["error"]:
@@ -48,9 +50,9 @@ async def post_discord_role_connection_enable(request: Request, response: Respon
         del au["code"]
         return au
 
-    headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
     try:
-        r = await arequests.put(app, f"https://discord.com/api/v10/applications/{app.config.discord_client_id}/role-connections/metadata", data = json.dumps([{"type": 2, "key": "dlog", "name": "Deliveries", "description": "Deliveries submitted", "name_localizations": {"es-ES": "Entregas"}}, {"type": 2, "key": "distance", "name": "Distance(km)", "description": "Distance(km) driven", "name_localizations": {"es-ES": "Distancia(km)"}}, {"type": 7, "key": "is_driver", "name": "Driver", "description": "Must be a driver", "name_localizations": {"es-ES": "Conductor"}}, {"type": 6, "key": "member_since", "name": "Member Since", "description": "Days since creating an account", "name_localizations": {"es-ES": "Miembro Desde"}}]), headers = headers, dhrid = dhrid)
+        r = await arequests.put(app, f"https://discord.com/api/v10/applications/{app.config.discord_integration.client_id}/role-connections/metadata", data = json.dumps([{"type": 2, "key": "dlog", "name": "Deliveries", "description": "Deliveries submitted", "name_localizations": {"es-ES": "Entregas"}}, {"type": 2, "key": "distance", "name": "Distance(km)", "description": "Distance(km) driven", "name_localizations": {"es-ES": "Distancia(km)"}}, {"type": 7, "key": "is_driver", "name": "Driver", "description": "Must be a driver", "name_localizations": {"es-ES": "Conductor"}}, {"type": 6, "key": "member_since", "name": "Member Since", "description": "Days since creating an account", "name_localizations": {"es-ES": "Miembro Desde"}}]), headers = headers, dhrid = dhrid)
         if r.status_code // 100 != 2:
             response.status_code = 503
             return {"error": ml.tr(request, "discord_api_inaccessible", force_lang = au["language"])}
@@ -69,7 +71,7 @@ async def post_discord_role_connection_disable(request: Request, response: Respo
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator"])
     if au["error"]:
@@ -77,9 +79,9 @@ async def post_discord_role_connection_disable(request: Request, response: Respo
         del au["code"]
         return au
 
-    headers = {"Authorization": f"Bot {app.config.discord_bot_token}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bot {app.config.discord_integration.bot_token}", "Content-Type": "application/json"}
     try:
-        r = await arequests.put(app, f"https://discord.com/api/v10/applications/{app.config.discord_client_id}/role-connections/metadata", data = json.dumps([]), headers = headers, dhrid = dhrid)
+        r = await arequests.put(app, f"https://discord.com/api/v10/applications/{app.config.discord_integration.client_id}/role-connections/metadata", data = json.dumps([]), headers = headers, dhrid = dhrid)
         if r.status_code // 100 != 2:
             response.status_code = 503
             return {"error": ml.tr(request, "discord_api_inaccessible", force_lang = au["language"])}
@@ -110,13 +112,13 @@ async def get_config(request: Request, response: Response, authorization: str | 
         permOk = checkPerm(app, au["roles"], ["administrator", "update_config"])
 
     if not permOk:
-        cfg = app.config.model_dump_json()
+        cfg = app.config.model_dump()
 
         for key in cfg:
             if key not in public_config_whitelist:
                 del cfg[key]
             if key == "trackers":
-                cfg[key] = [{"type": tracker["type"], "company_id": tracker["company_id"]} for tracker in cfg[key]]
+                cfg[key] = [{"type": tracker.type, "company_id": tracker["company_id"]} for tracker in cfg[key]]
 
         return {"config": cfg}
 
@@ -132,17 +134,17 @@ async def get_config(request: Request, response: Response, authorization: str | 
     except Exception as exc:
         await tracebackHandler(request, exc, traceback.format_exc())
 
-    return {"pending": modcfg.model_dump_json(), "current": app.config.model_dump_json(), "pending_last_modified": int(last_modified), "current_last_modified": int(app.config_last_modified)}
+    return {"pending": modcfg.model_dump(), "current": app.config.model_dump(), "pending_last_modified": int(last_modified), "current_last_modified": int(app.config_last_modified)}
 
 def restart(app):
     time.sleep(3)
-    os.system(f"nohup ./launcher hub restart {app.config.abbr} > /dev/null") # pyright: ignore[reportDeprecated]
+    os.system(f"nohup ./launcher hub restart {app.config.unique_id} > /dev/null") # pyright: ignore[reportDeprecated]
 
 async def patch_config(request: Request, response: Response, authorization: str | None = Header(None)):
     """Updates the config, only those specified in `config` will be updated
 
     JSON: `{"config": {}}`"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /config', 60, 60)
     if rl[0]:
@@ -150,7 +152,7 @@ async def patch_config(request: Request, response: Response, authorization: str 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "update_config"])
     if au["error"]:
@@ -210,7 +212,7 @@ async def patch_config(request: Request, response: Response, authorization: str 
 
 async def post_config_reload(request: Request, response: Response, authorization: str | None = Header(None)):
     """Reloads config, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /config/reload', 60, 10)
     if rl[0]:
@@ -218,7 +220,7 @@ async def post_config_reload(request: Request, response: Response, authorization
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "reload_config"])
     if au["error"]:
@@ -258,18 +260,18 @@ async def post_config_reload(request: Request, response: Response, authorization
     os.replace(app.config_path + ".saved", app.config_path)
     app.config = config
     app.config_last_modified = os.path.getmtime(app.config_path)
-    logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
+    logger.info(f"[{app.config.unique_id}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
 
     # TODO: This method should belong to app.py
     app = static.load(app)
 
     try:
-        if os.path.exists(f"/tmp/hub/logo/{app.config.abbr}.png"):
-            os.remove(f"/tmp/hub/logo/{app.config.abbr}.png")
-        if os.path.exists(f"/tmp/hub/logo/{app.config.abbr}_bg.png"):
-            os.remove(f"/tmp/hub/logo/{app.config.abbr}_bg.png")
-        if os.path.exists(f"/tmp/hub/template/{app.config.abbr}.png"):
-            os.remove(f"/tmp/hub/template/{app.config.abbr}.png")
+        if os.path.exists(f"/tmp/hub/logo/{app.config.unique_id}.png"):
+            os.remove(f"/tmp/hub/logo/{app.config.unique_id}.png")
+        if os.path.exists(f"/tmp/hub/logo/{app.config.unique_id}_bg.png"):
+            os.remove(f"/tmp/hub/logo/{app.config.unique_id}_bg.png")
+        if os.path.exists(f"/tmp/hub/template/{app.config.unique_id}.png"):
+            os.remove(f"/tmp/hub/template/{app.config.unique_id}.png")
     except:
         pass
 
@@ -277,7 +279,7 @@ async def post_config_reload(request: Request, response: Response, authorization
 
 async def post_restart(request: Request, response: Response, authorization: str | None = Header(None)):
     """Restarts API service in a thread, returns 204"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /restart', 600, 3)
     if rl[0]:
@@ -285,7 +287,7 @@ async def post_restart(request: Request, response: Response, authorization: str 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "restart_service"])
     if au["error"]:
@@ -320,16 +322,16 @@ async def post_restart(request: Request, response: Response, authorization: str 
         os.replace(app.config_path + ".saved", app.config_path)
         app.config = config
         app.config_last_modified = os.path.getmtime(app.config_path)
-        logger.info(f"[{app.config.abbr}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
+        logger.info(f"[{app.config.unique_id}] [PID: {os.getpid()}] Config modification detected, reloaded config.")
 
         # TODO: This method should belong to app.py
         app = static.load(app)
 
     try:
-        if os.path.exists(f"/tmp/hub/logo/{app.config.abbr}.png"):
-            os.remove(f"/tmp/hub/logo/{app.config.abbr}.png")
-        if os.path.exists(f"/tmp/hub/logo/{app.config.abbr}_bg.png"):
-            os.remove(f"/tmp/hub/logo/{app.config.abbr}_bg.png")
+        if os.path.exists(f"/tmp/hub/logo/{app.config.unique_id}.png"):
+            os.remove(f"/tmp/hub/logo/{app.config.unique_id}.png")
+        if os.path.exists(f"/tmp/hub/logo/{app.config.unique_id}_bg.png"):
+            os.remove(f"/tmp/hub/logo/{app.config.unique_id}_bg.png")
     except:
         pass
 
@@ -344,7 +346,7 @@ async def get_audit_list(request: Request, response: Response, authorization: st
     """Returns a list of audit log
 
     `category` could be a list of categories separated by comma"""
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /audit/list', 60, 120)
     if rl[0]:
@@ -352,7 +354,7 @@ async def get_audit_list(request: Request, response: Response, authorization: st
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, required_permission = ["administrator", "view_audit_log"])
     if au["error"]:

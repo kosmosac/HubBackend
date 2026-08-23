@@ -11,7 +11,7 @@ from src.functions import *
 
 
 async def get_callback(request: Request, response: Response):
-    app = request.app
+    app: DHApp = request.app
     data = str(request.query_params).replace("openid.mode=id_res", "openid.mode=check_authentication")
     if data == "":
         response.status_code = 400
@@ -24,7 +24,7 @@ async def get_callback(request: Request, response: Response):
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     r = None
     try:

@@ -6,6 +6,7 @@
 #
 # If imported when env vars are not set, `createFullApp` will raise an error.
 
+import copy
 import json
 import os
 from contextlib import asynccontextmanager
@@ -16,17 +17,19 @@ import src.api as api
 import src.app as base
 import src.db as db
 import src.static as static
+from src.app import DHApp
 from src.functions.dataop import b64d
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     for route in app.routes:
-        if hasattr(route, "app") and hasattr(route, "name") and route.name.endswith("Drivers Hub"):
-            await api.startup_event(route.app)
+        if hasattr(route, "app") and hasattr(route, "name") and getattr(route, "name").endswith("Drivers Hub"):
+            await api.startup_event(getattr(route, "app"))
     yield
     for route in app.routes:
-        if hasattr(route, "app") and hasattr(route, "name") and route.name.endswith("Drivers Hub"):
-            await api.shutdown_event(route.app)
+        if hasattr(route, "app") and hasattr(route, "name") and getattr(route, "name").endswith("Drivers Hub"):
+            await api.shutdown_event(getattr(route, "app"))
     os._exit(42)
 
 def createFullApp():
@@ -37,22 +40,23 @@ def createFullApp():
     servers = []
 
     # create main application
-    if openapi_path != "" and static.OPENAPI is not None:
-        app = FastAPI(title = "Drivers Hub", version = static.version, lifespan=lifespan, \
+    openapi_config = copy.deepcopy(static.OPENAPI)
+    if openapi_path != "" and openapi_config is not None:
+        app = DHApp(title = "Drivers Hub", version = static.version, lifespan=lifespan, \
                       openapi_url = f"{openapi_path.rstrip('/')}/openapi.json", docs_url = f"{openapi_path}", redoc_url=None)
 
         # set openapi
-        def openapi():
-            data = static.OPENAPI
+        def openapi() -> dict[str, object]:
+            data = openapi_config
             data["servers"] = servers
             data["info"]["version"] = static.version
-            return static.OPENAPI
+            return data
         app.openapi = openapi
     else:
-        app = FastAPI(title = "Drivers Hub", version = static.version, lifespan=lifespan)
+        app = DHApp(title = "Drivers Hub", version = static.version, lifespan=lifespan)
 
     if launch_args["use_master_db_pool"]:
-        app.db = db.aiosql(host = os.environ["MASTER_DB_HOST"], user = os.environ["MASTER_DB_USER"], passwd = os.environ["MASTER_DB_PASSWORD"], db_name = 'information_schema', db_pool_size = int(os.environ['MASTER_DB_POOLSIZE']), master_db=True)
+        app.db = db.aiosql(host = os.environ["MASTER_DB_HOST"], username = os.environ["MASTER_DB_USER"], password = os.environ["MASTER_DB_PASSWORD"], schema = 'information_schema', pool = int(os.environ['MASTER_DB_POOLSIZE']), master_db=True)
     else:
         app.db = None
 

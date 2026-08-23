@@ -7,12 +7,13 @@ import time
 from fastapi import Header, Request, Response
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 from src.plugins.economy.trucks import GetTruckInfo
 
 
 async def get_all_garages(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/garages', 60, 30)
     if rl[0]:
@@ -20,7 +21,7 @@ async def get_all_garages(request: Request, response: Response, authorization: s
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -28,7 +29,7 @@ async def get_all_garages(request: Request, response: Response, authorization: s
         del au["code"]
         return au
 
-    return app.config.economy.garages
+    return app.config.plugin_economy.garages
 
 async def get_garage_list(request: Request, response: Response, authorization: str | None = Header(None), \
         page: int | None = 1, page_size: int | None = 10, after_garageid: str | None = None,
@@ -38,7 +39,7 @@ async def get_garage_list(request: Request, response: Response, authorization: s
     '''Get a list of garages.
 
     `order_by` can be `income`, `truck`, `slot`'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/garages/list', 60, 60)
     if rl[0]:
@@ -46,7 +47,7 @@ async def get_garage_list(request: Request, response: Response, authorization: s
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -118,7 +119,7 @@ async def get_garage_list(request: Request, response: Response, authorization: s
 
 async def get_garage(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Get info of a specific garage.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/garages/garageid', 60, 60)
     if rl[0]:
@@ -126,7 +127,7 @@ async def get_garage(request: Request, response: Response, garageid: str, author
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -158,7 +159,7 @@ async def get_garage_slots_list(request: Request, response: Response, garageid: 
     '''Get the slots of a specific garage.
 
     `order_by` is `purchase_timestamp`.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/garages/slots/list', 60, 60)
     if rl[0]:
@@ -166,7 +167,7 @@ async def get_garage_slots_list(request: Request, response: Response, garageid: 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -229,7 +230,7 @@ async def get_garage_slots_list(request: Request, response: Response, garageid: 
 
 async def get_garage_slot(request: Request, response: Response, garageid: str, slotid: int, authorization: str | None = Header(None)):
     '''Get info of a specific garage slot.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /economy/garages/slots/slotid', 60, 60)
     if rl[0]:
@@ -237,7 +238,7 @@ async def get_garage_slot(request: Request, response: Response, garageid: str, s
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -266,7 +267,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
     `owner` can be `self` | `company` | `user-{userid}`
 
     [NOTE] The garage must not have been purchased before, aka there must be no slots connected to the garage. Otherwise it should be /{garageid}/slots/purchase.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/garages/purchase', 60, 30)
     if rl[0]:
@@ -274,7 +275,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -309,7 +310,7 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
     permok = checkPerm(app, au["roles"], ["administrator", "manage_economy", "manage_economy_garage"])
 
     # check access
-    if not app.config.economy.allow_purchase_garage and not permok:
+    if not app.config.plugin_economy.allow_garage_purchase and not permok:
         response.status_code = 403
         return {"error": ml.tr(request, "purchase_forbidden", var = {"item": ml.tr(request, "garage", force_lang = au["language"])}, force_lang = au["language"])}
     if owner == "company" and not permok:
@@ -344,24 +345,24 @@ async def post_garage_purchase(request: Request, response: Response, garageid: s
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, opuserid) if balance == 0 else None
 
-    if garage["price"] > balance:
+    if garage.price > balance:
         response.status_code = 402
         return {"error": ml.tr(request, "insufficient_balance", force_lang = au["language"])}
 
     slotids = []
     ts = int(time.time())
-    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {garage['price']} WHERE userid = {opuserid}")
-    for i in range(garage["base_slots"]):
-        p = garage['price'] if i == 0 else 0
+    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {garage.price} WHERE userid = {opuserid}")
+    for i in range(garage.base_slots):
+        p = garage.price if i == 0 else 0
         await app.db.execute(dhrid, f"INSERT INTO economy_garage(garageid, userid, price, note, purchase_timestamp) VALUES ('{garageid}', {foruser}, {p}, 'garage-owner', {ts})")
         await app.db.commit(dhrid)
         await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
         slotid = (await app.db.fetchone(dhrid))[0]
         slotids.append(slotid)
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1002, {garage['price']}, 'g-{garageid}-purchase', 'for-user-{foruser}', {round(balance - garage['price'])}, NULL, {ts})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1002, {garage.price}, 'g-{garageid}-purchase', 'for-user-{foruser}', {round(balance - garage.price)}, NULL, {ts})")
     await app.db.commit(dhrid)
 
-    return {"slotids": slotids, "cost": garage['price'], "balance": round(balance - garage['price'])}
+    return {"slotids": slotids, "cost": garage.price, "balance": round(balance - garage.price)}
 
 async def post_garage_slot_purchase(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Purchase a slot of a garage, returns `slotid`, `cost`, `balance`.
@@ -371,7 +372,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
     `owner` can be `self` | `company` | `user-{userid}`
 
     [NOTE] The garage must have been purchased before, aka there must be slots connected to the garage. Otherwise it should be /{garageid}/purchase.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/garages/slots/purchase', 60, 30)
     if rl[0]:
@@ -379,7 +380,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -414,7 +415,7 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
     permok = checkPerm(app, au["roles"], ["administrator", "manage_economy", "manage_economy_garage"])
 
     # check access
-    if not app.config.economy.allow_purchase_slot and not permok:
+    if not app.config.plugin_economy.allow_garage_slot_purchase and not permok:
         response.status_code = 403
         return {"error": ml.tr(request, "purchase_forbidden", var = {"item": ml.tr(request, "garage_slot", force_lang = au["language"])}, force_lang = au["language"])}
     if owner == "company" and not permok:
@@ -449,19 +450,19 @@ async def post_garage_slot_purchase(request: Request, response: Response, garage
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, opuserid) if balance == 0 else None
 
-    if garage["slot_price"] > balance:
+    if garage.slot_price > balance:
         response.status_code = 402
         return {"error": ml.tr(request, "insufficient_balance", force_lang = au["language"])}
 
-    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {garage['slot_price']} WHERE userid = {opuserid}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_garage(garageid, userid, price, note, purchase_timestamp) VALUES ('{garageid}', {foruser}, {garage['slot_price']}, 'slot-owner', {int(time.time())})")
+    await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance - {garage.slot_price} WHERE userid = {opuserid}")
+    await app.db.execute(dhrid, f"INSERT INTO economy_garage(garageid, userid, price, note, purchase_timestamp) VALUES ('{garageid}', {foruser}, {garage.slot_price}, 'slot-owner', {int(time.time())})")
     await app.db.commit(dhrid)
     await app.db.execute(dhrid, "SELECT LAST_INSERT_ID();")
     slotid = (await app.db.fetchone(dhrid))[0]
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1002, {garage['slot_price']}, 'gs{slotid}-purchase', 'for-user-{foruser}', {round(balance - garage['slot_price'])}, NULL, {int(time.time())})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES ({opuserid}, -1002, {garage.slot_price}, 'gs{slotid}-purchase', 'for-user-{foruser}', {round(balance - garage.slot_price)}, NULL, {int(time.time())})")
     await app.db.commit(dhrid)
 
-    return {"slotid": slotid, "cost": garage['slot_price'], "balance": round(balance - garage['slot_price'])}
+    return {"slotid": slotid, "cost": garage.slot_price, "balance": round(balance - garage.slot_price)}
 
 async def post_garage_transfer(request: Request, response: Response, garageid: str, authorization: str | None = Header(None)):
     '''Transfer a garage (ownership).
@@ -471,7 +472,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
     `owner` can be `self` | `company` | `user-{userid}`
 
     [NOTE] This will transfer the garage ownership and the base slots when purchased.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/garages/transfer', 60, 30)
     if rl[0]:
@@ -479,7 +480,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -551,7 +552,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
 
     garage = ml.ctr(request, "unknown_garage")
     if garageid in app.garages:
-        garage = app.garages[garageid]["name"]
+        garage = app.garages[garageid].name
     username = (await GetUserInfo(request, userid = foruser, is_internal_function = True))["name"]
     await AuditLog(request, au["uid"], "economy", ml.ctr(request, "transferred_garage", var = {"garage": garage, "id": garageid, "username": username, "userid": foruser}))
 
@@ -568,7 +569,7 @@ async def post_garage_transfer(request: Request, response: Response, garageid: s
 
     garage = ml.ctr(request, "unknown") + " (" + garageid + ")"
     if garageid in app.garages:
-        garage = app.garages[garageid]["name"]
+        garage = app.garages[garageid].name
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": ml.tr(request, "garage", force_lang = from_user_language).title(), "name": garage, "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
     await notification(request, "economy", to_user["uid"], ml.tr(request, "economy_received_transaction_item", var = {"type": ml.tr(request, "garage", force_lang = from_user_language).title(), "name": garage, "from_user": from_user["name"], "from_userid": from_user["userid"] if from_user["userid"] is not None else "N/A", "message": to_message}, force_lang = to_user_language))
@@ -583,7 +584,7 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
     `owner` can be `self` | `company` | `user-{userid}`
 
     [NOTE] This will transfer the slot ownership.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/garages/slots/transfer', 60, 30)
     if rl[0]:
@@ -591,7 +592,7 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -677,7 +678,7 @@ async def post_garage_slot_transfer(request: Request, response: Response, garage
 
     garage = ml.ctr(request, "unknown") + " (" + garageid + ")"
     if garageid in app.garages:
-        garage = app.garages[garageid]["name"]
+        garage = app.garages[garageid].name
 
     await notification(request, "economy", from_user["uid"], ml.tr(request, "economy_sent_transaction_item", var = {"type": ml.tr(request, "garage_slot", force_lang = from_user_language).title(), "name": f"#{slotid} ({garage})", "to_user": to_user["name"], "to_userid": to_user["userid"] if to_user["userid"] is not None else "N/A", "message": from_message}, force_lang = from_user_language))
     await notification(request, "economy", to_user["uid"], ml.tr(request, "economy_received_transaction_item", var = {"type": ml.tr(request, "garage_slot", force_lang = from_user_language).title(), "name": f"#{slotid} ({garage})", "from_user": from_user["name"], "from_userid": from_user["userid"] if from_user["userid"] is not None else "N/A", "message": to_message}, force_lang = to_user_language))
@@ -688,7 +689,7 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
     '''Sell a garage (ownership), returns `refund`, `balance`.
 
     [NOTE] There must be no slots under the garage and no trucks parked in the base slots.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/garages/sell', 60, 30)
     if rl[0]:
@@ -696,7 +697,7 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -714,7 +715,7 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
         return {"error": ml.tr(request, "garage_not_purchased", force_lang = au["language"])}
     current_owner = t[0][0]
     price = t[0][1]
-    refund = price * app.config.economy.garage_refund
+    refund = price * app.config.plugin_economy.garage_refund_pct
 
     # check perm
     permok = checkPerm(app, au["roles"], ["administrator", "manage_economy", "manage_economy_garage"])
@@ -742,12 +743,12 @@ async def post_garage_sell(request: Request, response: Response, garageid: str, 
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, current_owner) if balance == 0 else None
     await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance + {refund} WHERE userid = {current_owner}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1002, {current_owner}, {refund}, 'g-{garageid}-sell', 'refund-{app.config.economy.garage_refund}', NULL, {round(balance + refund)}, {int(time.time())})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1002, {current_owner}, {refund}, 'g-{garageid}-sell', 'refund-{app.config.plugin_economy.garage_refund_pct}', NULL, {round(balance + refund)}, {int(time.time())})")
     await app.db.commit(dhrid)
 
     garage = ml.ctr(request, "unknown_garage")
     if garageid in app.garages:
-        garage = app.garages[garageid]["name"]
+        garage = app.garages[garageid].name
     username = (await GetUserInfo(request, userid = current_owner, is_internal_function = True))["name"]
     await AuditLog(request, au["uid"], "economy", ml.ctr(request, "sold_garage", var = {"garage": garage, "id": garageid, "username": username, "userid": current_owner}))
 
@@ -757,7 +758,7 @@ async def post_garage_slot_sell(request: Request, response: Response, garageid: 
     '''Sell a garage (ownership), returns `refund`, `balance`.
 
     [NOTE] There must be no slots under the garage and no trucks parked in the base slots.'''
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /economy/garages/slots/sell', 60, 30)
     if rl[0]:
@@ -765,7 +766,7 @@ async def post_garage_slot_sell(request: Request, response: Response, garageid: 
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True)
     if au["error"]:
@@ -783,7 +784,7 @@ async def post_garage_slot_sell(request: Request, response: Response, garageid: 
         return {"error": ml.tr(request, "garage_slot_not_found", force_lang = au["language"])}
     current_owner = t[0][0]
     price = t[0][1]
-    refund = price * app.config.economy.slot_refund
+    refund = price * app.config.plugin_economy.garage_slot_refund_pct
     note = t[0][2]
     if note == "garage-owner":
         response.status_code = 403
@@ -810,7 +811,7 @@ async def post_garage_slot_sell(request: Request, response: Response, garageid: 
     balance = nint(await app.db.fetchone(dhrid))
     await EnsureEconomyBalance(request, current_owner) if balance == 0 else None
     await app.db.execute(dhrid, f"UPDATE economy_balance SET balance = balance + {refund} WHERE userid = {current_owner}")
-    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1002, {current_owner}, {refund}, 'gs{slotid}-sell', 'refund-{app.config.economy.slot_refund}', NULL, {round(balance + refund)}, {int(time.time())})")
+    await app.db.execute(dhrid, f"INSERT INTO economy_transaction(from_userid, to_userid, amount, note, message, from_new_balance, to_new_balance, timestamp) VALUES (-1002, {current_owner}, {refund}, 'gs{slotid}-sell', 'refund-{app.config.plugin_economy.garage_slot_refund_pct}', NULL, {round(balance + refund)}, {int(time.time())})")
     await app.db.commit(dhrid)
 
     username = (await GetUserInfo(request, userid = current_owner, is_internal_function = True))["name"]

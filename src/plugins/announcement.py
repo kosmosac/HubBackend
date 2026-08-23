@@ -7,19 +7,20 @@ import time
 from fastapi import Header, Request, Query, Response
 
 import src.multilang as ml
+from src.app import DHApp
 from src.functions import *
 
 async def get_types(request: Request):
-    app = request.app
+    app: DHApp = request.app
 
-    return app.config.announcement_types
+    return app.config.plugin_announcement.types
 
 def get_type(request, type_id: int, force_lang: str | None = ""):
-    app = request.app
+    app: DHApp = request.app
     ret = {"id": type_id, "name": ml.tr(request, "unknown", force_lang = force_lang)}
-    for announcement_type in app.config.announcement_types:
-        if announcement_type["id"] == type_id:
-            ret["name"] = announcement_type["name"]
+    for announcement_type in app.config.plugin_announcement.types:
+        if announcement_type.id == type_id:
+            ret["name"] = announcement_type.name
             break
     return ret
 
@@ -28,7 +29,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
         order_by: str | None = "orderid", order: str | None = "asc", is_private: bool | None = None, \
         created_by: int | None = None, created_after: int | None = None, created_before: int | None = None, \
         after_announcementid: int | None = None, title: str | None = "", announcement_type: int | None = Query(None, alias='type')):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /announcements/list', 60, 120)
     if rl[0]:
@@ -36,7 +37,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     userid = -1
     aulanguage = ""
@@ -115,7 +116,7 @@ async def get_list(request: Request, response: Response, authorization: str | No
     return {"list": ret, "total_items": tot, "total_pages": int(math.ceil(tot / page_size))}
 
 async def get_announcement(request: Request, response: Response, announcementid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'GET /announcements', 60, 120)
     if rl[0]:
@@ -123,7 +124,7 @@ async def get_announcement(request: Request, response: Response, announcementid:
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     aulanguage = ""
     if authorization is not None:
@@ -146,7 +147,7 @@ async def get_announcement(request: Request, response: Response, announcementid:
     return {"announcementid": tt[5], "title": tt[0], "content": decompress(tt[1]), "author": await GetUserInfo(request, userid = tt[4]), "type": get_type(request, tt[2], aulanguage), "is_private": TF[tt[6]], "orderid": tt[7], "is_pinned": TF[tt[8]], "timestamp": tt[3]}
 
 async def post_announcement(request: Request, response: Response, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'POST /announcements', 60, 30)
     if rl[0]:
@@ -154,7 +155,7 @@ async def post_announcement(request: Request, response: Response, authorization:
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator","manage_announcements"])
     if au["error"]:
@@ -193,8 +194,8 @@ async def post_announcement(request: Request, response: Response, authorization:
         return {"error": ml.tr(request, "bad_json", force_lang = au["language"])}
 
     tatype = None
-    for atype in app.config.announcement_types:
-        if atype["id"] == announcement_type:
+    for atype in app.config.plugin_announcement.types:
+        if atype.id == announcement_type:
             tatype = atype
             break
     if tatype is None:
@@ -202,7 +203,7 @@ async def post_announcement(request: Request, response: Response, authorization:
         return {"error": ml.tr(request, "unknown_announcement_type", force_lang = au["language"])}
     ok = False
     for role in au["roles"]:
-        if role in tatype["staff_role_ids"]:
+        if role in tatype.staff_role_ids:
             ok = True
     if not ok and not checkPerm(app, au["roles"], "administrator"):
         response.status_code = 403
@@ -220,10 +221,9 @@ async def post_announcement(request: Request, response: Response, authorization:
     await notification_to_everyone(request, "new_announcement", ml.spl("new_announcement_with_title", var = {"title": title}), discord_embed = {"title": title, "description": content, "footer": {"text": author["name"], "icon_url": author["avatar"]}}, only_to_members=is_private)
 
     def setvar(msg):
-        return msg.replace("{mention}", f"<@{au['discordid']}>").replace("{name}", au['name']).replace("{userid}", str(au['userid'])).replace("{uid}", str(au['uid'])).replace("{avatar}", validateUrl(au['avatar'])).replace("{id}", str(announcementid)).replace("{title}", title).replace("{content}", content).replace("{type}", tatype["name"])
+        return msg.replace("{mention}", f"<@{au['discordid']}>").replace("{name}", au['name']).replace("{userid}", str(au['userid'])).replace("{uid}", str(au['uid'])).replace("{avatar}", validateUrl(au['avatar'])).replace("{id}", str(announcementid)).replace("{title}", title).replace("{content}", content).replace("{type}", tatype.name)
 
-    for meta in app.config.announcement_forwarding:
-        meta = Dict2Obj(meta)
+    for meta in app.config.plugin_announcement.forwards:
         if meta.is_private is not None and int(meta.is_private) != is_private:
             continue
         if meta.webhook_url != "" or meta.channel_id != "":
@@ -232,7 +232,7 @@ async def post_announcement(request: Request, response: Response, authorization:
     return {"announcementid": announcementid}
 
 async def patch_announcement(request: Request, response: Response, announcementid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'PATCH /announcements', 60, 30)
     if rl[0]:
@@ -240,7 +240,7 @@ async def patch_announcement(request: Request, response: Response, announcementi
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
 
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator","manage_announcements"])
     if au["error"]:
@@ -259,14 +259,14 @@ async def patch_announcement(request: Request, response: Response, announcementi
 
     # check if announcement original type can be modified by current staff
     tatype = None
-    for atype in app.config.announcement_types:
-        if atype["id"] == announcement_type:
+    for atype in app.config.plugin_announcement.types:
+        if atype.id == announcement_type:
             tatype = atype
             break
     if tatype is not None:
         ok = False
         for role in au["roles"]:
-            if role in tatype["staff_role_ids"]:
+            if role in tatype.staff_role_ids:
                 ok = True
         if not ok and not checkPerm(app, au["roles"], "administrator"):
             response.status_code = 403
@@ -304,8 +304,8 @@ async def patch_announcement(request: Request, response: Response, announcementi
 
     # check if announcement new type can be modified by current staff
     tatype = None
-    for atype in app.config.announcement_types:
-        if atype["id"] == announcement_type:
+    for atype in app.config.plugin_announcement.types:
+        if atype.id == announcement_type:
             tatype = atype
             break
     if tatype is None:
@@ -313,7 +313,7 @@ async def patch_announcement(request: Request, response: Response, announcementi
         return {"error": ml.tr(request, "unknown_announcement_type", force_lang = au["language"])}
     ok = False
     for role in au["roles"]:
-        if role in tatype["staff_role_ids"]:
+        if role in tatype.staff_role_ids:
             ok = True
     if not ok and not checkPerm(app, au["roles"], "administrator"):
         response.status_code = 403
@@ -326,7 +326,7 @@ async def patch_announcement(request: Request, response: Response, announcementi
     return Response(status_code=204)
 
 async def delete_announcement(request: Request, response: Response, announcementid: int, authorization: str | None = Header(None)):
-    app = request.app
+    app: DHApp = request.app
     dhrid = request.state.dhrid
     rl = await ratelimit(request, 'DELETE /announcements', 60, 30)
     if rl[0]:
@@ -334,7 +334,7 @@ async def delete_announcement(request: Request, response: Response, announcement
     for k in rl[1]:
         response.headers[k] = rl[1][k]
 
-    await app.db.new_conn(dhrid, db_name = app.config.db_name)
+    await app.db.new_conn(dhrid, db_name = app.config.database_schema)
     au = await auth(authorization, request, allow_application_token = True, required_permission = ["administrator", "manage_announcements"])
     if au["error"]:
         response.status_code = au["code"]
@@ -350,14 +350,14 @@ async def delete_announcement(request: Request, response: Response, announcement
 
     # check if announcement type can be deleted by current staff
     tatype = None
-    for atype in app.config.announcement_types:
-        if atype["id"] == announcement_type:
+    for atype in app.config.plugin_announcement.types:
+        if atype.id == announcement_type:
             tatype = atype
             break
     if tatype is not None:
         ok = False
         for role in au["roles"]:
-            if role in tatype["staff_role_ids"]:
+            if role in tatype.staff_role_ids:
                 ok = True
         if not ok and not checkPerm(app, au["roles"], "administrator"):
             response.status_code = 403
