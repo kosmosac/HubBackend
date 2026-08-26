@@ -15,13 +15,18 @@ from fastapi.routing import APIRoute
 from functions import *
 
 
+def normalize_client_config(config, frontend_member_url):
+    config["domain"] = urlparse(frontend_member_url).netloc
+    return config
+
+
 async def get_client_global_config(request: Request, response: Response, authorization: str = Header(None)):
     app = request.app
     dhrid = request.state.dhrid
 
     config = app.redis.get("client-config:meta")
     if config is not None:
-        return json.loads(config)
+        return normalize_client_config(json.loads(config), app.config.frontend_urls.member)
 
     await app.db.new_conn(dhrid, db_name = app.config.db_name)
 
@@ -34,7 +39,7 @@ async def get_client_global_config(request: Request, response: Response, authori
     app.redis.set("client-config:meta", t[0][0])
     app.redis.expire("client-config:meta", 86400)
 
-    config = json.loads(t[0][0])
+    config = normalize_client_config(json.loads(t[0][0]), app.config.frontend_urls.member)
     return config
 
 async def get_client_assets(request: Request, response: Response, key: str):
@@ -304,6 +309,13 @@ def init(config: dict, print_log: bool = False):
             "gallery": []
         }
         cur.execute(f"INSERT INTO settings VALUES (NULL, 'client-config/meta', '{convertQuotation(json.dumps(frontend_conf))}')")
+    else:
+        frontend_conf = json.loads(t[0][2])
+        frontend_domain = urlparse(config["frontend_urls"]["member"]).netloc
+        if frontend_conf.get("domain") != frontend_domain:
+            frontend_conf["domain"] = frontend_domain
+            frontend_conf = convertQuotation(json.dumps(frontend_conf))
+            cur.execute(f"UPDATE settings SET sval = '{frontend_conf}' WHERE skey = 'client-config/meta'")
 
     conn.commit()
     cur.close()
@@ -312,4 +324,3 @@ def init(config: dict, print_log: bool = False):
     # NOTE: Database entries should be created manually. The examples are not provided.
 
     return (True, routes, states, {})
-
